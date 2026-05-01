@@ -1,13 +1,16 @@
 <script lang="ts">
 	import '../app.css';
+	import { onMount } from 'svelte';
+	import { theme } from '$lib/theme.svelte';
 
 	const navItems = [
-		{ href: '/',          label: 'Home',    icon: 'home'         },
 		{ href: '/divisions', label: 'Leagues', icon: 'emoji_events' },
 		{ href: '/players',   label: 'Search',  icon: 'search'       },
 	];
 
 	let { children } = $props();
+
+	onMount(() => theme.init());
 </script>
 
 <svelte:head>
@@ -17,25 +20,19 @@
 	/>
 </svelte:head>
 
-<!-- Top bar -->
-<header class="fixed top-0 w-full z-50 h-16 bg-surface border-b border-border-base">
-	<div class="flex justify-between items-center h-full px-4 max-w-2xl mx-auto">
-		<a href="/" class="font-black text-xl tracking-tighter text-on-surface font-mono">
-			TTF
-		</a>
-		<div class="flex items-center gap-3">
-			<button class="text-on-surface-muted hover:text-on-surface transition-colors p-1">
-				<span class="material-symbols-outlined" style="font-size:22px">notifications</span>
-			</button>
-			<div class="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center">
-				<span class="text-[10px] font-bold text-on-surface-muted">TS</span>
-			</div>
-		</div>
-	</div>
-</header>
+<!-- Theme toggle -->
+<button
+	onclick={() => theme.toggle()}
+	class="fixed top-3 right-4 z-50 text-on-surface-muted hover:text-on-surface transition-colors p-1"
+	aria-label="Toggle theme"
+>
+	<span class="material-symbols-outlined" style="font-size:22px">
+		{theme.dark ? 'light_mode' : 'dark_mode'}
+	</span>
+</button>
 
 <!-- Page content -->
-<main class="pt-16 pb-20 px-4 max-w-2xl mx-auto">
+<main class="pt-4 pb-20 px-4 max-w-2xl mx-auto">
 	{@render children()}
 </main>
 

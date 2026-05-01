@@ -1,118 +1,116 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import * as Table from '$lib/components/ui/table/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
+	import PlayerCard from '$lib/components/PlayerCard.svelte';
+	import MatchCard from '$lib/components/MatchCard.svelte';
+	import { CheckCircle, XCircle, MinusCircle } from 'phosphor-svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	function formatDate(dateStr: string | null): string {
-		if (!dateStr) return 'TBD';
-		return new Date(dateStr).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit' });
-	}
-
-	function getResultColor(match: any, teamName: string) {
-		if (match.homeScore == null || match.awayScore == null) return 'text-muted-foreground';
-		const win = match.homeTeam === teamName ? match.homeScore > match.awayScore : match.awayScore > match.homeScore;
-		const draw = match.homeScore === match.awayScore;
-		if (draw) return 'text-muted-foreground';
-		return win ? 'text-win bg-win/10 border-win/20' : 'text-loss bg-loss/10 border-loss/20';
-	}
+	const [won, drawn, lost] = data.team.record.split('-').map(Number);
 </script>
 
-<div class="p-4 pb-20 space-y-8 max-w-2xl mx-auto">
-	<div class="space-y-4">
-		<div class="space-y-1 px-1">
-			<h1 class="text-3xl font-black uppercase tracking-tighter leading-none">{data.team.name}</h1>
-		</div>
+<div class="py-4 pb-20 space-y-8">
 
-		<div class="grid grid-cols-3 gap-3 px-1">
-			<Card.Root class="bg-card/50">
-				<Card.Content class="p-4 flex flex-col items-center">
-					<span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Record</span>
-					<span class="text-xl font-black">{data.team.record}</span>
-				</Card.Content>
-			</Card.Root>
-			<Card.Root class="bg-card/50">
-				<Card.Content class="p-4 flex flex-col items-center">
-					<span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Points</span>
-					<span class="text-xl font-black">{data.team.points}</span>
-				</Card.Content>
-			</Card.Root>
-			<Card.Root class="bg-card/50">
-				<Card.Content class="p-4 flex flex-col items-center">
-					<span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Streak</span>
-					<span class="text-xl font-black {data.team.streak.includes('W') ? 'text-win' : data.team.streak.includes('L') ? 'text-loss' : ''}">
-						{data.team.streak}
-					</span>
-				</Card.Content>
-			</Card.Root>
+	<BackButton />
+
+	<!-- Header -->
+	<div class="px-1 flex items-start justify-between gap-4">
+		<div class="space-y-1 min-w-0">
+			<h1 class="text-3xl font-extrabold tracking-tight">{data.team.name}</h1>
+			<p class="text-sm text-muted-foreground">{data.team.groupName}</p>
 		</div>
+		{#if data.team.position > 0}
+			<span class="text-6xl font-black text-muted-foreground/15 leading-none shrink-0 tabular-nums">
+				#{data.team.position}
+			</span>
+		{/if}
 	</div>
 
-	<section class="space-y-3">
-		<h2 class="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Active Roster</h2>
-		<Card.Root class="overflow-hidden border-border/50">
-			{#await data.streamed.roster}
-				<div class="p-4 space-y-4">
-					<Skeleton class="h-10 w-full" />
-					<Skeleton class="h-10 w-full" />
-					<Skeleton class="h-10 w-full" />
-				</div>
-			{:then roster}
-				<Table.Root>
-					<Table.Body>
-						{#each roster as player}
-							<Table.Row class="border-border/40 hover:bg-accent transition-colors">
-								<Table.Cell class="py-3 pl-4">
-									<a href="/players/{player.id}" class="hover:underline text-primary font-semibold text-sm">{player.fullName}</a>
-									<div class="text-[10px] text-muted-foreground uppercase">{player.licenceNr}</div>
-								</Table.Cell>
-								<Table.Cell class="py-3 text-right pr-4">
-									<Badge variant="secondary" class="font-mono text-xs">
-										{player.wins}W - {player.losses}L
-									</Badge>
-								</Table.Cell>
-							</Table.Row>
-						{/each}
-					</Table.Body>
-				</Table.Root>
-			{/await}
+	<!-- Stats -->
+	<div class="grid grid-cols-2 gap-3">
+		<Card.Root class="p-4">
+			<p class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Record</p>
+			<p class="text-xl font-black mt-1">
+				<span class="text-win">{won}</span>
+				<span class="text-muted-foreground/40 font-normal mx-0.5">–</span>
+				<span class="text-muted-foreground">{drawn}</span>
+				<span class="text-muted-foreground/40 font-normal mx-0.5">–</span>
+				<span class="text-loss">{lost}</span>
+			</p>
 		</Card.Root>
-	</section>
 
-	<section class="space-y-4">
-		<h2 class="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Season Results</h2>
-		<div class="space-y-2">
-			{#await data.streamed.matches}
-				<Skeleton class="h-20 w-full rounded-2xl" />
-				<Skeleton class="h-20 w-full rounded-2xl" />
-				<Skeleton class="h-20 w-full rounded-2xl" />
-			{:then matches}
-				{#each matches as match}
-					<a href="/matches/{match.id}" class="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/60 hover:border-primary/30 group">
-						<div class="flex flex-col gap-1 min-w-0">
-							<div class="flex items-center gap-2">
-								<span class="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Rd {match.round}</span>
-								<Separator orientation="vertical" class="h-2" />
-								<span class="text-[10px] font-bold text-muted-foreground/60">{formatDate(match.playedAt)}</span>
-							</div>
-							<div class="flex items-center gap-2 text-sm">
-								<span class="truncate {match.homeTeam === data.team.name ? 'font-bold' : 'text-muted-foreground/80'}">{match.homeTeam}</span>
-								<span class="text-[10px] font-bold text-muted-foreground/40">VS</span>
-								<span class="truncate {match.awayTeam === data.team.name ? 'font-bold' : 'text-muted-foreground/80'}">{match.awayTeam}</span>
-							</div>
+		{#if data.team.lastResults.length > 0}
+			<Card.Root class="p-4">
+				<p class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Last 5</p>
+				<div class="flex items-center gap-1 mt-1.5 flex-wrap">
+					{#each data.team.lastResults.toReversed() as result}
+						{#if result === 'W'}
+							<CheckCircle weight="fill" class="w-5 h-5 text-win" />
+						{:else if result === 'L'}
+							<XCircle weight="fill" class="w-5 h-5 text-loss" />
+						{:else}
+							<MinusCircle weight="fill" class="w-5 h-5 text-muted-foreground/50" />
+						{/if}
+					{/each}
+				</div>
+			</Card.Root>
+		{/if}
+	</div>
+
+	<!-- Roster -->
+	<section class="space-y-2">
+		<h2 class="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-1">
+			Team Roster
+			{#await data.streamed.roster then roster}
+				<span class="ml-2 normal-case tracking-normal font-medium text-muted-foreground/60">
+					{roster.length} players
+				</span>
+			{/await}
+		</h2>
+
+		<div class="rounded-xl overflow-hidden border border-border bg-card divide-y divide-border/50">
+			{#await data.streamed.roster}
+				{#each [1, 2, 3] as i (i)}
+					<div class="flex items-center gap-3 px-4 py-3">
+						<Skeleton class="w-9 h-9 rounded-full shrink-0" />
+						<div class="flex-1 space-y-1.5">
+							<Skeleton class="h-3.5 w-32" />
+							<Skeleton class="h-3 w-8" />
 						</div>
-						<div class="flex flex-col items-end gap-1">
-							<Badge variant="outline" class="font-black tabular-nums py-1 px-3 text-sm {getResultColor(match, data.team.name)}">
-								{match.homeScore ?? '?'}:{match.awayScore ?? '?'}
-							</Badge>
-						</div>
-					</a>
+						<Skeleton class="h-4 w-12" />
+					</div>
+				{/each}
+			{:then roster}
+				{#each roster as player (player.id)}
+					<PlayerCard
+						id={player.id}
+						fullName={player.fullName}
+						klass={player.klass}
+						wins={player.wins}
+						losses={player.losses}
+					/>
 				{/each}
 			{/await}
 		</div>
+	</section>
+
+	<!-- Match history -->
+	<section class="space-y-2">
+		<h2 class="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-1">Match History</h2>
+
+		{#await data.streamed.matches}
+			<Skeleton class="h-16 w-full rounded-xl" />
+			<Skeleton class="h-16 w-full rounded-xl" />
+			<Skeleton class="h-16 w-full rounded-xl" />
+		{:then matches}
+			<div class="space-y-2">
+				{#each matches as match (match.id)}
+					<MatchCard {match} perspectiveTeam={data.team.name} />
+				{/each}
+			</div>
+		{/await}
 	</section>
 </div>

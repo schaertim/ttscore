@@ -27,20 +27,26 @@ export type Group = {
 	season: string;
 	promotionSpots: number | null;
 	relegationSpots: number | null;
+	teamCount: number;
+	roundsPlayed: number;
+	totalRounds: number;
 };
 
 export type TeamSummary = {
 	id: string;
 	name: string;
+	groupName: string;
+	position: number;
 	record: string;
 	points: number;
-	streak: string;
+	lastResults: string[];
 };
 
 export type TeamPlayer = {
 	id: string;
 	fullName: string;
 	licenceNr: string;
+	klass: string | null;
 	wins: number;
 	losses: number;
 };
@@ -79,8 +85,18 @@ export type Game = {
 	id: string;
 	orderInMatch: number;
 	gameType: string;
+	homePlayerId: string | null;
+	homePlayer2Id: string | null;
+	awayPlayerId: string | null;
+	awayPlayer2Id: string | null;
 	homePlayerName: string | null;
+	homePlayer2Name: string | null;
 	awayPlayerName: string | null;
+	awayPlayer2Name: string | null;
+	homePlayerKlass: string | null;
+	homePlayer2Klass: string | null;
+	awayPlayerKlass: string | null;
+	awayPlayer2Klass: string | null;
 	homeSets: number | null;
 	awaySets: number | null;
 	result: string;
@@ -123,6 +139,11 @@ export type PlayerGame = {
 	awaySets: number | null;
 	result: 'HOME' | 'AWAY' | 'NOT_PLAYED';
 	eloDelta: number | null;
+};
+
+export type SeasonStats = {
+	registeredPlayers: number;
+	matchesLast24h: number;
 };
 
 export type PagedResponse<T> = {
@@ -170,6 +191,11 @@ export const api = {
 	matches: {
 		detail: (matchId: string) =>
 			get<MatchDetail>(`/matches/${matchId}`),
+	},
+
+	stats: {
+		get: (seasonName: string) =>
+			get<SeasonStats>(`/stats?season=${encodeURIComponent(seasonName)}`),
 	},
 
 	players: {
