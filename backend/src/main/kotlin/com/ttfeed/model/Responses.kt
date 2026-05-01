@@ -7,9 +7,11 @@ import kotlinx.serialization.Serializable
 data class TeamSummaryResponse(
     val id: String,
     val name: String,
+    val groupName: String,
+    val position: Int,
     val record: String,
     val points: Int,
-    val streak: String
+    val lastResults: List<String>,
 )
 
 @Serializable
@@ -17,8 +19,9 @@ data class TeamPlayerResponse(
     val id: String,
     val fullName: String,
     val licenceNr: String?,
+    val klass: String?,
     val wins: Int,
-    val losses: Int
+    val losses: Int,
 )
 
 @Serializable
@@ -29,6 +32,9 @@ data class GroupResponse(
     val season: String,
     val promotionSpots: Int?,
     val relegationSpots: Int?,
+    val teamCount: Int,
+    val roundsPlayed: Int,
+    val totalRounds: Int,
 )
 @Serializable
 data class StandingResponse(
@@ -75,8 +81,18 @@ data class GameResponse(
     val orderInMatch: Int?,
     val competitionName: String?,
     val gameType: GameType,
+    val homePlayerId: String? = null,
+    val homePlayer2Id: String? = null,
+    val awayPlayerId: String? = null,
+    val awayPlayer2Id: String? = null,
     val homePlayerName: String?,
+    val homePlayer2Name: String? = null,
     val awayPlayerName: String?,
+    val awayPlayer2Name: String? = null,
+    val homePlayerKlass: String? = null,
+    val homePlayer2Klass: String? = null,
+    val awayPlayerKlass: String? = null,
+    val awayPlayer2Klass: String? = null,
     val homeSets: Int?,
     val awaySets: Int?,
     val result: GameResult,
@@ -128,6 +144,12 @@ data class EloEntryResponse(
     val eloValue: Int,
     val recordedAt: String,
     val seasonName: String,
+)
+
+@Serializable
+data class StatsResponse(
+    val registeredPlayers: Long,
+    val matchesLast24h: Long,
 )
 
 @Serializable

@@ -3,7 +3,9 @@
 	import type { Match } from '$lib/api';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import * as Table from '$lib/components/ui/table/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
+	import MatchCard from '$lib/components/MatchCard.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
+	import StatCard from '$lib/components/StatCard.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -39,6 +41,21 @@
 		return d > 0 ? `+${d}` : `${d}`;
 	}
 
+	const homeWinPct = $derived.by(() => {
+		if (completedMatches.length === 0) return null;
+		const homeGames = completedMatches.reduce((s: number, m: Match) => s + (m.homeScore ?? 0), 0);
+		const awayGames = completedMatches.reduce((s: number, m: Match) => s + (m.awayScore ?? 0), 0);
+		const total = homeGames + awayGames;
+		if (total === 0) return null;
+		return `${Math.round((homeGames / total) * 100)}%`;
+	});
+
+	const drawPct = $derived.by(() => {
+		if (completedMatches.length === 0) return null;
+		const draws = completedMatches.filter((m: Match) => m.homeScore === m.awayScore).length;
+		return `${Math.round((draws / completedMatches.length) * 100)}%`;
+	});
+
 	function formatDate(dateStr: string | null): string {
 		if (!dateStr) return 'TBD';
 		return new Date(dateStr).toLocaleDateString('de-CH', {
@@ -50,8 +67,13 @@
 </script>
 
 <div class="py-4 space-y-1 px-1">
-	<p class="text-s font-bold uppercase tracking-widest text-muted-foreground">
-		{data.group.name}
+	<BackButton />
+	<h1 class="text-3xl font-extrabold tracking-tight">{data.group.name}</h1>
+	<p class="text-sm text-muted-foreground">
+		{data.group.season}
+		{#if data.group.totalRounds > 0}
+			· <span class="font-medium">Rd {data.group.roundsPlayed}/{data.group.totalRounds}</span>
+		{/if}
 	</p>
 </div>
 
@@ -86,7 +108,7 @@
 							</Table.Cell>
 
 							<Table.Cell class="text-sm font-medium">
-								<a href="/teams/{row.teamId}" class="hover:underline text-primary">
+								<a href="/teams/{row.teamId}" class="hover:underline">
 									{row.team}
 								</a>
 							</Table.Cell>
@@ -114,6 +136,13 @@
 				</Table.Body>
 			</Table.Root>
 		</div>
+
+		{#if completedMatches.length > 0}
+			<div class="grid grid-cols-2 gap-3 pt-1">
+				<StatCard label="Home Advantage" value={homeWinPct} />
+				<StatCard label="Draw Rate" value={drawPct} />
+			</div>
+		{/if}
 	</Tabs.Content>
 
 	<Tabs.Content value="results" class="mt-4 space-y-2">
@@ -121,35 +150,7 @@
 			<p class="text-center text-sm text-muted-foreground py-12">No results yet</p>
 		{:else}
 			{#each completedMatches as match (match.id)}
-				<a
-					href="/matches/{match.id}"
-					class="flex items-center justify-between px-4 py-3 rounded-xl
-                 bg-card border border-border hover:bg-accent transition-colors"
-				>
-					<div class="flex flex-col gap-0.5 min-w-0">
-            <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Rd {match.round} · {formatDate(match.playedAt)}
-            </span>
-						<div class="flex items-center gap-1.5 min-w-0 text-sm">
-							<span class="font-medium truncate">{match.homeTeam}</span>
-							<span class="text-muted-foreground flex-shrink-0">vs</span>
-							<span class="font-medium truncate">{match.awayTeam}</span>
-						</div>
-					</div>
-					<Badge
-						variant="outline"
-						class="flex-shrink-0 ml-3 tabular-nums font-bold
-                   {match.homeScore != null && match.awayScore != null
-                     ? match.homeScore > match.awayScore
-                       ? 'border-win/30 text-win bg-win/10'
-                       : match.homeScore < match.awayScore
-                       ? 'border-loss/30 text-loss bg-loss/10'
-                       : 'text-muted-foreground'
-                     : 'text-muted-foreground'}"
-					>
-						{match.homeScore ?? '?'}:{match.awayScore ?? '?'}
-					</Badge>
-				</a>
+				<MatchCard {match} />
 			{/each}
 		{/if}
 	</Tabs.Content>

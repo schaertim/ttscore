@@ -6,6 +6,7 @@
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Chart, Svg, Spline, Axis, Grid, Points } from 'layerchart';
 	import type { PlayerGame } from '$lib/api';
+	import BackButton from '$lib/components/BackButton.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -38,13 +39,7 @@
 
 <div class="p-4 pb-20 space-y-6 max-w-2xl mx-auto">
 	<header class="space-y-4">
-		<a
-			href="javascript:history.back()"
-			class="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-		>
-			<span class="material-symbols-outlined text-sm">chevron_left</span>
-			<span class="text-xs font-bold uppercase tracking-widest">Back</span>
-		</a>
+		<BackButton />
 
 		<div class="flex items-start justify-between gap-4">
 			<div class="min-w-0">

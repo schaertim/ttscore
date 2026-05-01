@@ -1,143 +1,149 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { Badge } from '$lib/components/ui/badge/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
+	import BackButton from '$lib/components/BackButton.svelte';
+	import { klassColors } from '$lib/utils';
 
 	let { data }: { data: PageData } = $props();
 
-	function formatDate(dateStr: string | null): string {
-		if (!dateStr) return 'TBD';
-		return new Date(dateStr).toLocaleDateString('de-CH', {
-			weekday: 'short',
-			day: '2-digit',
-			month: '2-digit',
-			year: 'numeric'
-		});
+	function lastName(name: string | null): string {
+		if (!name) return '—';
+		return name.split(' ').at(-1) ?? name;
 	}
 
-	// Calculate aggregate match stats for the scoreboard header
-	const aggregates = $derived.by(() => {
-		let totalHomeSets = 0;
-		let totalAwaySets = 0;
-		let totalHomePoints = 0;
-		let totalAwayPoints = 0;
+	function displayName(name1: string | null, name2: string | null): string {
+		if (!name2) return name1 ?? '—';
+		return `${lastName(name1)} / ${lastName(name2)}`;
+	}
 
-		for (const game of data.match.games) {
-			totalHomeSets += game.homeSets ?? 0;
-			totalAwaySets += game.awaySets ?? 0;
-			for (const set of game.sets) {
-				totalHomePoints += set.homePoints ?? 0;
-				totalAwayPoints += set.awayPoints ?? 0;
-			}
-		}
 
-		return { totalHomeSets, totalAwaySets, totalHomePoints, totalAwayPoints };
-	});
+
 </script>
 
-<div class="p-4 pb-20 space-y-6 max-w-2xl mx-auto">
-	<header class="flex flex-col gap-1 px-1">
-		<a href="javascript:history.back()" class="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 mb-2">
-			<span class="material-symbols-outlined text-sm">chevron_left</span>
-			<span class="text-xs font-bold uppercase tracking-widest">Back</span>
-		</a>
-		<span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-			Round {data.match.round} · {formatDate(data.match.playedAt)}
-		</span>
-		<h1 class="text-3xl font-black uppercase tracking-tighter leading-none">
-			Match Details
-		</h1>
+<div class="p-4 pb-20 max-w-2xl mx-auto">
+	<header class="px-1 mb-6">
+		<BackButton />
 	</header>
 
-	<Card.Root class="overflow-hidden border-border/50 shadow-lg">
-		<div class="bg-card p-6 flex flex-col items-center gap-6">
-			<div class="flex justify-between items-center w-full">
-				<div class="flex-1 flex flex-col text-center">
-					<span class="font-bold text-base md:text-lg leading-tight text-balance">{data.match.homeTeam}</span>
-				</div>
+	<div class="px-1 mb-10">
+		<div class="flex items-center gap-4">
+			<p class="flex-1 min-w-0 text-3xl font-bold text-right break-words">{data.match.homeTeam}</p>
 
-				<div class="px-6 flex flex-col items-center">
-					<Badge variant="outline" class="mb-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-border/40">
-						{data.match.status}
-					</Badge>
-					<span class="text-5xl font-black tabular-nums tracking-tighter">
-						{data.match.homeScore ?? '?'}<span class="text-muted-foreground/30 mx-1">:</span>{data.match.awayScore ?? '?'}
-					</span>
-				</div>
+			<span class="shrink-0 text-5xl font-black tabular-nums tracking-tighter">
+				{data.match.homeScore ?? '?'}<span class="text-muted-foreground/30 mx-1">:</span>{data.match.awayScore ?? '?'}
+			</span>
 
-				<div class="flex-1 flex flex-col text-center">
-					<span class="font-bold text-base md:text-lg leading-tight text-balance">{data.match.awayTeam}</span>
-				</div>
-			</div>
-
-			<Separator class="bg-border/40 w-3/4" />
-
-			<div class="flex gap-8 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-				<div class="flex flex-col items-center">
-					<span class="mb-1">Sets</span>
-					<span class="text-foreground text-sm">{aggregates.totalHomeSets} : {aggregates.totalAwaySets}</span>
-				</div>
-				<div class="flex flex-col items-center">
-					<span class="mb-1">Points</span>
-					<span class="text-foreground text-sm">{aggregates.totalHomePoints} : {aggregates.totalAwayPoints}</span>
-				</div>
-			</div>
+			<p class="flex-1 min-w-0 text-3xl font-bold text-left break-words">{data.match.awayTeam}</p>
 		</div>
-	</Card.Root>
+	</div>
 
 	<section class="space-y-3">
-		<h2 class="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground px-1 mt-8">
+		<h2 class="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-1">
 			Game Breakdown
 		</h2>
 
-		<div class="space-y-3">
+		<div class="space-y-4">
 			{#each data.match.games as game}
-				<Card.Root class="p-4 border-border/60 hover:border-primary/30 transition-all bg-card/50">
-					<div class="flex justify-between items-center mb-4">
-						<span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+				{@const homeWon = game.result === 'HOME'}
+				{@const awayWon = game.result === 'AWAY'}
+				<Card.Root>
+					<div class="px-5 space-y-3">
+						<!-- Header -->
+						<p class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
 							Game #{game.orderInMatch} · {game.gameType}
-						</span>
-						<Badge
-							variant="outline"
-							class="tabular-nums font-black {game.result === 'HOME' ? 'text-win border-win/30 bg-win/10' : game.result === 'AWAY' ? 'text-loss border-loss/30 bg-loss/10' : 'text-muted-foreground'}"
-						>
-							{game.homeSets ?? 0}:{game.awaySets ?? 0}
-						</Badge>
-					</div>
+						</p>
 
-					<div class="space-y-2 mb-4">
-						<div class="flex justify-between items-center">
-							<span class="text-sm {game.result === 'HOME' ? 'font-bold' : 'text-muted-foreground'}">
-								{game.homePlayerName ?? 'Unknown Player'}
-							</span>
-							{#if game.result === 'HOME'}
-								<span class="material-symbols-outlined text-win text-sm">check_circle</span>
-							{/if}
-						</div>
-						<Separator class="bg-border/40" />
-						<div class="flex justify-between items-center">
-							<span class="text-sm {game.result === 'AWAY' ? 'font-bold' : 'text-muted-foreground'}">
-								{game.awayPlayerName ?? 'Unknown Player'}
-							</span>
-							{#if game.result === 'AWAY'}
-								<span class="material-symbols-outlined text-loss text-sm">check_circle</span>
-							{/if}
-						</div>
-					</div>
+						<!-- Players (stacked) + score (right) -->
+						<div class="flex items-center gap-4">
+							<!-- Stacked player rows -->
+							<div class="flex-1 min-w-0 space-y-1.5">
+								<!-- Home player(s) -->
+								<div class="flex items-center gap-1.5 min-w-0">
+									{#if game.homePlayer2Name}
+										<!-- Doubles: [LastName Badge] / [LastName Badge] -->
+										<div class="flex items-center gap-1 min-w-0 shrink">
+											<svelte:element this={game.homePlayerId ? 'a' : 'span'}
+												href={game.homePlayerId ? `/players/${game.homePlayerId}` : undefined}
+												class="truncate {homeWon ? 'text-lg font-semibold text-foreground' : 'text-base font-normal text-muted-foreground'} {game.homePlayerId ? 'hover:underline' : ''}"
+											>{lastName(game.homePlayerName)}</svelte:element>
+											{#if game.homePlayerKlass}
+												<span class="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded tracking-wide {klassColors(game.homePlayerKlass)}">{game.homePlayerKlass}</span>
+											{/if}
+										</div>
+										<span class="shrink-0 text-muted-foreground/40">/</span>
+										<div class="flex items-center gap-1 min-w-0 shrink">
+											<svelte:element this={game.homePlayer2Id ? 'a' : 'span'}
+												href={game.homePlayer2Id ? `/players/${game.homePlayer2Id}` : undefined}
+												class="truncate {homeWon ? 'text-lg font-semibold text-foreground' : 'text-base font-normal text-muted-foreground'} {game.homePlayer2Id ? 'hover:underline' : ''}"
+											>{lastName(game.homePlayer2Name)}</svelte:element>
+											{#if game.homePlayer2Klass}
+												<span class="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded tracking-wide {klassColors(game.homePlayer2Klass)}">{game.homePlayer2Klass}</span>
+											{/if}
+										</div>
+									{:else}
+										<!-- Singles -->
+										<svelte:element this={game.homePlayerId ? 'a' : 'span'}
+											href={game.homePlayerId ? `/players/${game.homePlayerId}` : undefined}
+											class="min-w-0 truncate {homeWon ? 'text-lg font-semibold text-foreground' : 'text-base font-normal text-muted-foreground'} {game.homePlayerId ? 'hover:underline' : ''}"
+										>{game.homePlayerName ?? '—'}</svelte:element>
+										{#if game.homePlayerKlass}
+											<span class="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded tracking-wide {klassColors(game.homePlayerKlass)}">{game.homePlayerKlass}</span>
+										{/if}
+									{/if}
+								</div>
+								<!-- Away player(s) -->
+								<div class="flex items-center gap-1.5 min-w-0">
+									{#if game.awayPlayer2Name}
+										<!-- Doubles: [LastName Badge] / [LastName Badge] -->
+										<div class="flex items-center gap-1 min-w-0 shrink">
+											<svelte:element this={game.awayPlayerId ? 'a' : 'span'}
+												href={game.awayPlayerId ? `/players/${game.awayPlayerId}` : undefined}
+												class="truncate {awayWon ? 'text-lg font-semibold text-foreground' : 'text-base font-normal text-muted-foreground'} {game.awayPlayerId ? 'hover:underline' : ''}"
+											>{lastName(game.awayPlayerName)}</svelte:element>
+											{#if game.awayPlayerKlass}
+												<span class="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded tracking-wide {klassColors(game.awayPlayerKlass)}">{game.awayPlayerKlass}</span>
+											{/if}
+										</div>
+										<span class="shrink-0 text-muted-foreground/40">/</span>
+										<div class="flex items-center gap-1 min-w-0 shrink">
+											<svelte:element this={game.awayPlayer2Id ? 'a' : 'span'}
+												href={game.awayPlayer2Id ? `/players/${game.awayPlayer2Id}` : undefined}
+												class="truncate {awayWon ? 'text-lg font-semibold text-foreground' : 'text-base font-normal text-muted-foreground'} {game.awayPlayer2Id ? 'hover:underline' : ''}"
+											>{lastName(game.awayPlayer2Name)}</svelte:element>
+											{#if game.awayPlayer2Klass}
+												<span class="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded tracking-wide {klassColors(game.awayPlayer2Klass)}">{game.awayPlayer2Klass}</span>
+											{/if}
+										</div>
+									{:else}
+										<!-- Singles -->
+										<svelte:element this={game.awayPlayerId ? 'a' : 'span'}
+											href={game.awayPlayerId ? `/players/${game.awayPlayerId}` : undefined}
+											class="min-w-0 truncate {awayWon ? 'text-lg font-semibold text-foreground' : 'text-base font-normal text-muted-foreground'} {game.awayPlayerId ? 'hover:underline' : ''}"
+										>{game.awayPlayerName ?? '—'}</svelte:element>
+										{#if game.awayPlayerKlass}
+											<span class="shrink-0 text-[10px] font-black px-1.5 py-0.5 rounded tracking-wide {klassColors(game.awayPlayerKlass)}">{game.awayPlayerKlass}</span>
+										{/if}
+									{/if}
+								</div>
+							</div>
 
-					{#if game.sets && game.sets.length > 0}
-						<div class="bg-muted/20 p-2.5 rounded-lg flex flex-wrap gap-2 items-center">
-							<span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Sets</span>
-							{#each game.sets as set}
-								<Badge variant="secondary" class="text-xs tabular-nums font-medium bg-background border-border/40 shadow-sm">
-									{set.homePoints}:{set.awayPoints}
-								</Badge>
-							{/each}
+							<!-- Score -->
+							<p class="shrink-0 text-3xl font-black tabular-nums text-muted-foreground">
+								{game.homeSets ?? 0}:{game.awaySets ?? 0}
+							</p>
 						</div>
-					{:else if data.match.status === 'COMPLETED'}
-						<span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No set data available</span>
-					{/if}
+
+						{#if game.sets && game.sets.length > 0}
+							<div class="flex flex-wrap gap-1.5">
+								{#each game.sets as set}
+									<span class="text-xs tabular-nums font-medium px-2.5 py-1 rounded
+									             bg-muted text-muted-foreground">
+										{set.homePoints}:{set.awayPoints}
+									</span>
+								{/each}
+							</div>
+						{/if}
+					</div>
 				</Card.Root>
 			{/each}
 		</div>
