@@ -139,6 +139,7 @@ export type PlayerGame = {
 	awaySets: number | null;
 	result: 'HOME' | 'AWAY' | 'NOT_PLAYED';
 	eloDelta: number | null;
+	sets: SetScore[];
 };
 
 export type SeasonStats = {
@@ -157,13 +158,11 @@ export type PagedResponse<T> = {
 
 export const api = {
 	seasons: {
-		list: () =>
-			get<Season[]>('/seasons'),
+		list: () => get<Season[]>('/seasons')
 	},
 
 	federations: {
-		list: () =>
-			get<Federation[]>('/federations'),
+		list: () => get<Federation[]>('/federations')
 	},
 
 	groups: {
@@ -174,28 +173,23 @@ export const api = {
 			const query = qs.toString();
 			return get<Group[]>(`/groups${query ? '?' + query : ''}`);
 		},
-		get: (groupId: string) =>
-			get<Group>(`/groups/${groupId}`),
-		standings: (groupId: string) =>
-			get<Standing[]>(`/groups/${groupId}/standings`),
-		matches: (groupId: string) =>
-			get<Match[]>(`/groups/${groupId}/matches`),
+		get: (groupId: string) => get<Group>(`/groups/${groupId}`),
+		standings: (groupId: string) => get<Standing[]>(`/groups/${groupId}/standings`),
+		matches: (groupId: string) => get<Match[]>(`/groups/${groupId}/matches`)
 	},
 
 	teams: {
 		get: (teamId: string) => get<TeamSummary>(`/teams/${teamId}`),
 		roster: (teamId: string) => get<TeamPlayer[]>(`/teams/${teamId}/roster`),
-		matches: (teamId: string) => get<Match[]>(`/teams/${teamId}/matches`),
+		matches: (teamId: string) => get<Match[]>(`/teams/${teamId}/matches`)
 	},
 
 	matches: {
-		detail: (matchId: string) =>
-			get<MatchDetail>(`/matches/${matchId}`),
+		detail: (matchId: string) => get<MatchDetail>(`/matches/${matchId}`)
 	},
 
 	stats: {
-		get: (seasonName: string) =>
-			get<SeasonStats>(`/stats?season=${encodeURIComponent(seasonName)}`),
+		get: (seasonName: string) => get<SeasonStats>(`/stats?season=${encodeURIComponent(seasonName)}`)
 	},
 
 	players: {
@@ -203,11 +197,8 @@ export const api = {
 			get<PagedResponse<Player>>(
 				`/players/search?name=${encodeURIComponent(name)}&page=${page}&size=${size}`
 			),
-		get: (playerId: string) =>
-			get<Player>(`/players/${playerId}`),
-		elo: (playerId: string) =>
-			get<EloEntry[]>(`/players/${playerId}/elo`),
-		matches: (playerId: string) =>
-			get<PlayerGame[]>(`/players/${playerId}/matches`),
-	},
+		get: (playerId: string) => get<Player>(`/players/${playerId}`),
+		elo: (playerId: string) => get<EloEntry[]>(`/players/${playerId}/elo`),
+		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`)
+	}
 };

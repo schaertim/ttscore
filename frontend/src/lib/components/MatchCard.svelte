@@ -26,58 +26,62 @@
 	})();
 
 	const scoreClass =
-		result === 'win'  ? 'text-win border-win/30 bg-win/10' :
-		result === 'loss' ? 'text-loss border-loss/30 bg-loss/10' :
-		result != null    ? 'text-muted-foreground border-muted-foreground/25 bg-muted' :
-		                    'text-muted-foreground border-border';
+		result === 'win'
+			? 'text-win border-win/30 bg-win/10'
+			: result === 'loss'
+				? 'text-loss border-loss/30 bg-loss/10'
+				: result != null
+					? 'text-muted-foreground border-muted-foreground/25 bg-muted'
+					: 'text-muted-foreground border-border';
 
 	const isHome = perspectiveTeam === match.homeTeam;
-	const opponent = perspectiveTeam
-		? (isHome ? match.awayTeam : match.homeTeam)
-		: null;
+	const opponent = perspectiveTeam ? (isHome ? match.awayTeam : match.homeTeam) : null;
 
 	function formatDate(dateStr: string | null): string {
 		if (!dateStr) return 'TBD';
 		return new Date(dateStr).toLocaleDateString('de-CH', {
 			day: '2-digit',
 			month: '2-digit',
-			year: '2-digit',
+			year: '2-digit'
 		});
 	}
 </script>
 
 <a
 	href="/matches/{match.id}"
-	class="flex items-center justify-between px-4 py-3 rounded-xl
-	       bg-card border border-border hover:bg-accent transition-colors group"
+	class="group flex items-center justify-between rounded-xl border
+	       border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 >
-	<div class="flex flex-col gap-0.5 min-w-0">
-		<span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-			{#if match.round}Rd {match.round} · {/if}{formatDate(match.playedAt)}
+	<div class="flex min-w-0 flex-col gap-0.5">
+		<span class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+			{#if match.round}Rd {match.round} ·
+			{/if}{formatDate(match.playedAt)}
 		</span>
 
 		{#if perspectiveTeam}
 			<!-- Perspective mode: icon inline with opponent name -->
-			<div class="flex items-center gap-1.5 min-w-0">
+			<div class="flex min-w-0 items-center gap-1.5">
 				{#if isHome}
-					<HouseLine weight="fill" class="w-4 h-4 shrink-0 text-muted-foreground/60" />
+					<HouseLine weight="fill" class="h-4 w-4 shrink-0 text-muted-foreground/60" />
 				{:else}
-					<Train weight="fill" class="w-4 h-4 shrink-0 text-muted-foreground/60" />
+					<Train weight="fill" class="h-4 w-4 shrink-0 text-muted-foreground/60" />
 				{/if}
-				<span class="text-sm font-semibold truncate">{opponent}</span>
+				<span class="truncate text-sm font-semibold">{opponent}</span>
 			</div>
 		{:else}
 			<!-- Neutral mode: both team names -->
-			<div class="flex items-center gap-1.5 text-sm min-w-0">
-				<span class="font-medium truncate">{match.homeTeam}</span>
-				<span class="text-muted-foreground flex-shrink-0 text-xs">vs</span>
-				<span class="font-medium truncate">{match.awayTeam}</span>
+			<div class="flex min-w-0 items-center gap-1.5 text-sm">
+				<span class="truncate font-medium">{match.homeTeam}</span>
+				<span class="flex-shrink-0 text-xs text-muted-foreground">vs</span>
+				<span class="truncate font-medium">{match.awayTeam}</span>
 			</div>
 		{/if}
 	</div>
 
-	<span class="shrink-0 ml-3 min-w-[3rem] text-center text-sm font-black tabular-nums px-2.5 py-1
-	             rounded-md border {scoreClass}">
+	<span
+		class="ml-3 min-w-[3rem] shrink-0 rounded-md border px-2.5 py-1 text-center text-sm
+	             font-black tabular-nums {scoreClass}"
+	>
 		{#if hasScore}
 			{match.homeScore}:{match.awayScore}
 		{:else}

@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const [group, standings, matches] = await Promise.all([
 		api.groups.get(id).catch(() => null),
 		api.groups.standings(id).catch(() => null),
-		api.groups.matches(id).catch(() => null),
+		api.groups.matches(id).catch(() => null)
 	]);
 
 	if (!group || !standings) error(404, 'Group not found');

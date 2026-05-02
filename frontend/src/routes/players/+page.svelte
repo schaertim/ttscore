@@ -5,19 +5,22 @@
 	import { api } from '$lib/api';
 	import type { Player, PagedResponse } from '$lib/api';
 	import { CaretLeft, CaretRight } from 'phosphor-svelte';
-	import { klassColors } from '$lib/utils';
+	import KlassBadge from '$lib/components/KlassBadge.svelte';
 
 	let searchQuery = $state('');
-	let isSearching  = $state(false);
-	let currentPage  = $state(0);
-	let response     = $state<PagedResponse<Player> | null>(null);
+	let isSearching = $state(false);
+	let currentPage = $state(0);
+	let response = $state<PagedResponse<Player> | null>(null);
 
 	const PAGE_SIZE = 20;
 
 	let timer: ReturnType<typeof setTimeout>;
 
 	async function search(page = 0) {
-		if (searchQuery.length < 3) { response = null; return; }
+		if (searchQuery.length < 3) {
+			response = null;
+			return;
+		}
 		isSearching = true;
 		clearTimeout(timer);
 		timer = setTimeout(async () => {
@@ -44,30 +47,35 @@
 	});
 
 	function initials(name: string) {
-		return name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+		return name
+			.split(' ')
+			.filter(Boolean)
+			.slice(0, 2)
+			.map((w) => w[0].toUpperCase())
+			.join('');
 	}
 
 	const totalPages = $derived(response ? Math.ceil(response.total / PAGE_SIZE) : 0);
 </script>
 
-<div class="py-4 space-y-6 pb-20">
+<div class="space-y-6 py-4 pb-20">
 	<div class="px-1">
-		<p class="text-xs font-bold uppercase tracking-widest text-muted-foreground">Players & Clubs</p>
+		<p class="text-xs font-bold tracking-widest text-muted-foreground uppercase">Players & Clubs</p>
 		<h1 class="text-3xl font-extrabold tracking-tight">Search</h1>
 	</div>
 
 	<Input
 		bind:value={searchQuery}
-		class="w-full pl-4 py-5 text-base"
+		class="w-full py-5 pl-4 text-base"
 		placeholder="Search players..."
 	/>
 
 	{#if searchQuery.length >= 3}
 		<section class="space-y-4">
-			<h2 class="text-xs font-bold uppercase tracking-[0.1em] text-muted-foreground px-1">
+			<h2 class="px-1 text-xs font-bold tracking-[0.1em] text-muted-foreground uppercase">
 				Results for "{searchQuery}"
 				{#if response}
-					<span class="ml-1 normal-case tracking-normal font-normal text-muted-foreground/60">
+					<span class="ml-1 font-normal tracking-normal text-muted-foreground/60 normal-case">
 						({response.total} found)
 					</span>
 				{/if}
@@ -76,8 +84,8 @@
 			{#if isSearching}
 				<div class="space-y-2">
 					{#each [1, 2, 3] as i (i)}
-						<div class="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card">
-							<Skeleton class="w-9 h-9 rounded-full shrink-0" />
+						<div class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+							<Skeleton class="h-9 w-9 shrink-0 rounded-full" />
 							<div class="flex-1 space-y-1.5">
 								<Skeleton class="h-3.5 w-36" />
 								<Skeleton class="h-3 w-24" />
@@ -87,33 +95,30 @@
 					{/each}
 				</div>
 			{:else if !response || response.items.length === 0}
-				<p class="text-center text-sm text-muted-foreground py-12">No players found.</p>
+				<p class="py-12 text-center text-sm text-muted-foreground">No players found.</p>
 			{:else}
 				<div class="space-y-2">
 					{#each response.items as player (player.id)}
 						<a
 							href="/players/{player.id}"
-							class="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card hover:bg-accent transition-colors group"
+							class="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 						>
-							<div class="shrink-0 w-9 h-9 rounded-full bg-muted flex items-center justify-center
-							            text-[11px] font-black text-muted-foreground tracking-tight">
+							<div
+								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted
+							            text-[11px] font-black tracking-tight text-muted-foreground"
+							>
 								{initials(player.fullName)}
 							</div>
 
-							<div class="flex-1 min-w-0">
-								<p class="text-sm font-semibold truncate">{player.fullName}</p>
-								<p class="text-[10px] text-muted-foreground uppercase tracking-wide truncate">
+							<div class="min-w-0 flex-1">
+								<p class="truncate text-sm font-semibold">{player.fullName}</p>
+								<p class="truncate text-[10px] tracking-wide text-muted-foreground uppercase">
 									{player.currentClubName ?? '—'}
 								</p>
 							</div>
 
-							<div class="shrink-0 flex flex-col items-end gap-1">
-								{#if player.klass}
-									<span class="text-[10px] font-black px-1.5 py-0.5 rounded
-									             tracking-wide {klassColors(player.klass)}">
-										{player.klass}
-									</span>
-								{/if}
+							<div class="flex shrink-0 flex-col items-end gap-1">
+								<KlassBadge klass={player.klass} />
 								{#if player.currentElo}
 									<span class="text-sm font-black tabular-nums">{player.currentElo}</span>
 								{/if}
@@ -131,10 +136,10 @@
 							disabled={currentPage === 0}
 							onclick={() => search(currentPage - 1)}
 						>
-							<CaretLeft class="w-4 h-4" />
+							<CaretLeft class="h-4 w-4" />
 						</Button>
 
-						<span class="text-sm text-muted-foreground tabular-nums px-2">
+						<span class="px-2 text-sm text-muted-foreground tabular-nums">
 							{currentPage + 1} / {totalPages}
 						</span>
 
@@ -144,7 +149,7 @@
 							disabled={currentPage >= totalPages - 1}
 							onclick={() => search(currentPage + 1)}
 						>
-							<CaretRight class="w-4 h-4" />
+							<CaretRight class="h-4 w-4" />
 						</Button>
 					</div>
 				{/if}

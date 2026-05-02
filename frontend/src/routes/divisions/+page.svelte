@@ -68,11 +68,11 @@
 	});
 </script>
 
-<div class="py-4 space-y-8">
+<div class="space-y-8 py-4">
 	<div class="flex flex-col gap-4">
 		<div class="flex items-end justify-between px-1">
 			<div>
-				<p class="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+				<p class="text-xs font-bold tracking-widest text-muted-foreground uppercase">
 					League Browser
 				</p>
 				<h1 class="text-3xl font-extrabold tracking-tight">Leagues</h1>
@@ -80,9 +80,13 @@
 			<Select.Root
 				type="single"
 				value={selectedSeasonId}
-				onValueChange={(v) => { if (v) selectedSeasonId = v; }}
+				onValueChange={(v) => {
+					if (v) selectedSeasonId = v;
+				}}
 			>
-				<Select.Trigger class="w-32 text-xs font-bold bg-card border-b border-border hover:border-primary transition-all">
+				<Select.Trigger
+					class="w-32 border-b border-border bg-card text-xs font-bold transition-all hover:border-primary"
+				>
 					{selectedSeason?.name ?? 'Season'}
 				</Select.Trigger>
 				<Select.Content>
@@ -96,8 +100,12 @@
 
 	<section class="space-y-4">
 		<div class="flex items-center justify-between px-1">
-			<h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground whitespace-nowrap">Browse Regions</h3>
-			<Separator class="flex-1 ml-4 bg-border/60" />
+			<h3
+				class="text-[10px] font-black tracking-[0.2em] whitespace-nowrap text-muted-foreground uppercase"
+			>
+				Browse Regions
+			</h3>
+			<Separator class="ml-4 flex-1 bg-border/60" />
 		</div>
 
 		{#if loadingGroups}
@@ -107,9 +115,7 @@
 				{/each}
 			</div>
 		{:else if groupsByFederation.length === 0}
-			<p class="text-center text-sm text-muted-foreground py-12">
-				No groups found for this season
-			</p>
+			<p class="py-12 text-center text-sm text-muted-foreground">No groups found for this season</p>
 		{:else}
 			<div class="space-y-2">
 				{#each groupsByFederation as fed (fed.id)}
@@ -118,22 +124,22 @@
 					<Collapsible.Root
 						open={isExpanded}
 						onOpenChange={() => toggleFederation(fed.id)}
-						class="bg-card rounded-xl overflow-hidden ring-1 ring-border shadow-sm"
+						class="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border"
 					>
 						<Collapsible.Trigger
-							class="w-full flex items-center justify-between px-4 py-4 hover:bg-accent transition-colors text-left
+							class="flex w-full items-center justify-between px-4 py-4 text-left transition-colors hover:bg-accent
 							{isExpanded ? 'bg-accent/50' : ''}"
 						>
 							<div class="flex items-center gap-3">
 								{#if isNational}
-									<Globe class="w-5 h-5 text-muted-foreground" />
+									<Globe class="h-5 w-5 text-muted-foreground" />
 								{:else}
-									<MapTrifold class="w-5 h-5 text-muted-foreground" />
+									<MapTrifold class="h-5 w-5 text-muted-foreground" />
 								{/if}
 								<span class="font-bold">{fed.name}</span>
 							</div>
 							<CaretDown
-								class="w-5 h-5 text-muted-foreground transition-transform duration-200
+								class="h-5 w-5 text-muted-foreground transition-transform duration-200
 								{isExpanded ? 'rotate-180' : ''}"
 							/>
 						</Collapsible.Trigger>
@@ -142,19 +148,25 @@
 							{#each fed.groups as group (group.id)}
 								<a
 									href="/groups/{group.id}"
-									class="flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors group"
+									class="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
 								>
-									<div class="flex-1 min-w-0">
-										<p class="text-sm font-semibold truncate">{group.name}</p>
+									<div class="min-w-0 flex-1">
+										<p class="truncate text-sm font-semibold">{group.name}</p>
 										{#if group.teamCount > 0 || group.totalRounds > 0}
-											<p class="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mt-0.5">
+											<p
+												class="mt-0.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase"
+											>
 												{#if group.teamCount > 0}{group.teamCount} Teams{/if}
-												{#if group.teamCount > 0 && group.totalRounds > 0} &nbsp;·&nbsp; {/if}
+												{#if group.teamCount > 0 && group.totalRounds > 0}
+													&nbsp;·&nbsp;
+												{/if}
 												{#if group.totalRounds > 0}RD {group.roundsPlayed}/{group.totalRounds}{/if}
 											</p>
 										{/if}
 									</div>
-									<CaretRight class="shrink-0 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+									<CaretRight
+										class="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+									/>
 								</a>
 							{/each}
 						</Collapsible.Content>
@@ -171,7 +183,7 @@
 			class="p-6"
 		>
 			{#snippet footer()}
-				<TrendUp class="w-4 h-4" />
+				<TrendUp class="h-4 w-4" />
 				<span class="text-[10px] font-bold">{selectedSeason?.name ?? ''}</span>
 			{/snippet}
 		</StatCard>
@@ -182,7 +194,7 @@
 			class="p-6"
 		>
 			{#snippet footer()}
-				<Clock class="w-4 h-4" />
+				<Clock class="h-4 w-4" />
 				<span class="text-[10px] font-bold">Last 24 hours</span>
 			{/snippet}
 		</StatCard>

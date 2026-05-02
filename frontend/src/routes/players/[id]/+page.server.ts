@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		player,
 		streamed: {
 			elo: api.players.elo(params.id),
-			matches: api.players.matches(params.id),
+			matches: api.players.matches(params.id)
 		}
 	};
 };

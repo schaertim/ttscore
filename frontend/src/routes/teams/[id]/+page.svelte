@@ -12,18 +12,17 @@
 	const [won, drawn, lost] = data.team.record.split('-').map(Number);
 </script>
 
-<div class="py-4 pb-20 space-y-8">
-
+<div class="space-y-8 py-4 pb-20">
 	<BackButton />
 
 	<!-- Header -->
-	<div class="px-1 flex items-start justify-between gap-4">
-		<div class="space-y-1 min-w-0">
+	<div class="flex items-start justify-between gap-4 px-1">
+		<div class="min-w-0 space-y-1">
 			<h1 class="text-3xl font-extrabold tracking-tight">{data.team.name}</h1>
 			<p class="text-sm text-muted-foreground">{data.team.groupName}</p>
 		</div>
 		{#if data.team.position > 0}
-			<span class="text-6xl font-black text-muted-foreground/15 leading-none shrink-0 tabular-nums">
+			<span class="shrink-0 text-6xl leading-none font-black text-muted-foreground/15 tabular-nums">
 				#{data.team.position}
 			</span>
 		{/if}
@@ -32,27 +31,27 @@
 	<!-- Stats -->
 	<div class="grid grid-cols-2 gap-3">
 		<Card.Root class="p-4">
-			<p class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Record</p>
-			<p class="text-xl font-black mt-1">
+			<p class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">Record</p>
+			<p class="mt-1 text-xl font-black">
 				<span class="text-win">{won}</span>
-				<span class="text-muted-foreground/40 font-normal mx-0.5">–</span>
+				<span class="mx-0.5 font-normal text-muted-foreground/40">–</span>
 				<span class="text-muted-foreground">{drawn}</span>
-				<span class="text-muted-foreground/40 font-normal mx-0.5">–</span>
+				<span class="mx-0.5 font-normal text-muted-foreground/40">–</span>
 				<span class="text-loss">{lost}</span>
 			</p>
 		</Card.Root>
 
 		{#if data.team.lastResults.length > 0}
 			<Card.Root class="p-4">
-				<p class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Last 5</p>
-				<div class="flex items-center gap-1 mt-1.5 flex-wrap">
+				<p class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">Last 5</p>
+				<div class="mt-1.5 flex flex-wrap items-center gap-1">
 					{#each data.team.lastResults.toReversed() as result}
 						{#if result === 'W'}
-							<CheckCircle weight="fill" class="w-5 h-5 text-win" />
+							<CheckCircle weight="fill" class="h-5 w-5 text-win" />
 						{:else if result === 'L'}
-							<XCircle weight="fill" class="w-5 h-5 text-loss" />
+							<XCircle weight="fill" class="h-5 w-5 text-loss" />
 						{:else}
-							<MinusCircle weight="fill" class="w-5 h-5 text-muted-foreground/50" />
+							<MinusCircle weight="fill" class="h-5 w-5 text-muted-foreground/50" />
 						{/if}
 					{/each}
 				</div>
@@ -62,20 +61,20 @@
 
 	<!-- Roster -->
 	<section class="space-y-2">
-		<h2 class="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-1">
+		<h2 class="px-1 text-[10px] font-black tracking-[0.2em] text-muted-foreground uppercase">
 			Team Roster
 			{#await data.streamed.roster then roster}
-				<span class="ml-2 normal-case tracking-normal font-medium text-muted-foreground/60">
+				<span class="ml-2 font-medium tracking-normal text-muted-foreground/60 normal-case">
 					{roster.length} players
 				</span>
 			{/await}
 		</h2>
 
-		<div class="rounded-xl overflow-hidden border border-border bg-card divide-y divide-border/50">
+		<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 			{#await data.streamed.roster}
 				{#each [1, 2, 3] as i (i)}
 					<div class="flex items-center gap-3 px-4 py-3">
-						<Skeleton class="w-9 h-9 rounded-full shrink-0" />
+						<Skeleton class="h-9 w-9 shrink-0 rounded-full" />
 						<div class="flex-1 space-y-1.5">
 							<Skeleton class="h-3.5 w-32" />
 							<Skeleton class="h-3 w-8" />
@@ -99,7 +98,9 @@
 
 	<!-- Match history -->
 	<section class="space-y-2">
-		<h2 class="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-1">Match History</h2>
+		<h2 class="px-1 text-[10px] font-black tracking-[0.2em] text-muted-foreground uppercase">
+			Match History
+		</h2>
 
 		{#await data.streamed.matches}
 			<Skeleton class="h-16 w-full rounded-xl" />

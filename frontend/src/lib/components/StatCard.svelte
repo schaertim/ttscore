@@ -16,9 +16,9 @@
 </script>
 
 <Card.Root class={cn('p-5 shadow-sm', extraClass)}>
-	<p class="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
+	<p class="text-[10px] font-black tracking-widest text-muted-foreground uppercase">{label}</p>
 	{#if value == null}
-		<Skeleton class="h-8 w-20 mt-1" />
+		<Skeleton class="mt-1 h-8 w-20" />
 	{:else}
 		<p class="text-3xl font-black text-muted-foreground">{value}</p>
 	{/if}

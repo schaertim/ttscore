@@ -9,9 +9,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const sorted = $derived(
-		[...data.standings].sort((a, b) => a.position - b.position)
-	);
+	const sorted = $derived([...data.standings].sort((a, b) => a.position - b.position));
 
 	const completedMatches = $derived(
 		data.matches
@@ -61,12 +59,12 @@
 		return new Date(dateStr).toLocaleDateString('de-CH', {
 			day: '2-digit',
 			month: '2-digit',
-			year: '2-digit',
+			year: '2-digit'
 		});
 	}
 </script>
 
-<div class="py-4 space-y-1 px-1">
+<div class="space-y-1 px-1 py-4">
 	<BackButton />
 	<h1 class="text-3xl font-extrabold tracking-tight">{data.group.name}</h1>
 	<p class="text-sm text-muted-foreground">
@@ -85,15 +83,15 @@
 	</Tabs.List>
 
 	<Tabs.Content value="standings" class="mt-4 space-y-3">
-		<div class="rounded-xl overflow-hidden border border-border">
+		<div class="overflow-hidden rounded-xl border border-border">
 			<Table.Root>
 				<Table.Header>
-					<Table.Row class="hover:bg-transparent border-border">
+					<Table.Row class="border-border hover:bg-transparent">
 						<Table.Head class="w-8 pl-5 text-xs">Pos</Table.Head>
 						<Table.Head class="text-xs">Team</Table.Head>
-						<Table.Head class="text-center w-10 text-xs">Pld</Table.Head>
-						<Table.Head class="text-center w-10 text-xs">Pts</Table.Head>
-						<Table.Head class="text-right pr-4 w-12 text-xs">+/-</Table.Head>
+						<Table.Head class="w-10 text-center text-xs">Pld</Table.Head>
+						<Table.Head class="w-10 text-center text-xs">Pts</Table.Head>
+						<Table.Head class="w-12 pr-4 text-right text-xs">+/-</Table.Head>
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
@@ -101,8 +99,12 @@
 						{@const z = zone(row.position)}
 						<Table.Row class="border-border">
 							<Table.Cell
-								class="pl-4 font-bold tabular-nums border-l-2
-								{z === 'promotion' ? 'border-l-win' : z === 'relegation' ? 'border-l-loss' : 'border-l-transparent'}"
+								class="border-l-2 pl-4 font-bold tabular-nums
+								{z === 'promotion'
+									? 'border-l-win'
+									: z === 'relegation'
+										? 'border-l-loss'
+										: 'border-l-transparent'}"
 							>
 								{row.position}
 							</Table.Cell>
@@ -117,17 +119,17 @@
 								{row.played}
 							</Table.Cell>
 
-							<Table.Cell
-								class="text-center tabular-nums font-bold"
-							>
+							<Table.Cell class="text-center font-bold tabular-nums">
 								{row.points}
 							</Table.Cell>
 
 							<Table.Cell
-								class="text-right pr-4 tabular-nums font-medium
-                       {row.gamesWon - row.gamesLost > 0 ? 'text-win' :
-                        row.gamesWon - row.gamesLost < 0 ? 'text-loss' :
-                        'text-muted-foreground'}"
+								class="pr-4 text-right font-medium tabular-nums
+                       {row.gamesWon - row.gamesLost > 0
+									? 'text-win'
+									: row.gamesWon - row.gamesLost < 0
+										? 'text-loss'
+										: 'text-muted-foreground'}"
 							>
 								{diff(row.gamesWon, row.gamesLost)}
 							</Table.Cell>
@@ -147,7 +149,7 @@
 
 	<Tabs.Content value="results" class="mt-4 space-y-2">
 		{#if completedMatches.length === 0}
-			<p class="text-center text-sm text-muted-foreground py-12">No results yet</p>
+			<p class="py-12 text-center text-sm text-muted-foreground">No results yet</p>
 		{:else}
 			{#each completedMatches as match (match.id)}
 				<MatchCard {match} />
@@ -157,24 +159,24 @@
 
 	<Tabs.Content value="schedule" class="mt-4 space-y-2">
 		{#if scheduledMatches.length === 0}
-			<p class="text-center text-sm text-muted-foreground py-12">No upcoming matches</p>
+			<p class="py-12 text-center text-sm text-muted-foreground">No upcoming matches</p>
 		{:else}
 			{#each scheduledMatches as match (match.id)}
 				<div
-					class="flex items-center justify-between px-4 py-3 rounded-xl
-                 bg-card border border-border"
+					class="flex items-center justify-between rounded-xl border border-border
+                 bg-card px-4 py-3"
 				>
-					<div class="flex flex-col gap-0.5 min-w-0">
-            <span class="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Rd {match.round} · {formatDate(match.playedAt)}
-            </span>
-						<div class="flex items-center gap-1.5 min-w-0 text-sm">
-							<span class="font-medium truncate">{match.homeTeam}</span>
-							<span class="text-muted-foreground flex-shrink-0">vs</span>
-							<span class="font-medium truncate">{match.awayTeam}</span>
+					<div class="flex min-w-0 flex-col gap-0.5">
+						<span class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+							Rd {match.round} · {formatDate(match.playedAt)}
+						</span>
+						<div class="flex min-w-0 items-center gap-1.5 text-sm">
+							<span class="truncate font-medium">{match.homeTeam}</span>
+							<span class="flex-shrink-0 text-muted-foreground">vs</span>
+							<span class="truncate font-medium">{match.awayTeam}</span>
 						</div>
 					</div>
-					<Badge variant="outline" class="flex-shrink-0 ml-3 text-muted-foreground text-xs">
+					<Badge variant="outline" class="ml-3 flex-shrink-0 text-xs text-muted-foreground">
 						{formatDate(match.playedAt)}
 					</Badge>
 				</div>

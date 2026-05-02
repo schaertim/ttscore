@@ -13,22 +13,22 @@
 
 	const valueClasses: Record<Variant, string> = {
 		default: 'text-on-surface',
-		win:     'text-win',
-		loss:    'text-loss',
+		win: 'text-win',
+		loss: 'text-loss'
 	};
 
 	const sizeClasses: Record<string, string> = {
 		sm: 'text-xl',
 		md: 'text-3xl',
-		lg: 'text-4xl',
+		lg: 'text-4xl'
 	};
 </script>
 
 <div class={className}>
-	<p class="text-label uppercase text-on-surface-subtle mb-1">
+	<p class="text-label mb-1 text-on-surface-subtle uppercase">
 		{label}
 	</p>
-	<p class="font-black tabular-nums leading-none {sizeClasses[size]} {valueClasses[variant]}">
+	<p class="leading-none font-black tabular-nums {sizeClasses[size]} {valueClasses[variant]}">
 		{value}
 	</p>
 </div>
