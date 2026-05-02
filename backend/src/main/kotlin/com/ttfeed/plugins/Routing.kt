@@ -13,6 +13,7 @@ fun Application.configureRouting() {
             teamRoutes()
             matchRoutes()
             playerRoutes()
+            statsRoutes()
         }
     }
 }

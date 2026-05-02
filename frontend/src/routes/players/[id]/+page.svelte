@@ -158,11 +158,19 @@
 			{#if matches.length === 0}
 				<p class="py-8 text-center text-sm text-muted-foreground">No matches found.</p>
 			{:else}
-				<div class="space-y-2">
-					{#each matches.slice(0, 5) as game (game.gameId)}
+				<div class="space-y-4">
+					{#each matches.slice(0, 3) as game (game.gameId)}
 						<GameCard mode="player" {game} />
 					{/each}
 				</div>
+				{#if matches.length > 3}
+					<a
+						href="/players/{data.player.id}/games"
+						class="block pt-1 text-center text-xs font-bold tracking-widest text-muted-foreground uppercase hover:text-foreground"
+					>
+						Show Full History →
+					</a>
+				{/if}
 			{/if}
 		</section>
 	{/await}

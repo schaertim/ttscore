@@ -3,11 +3,10 @@
 	import type { Group, Season, SeasonStats } from '$lib/api';
 	import { api } from '$lib/api';
 	import * as Select from '$lib/components/ui/select/index.js';
-	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
+	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { SvelteSet } from 'svelte/reactivity';
 	import { CaretDown, CaretRight, Globe, MapTrifold, TrendUp, Clock } from 'phosphor-svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
 
@@ -21,11 +20,11 @@
 	let loadingGroups = $state(false);
 	let stats = $state<SeasonStats | null>(null);
 	let loadingStats = $state(false);
-	let expandedFederations = $state<Set<string>>(new Set());
+	let expandedFederations = $state<string[]>([]);
 
 	async function loadGroups() {
 		loadingGroups = true;
-		expandedFederations = new SvelteSet();
+		expandedFederations = [];
 		try {
 			groups = await api.groups.list({ season: selectedSeason?.name });
 		} finally {
@@ -43,16 +42,6 @@
 		}
 	}
 
-	function toggleFederation(federationId: string) {
-		if (expandedFederations.has(federationId)) {
-			expandedFederations.delete(federationId);
-		} else {
-			expandedFederations.add(federationId);
-		}
-		expandedFederations = new SvelteSet(expandedFederations);
-	}
-
-	// Groups grouped by federation name
 	const groupsByFederation = $derived(
 		data.federations
 			.map((fed) => ({
@@ -84,9 +73,7 @@
 					if (v) selectedSeasonId = v;
 				}}
 			>
-				<Select.Trigger
-					class="w-32 border-b border-border bg-card text-xs font-bold transition-all hover:border-primary"
-				>
+				<Select.Trigger class="w-32">
 					{selectedSeason?.name ?? 'Season'}
 				</Select.Trigger>
 				<Select.Content>
@@ -117,18 +104,21 @@
 		{:else if groupsByFederation.length === 0}
 			<p class="py-12 text-center text-sm text-muted-foreground">No groups found for this season</p>
 		{:else}
-			<div class="space-y-2">
+			<Accordion.Root
+				type="multiple"
+				bind:value={expandedFederations}
+				class="space-y-2"
+			>
 				{#each groupsByFederation as fed (fed.id)}
-					{@const isExpanded = expandedFederations.has(fed.id)}
+					{@const isExpanded = expandedFederations.includes(fed.id)}
 					{@const isNational = fed.name === 'STT'}
-					<Collapsible.Root
-						open={isExpanded}
-						onOpenChange={() => toggleFederation(fed.id)}
-						class="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border"
+					<Accordion.Item
+						value={fed.id}
+						class="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border not-last:border-b-0"
 					>
-						<Collapsible.Trigger
-							class="flex w-full items-center justify-between px-4 py-4 text-left transition-colors hover:bg-accent
-							{isExpanded ? 'bg-accent/50' : ''}"
+						<Accordion.Trigger
+							class="w-full items-center px-4 py-4 transition-colors hover:bg-accent hover:no-underline
+							{isExpanded ? 'bg-accent/50' : ''} [&_[data-slot=accordion-trigger-icon]]:hidden"
 						>
 							<div class="flex items-center gap-3">
 								{#if isNational}
@@ -142,37 +132,38 @@
 								class="h-5 w-5 text-muted-foreground transition-transform duration-200
 								{isExpanded ? 'rotate-180' : ''}"
 							/>
-						</Collapsible.Trigger>
-
-						<Collapsible.Content class="divide-y divide-border/40 bg-background/30">
-							{#each fed.groups as group (group.id)}
-								<a
-									href="/groups/{group.id}"
-									class="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
-								>
-									<div class="min-w-0 flex-1">
-										<p class="truncate text-sm font-semibold">{group.name}</p>
-										{#if group.teamCount > 0 || group.totalRounds > 0}
-											<p
-												class="mt-0.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase"
-											>
-												{#if group.teamCount > 0}{group.teamCount} Teams{/if}
-												{#if group.teamCount > 0 && group.totalRounds > 0}
-													&nbsp;·&nbsp;
-												{/if}
-												{#if group.totalRounds > 0}RD {group.roundsPlayed}/{group.totalRounds}{/if}
-											</p>
-										{/if}
-									</div>
-									<CaretRight
-										class="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
-									/>
-								</a>
-							{/each}
-						</Collapsible.Content>
-					</Collapsible.Root>
+						</Accordion.Trigger>
+						<Accordion.Content class="p-0">
+							<div class="divide-y divide-border/40 bg-background/30">
+								{#each fed.groups as group (group.id)}
+									<a
+										href="/groups/{group.id}"
+										class="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
+									>
+										<div class="min-w-0 flex-1">
+											<p class="truncate text-sm font-semibold">{group.name}</p>
+											{#if group.teamCount > 0 || group.totalRounds > 0}
+												<p
+													class="mt-0.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase"
+												>
+													{#if group.teamCount > 0}{group.teamCount} Teams{/if}
+													{#if group.teamCount > 0 && group.totalRounds > 0}
+														&nbsp;·&nbsp;
+													{/if}
+													{#if group.totalRounds > 0}RD {group.roundsPlayed}/{group.totalRounds}{/if}
+												</p>
+											{/if}
+										</div>
+										<CaretRight
+											class="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+										/>
+									</a>
+								{/each}
+							</div>
+						</Accordion.Content>
+					</Accordion.Item>
 				{/each}
-			</div>
+			</Accordion.Root>
 		{/if}
 	</section>
 

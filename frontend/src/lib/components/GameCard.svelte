@@ -50,16 +50,22 @@
 	{@const scoreColor = won ? 'text-win' : notPlayed ? 'text-muted-foreground' : 'text-loss'}
 	<a href="/matches/{pg.matchId}" class="block">
 		<Card.Root>
-			<div class="space-y-3 px-5">
+			<div class="space-y-2 px-6">
 				<p class="truncate text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
 					{formatDate(pg.playedAt)} · {pg.homeTeam} vs {pg.awayTeam}
 				</p>
 
-				<div class="flex items-center gap-4">
-					<div class="min-w-0 flex-1">
-						<p class="truncate text-base font-semibold text-foreground">
-							{pg.opponentName ?? '—'}
-						</p>
+				<div class="flex items-baseline gap-4">
+					<div class="flex min-w-0 flex-1 items-center gap-1.5">
+						<svelte:element
+							this={pg.opponentId ? 'a' : 'p'}
+							href={pg.opponentId ? `/players/${pg.opponentId}` : undefined}
+							class="min-w-0 truncate text-lg font-normal {pg.opponentId
+								? 'hover:underline'
+								: ''}"
+							onclick={pg.opponentId ? (e: MouseEvent) => e.stopPropagation() : undefined}
+						>{pg.opponentName ?? '—'}</svelte:element>
+						<KlassBadge klass={pg.opponentKlass} />
 					</div>
 
 					<div class="flex shrink-0 flex-col items-end gap-0.5">
@@ -67,8 +73,8 @@
 							{playerSets(pg)}:{opponentSets(pg)}
 						</p>
 						{#if pg.eloDelta != null}
-							<span class="text-xs font-black {pg.eloDelta >= 0 ? 'text-win' : 'text-loss'}">
-								{formatDelta(pg.eloDelta)}
+							<span class="text-xs font-black text-muted-foreground">
+								{formatDelta(pg.eloDelta)} ELO
 							</span>
 						{/if}
 					</div>

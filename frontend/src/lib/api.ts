@@ -134,7 +134,9 @@ export type PlayerGame = {
 	round: string | null;
 	status: string;
 	playerSide: 'home' | 'away';
+	opponentId: string | null;
 	opponentName: string | null;
+	opponentKlass: string | null;
 	homeSets: number | null;
 	awaySets: number | null;
 	result: 'HOME' | 'AWAY' | 'NOT_PLAYED';

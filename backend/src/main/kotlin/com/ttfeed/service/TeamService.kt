@@ -104,17 +104,19 @@ object TeamService {
                     }
             }
 
-            playerRows.map { playerRow ->
-                val pId = playerRow[Players.id]
-                TeamPlayerResponse(
-                    id = pId.toString(),
-                    fullName = playerRow[Players.fullName],
-                    licenceNr = playerRow[Players.licenceNr],
-                    klass = playerRow[PlayerSeasons.klass],
-                    wins = wins[pId] ?: 0,
-                    losses = losses[pId] ?: 0,
-                )
-            }
+            playerRows
+                .sortedByDescending { (wins[it[Players.id]] ?: 0) + (losses[it[Players.id]] ?: 0) }
+                .map { playerRow ->
+                    val pId = playerRow[Players.id]
+                    TeamPlayerResponse(
+                        id = pId.toString(),
+                        fullName = playerRow[Players.fullName],
+                        licenceNr = playerRow[Players.licenceNr],
+                        klass = playerRow[PlayerSeasons.klass],
+                        wins = wins[pId] ?: 0,
+                        losses = losses[pId] ?: 0,
+                    )
+                }
         }
     }
 
@@ -128,7 +130,7 @@ object TeamService {
                 .join(awayTeam, JoinType.INNER, Matches.awayTeamId, awayTeam[Teams.id])
                 .selectAll()
                 .where { (Matches.homeTeamId eq uuid) or (Matches.awayTeamId eq uuid) }
-                .orderBy(Matches.playedAt to SortOrder.ASC)
+                .orderBy(Matches.playedAt to SortOrder.DESC)
                 .map { it.toMatchResponse() }
         }
     }

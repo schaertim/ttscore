@@ -37,6 +37,7 @@ object MatchService {
                     Matches.status,
                 )
                 .where { Matches.groupId eq uuid }
+                .orderBy(Matches.playedAt to SortOrder.DESC)
                 .map { it.toMatchResponse() }
         }
     }

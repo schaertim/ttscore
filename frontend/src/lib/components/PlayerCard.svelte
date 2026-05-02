@@ -24,7 +24,7 @@
 	class="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
 >
 	<div
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted
+		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border/50
 		       text-[11px] font-black tracking-tight text-muted-foreground"
 	>
 		{initials}

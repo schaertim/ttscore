@@ -63,11 +63,6 @@
 	<section class="space-y-2">
 		<h2 class="px-1 text-[10px] font-black tracking-[0.2em] text-muted-foreground uppercase">
 			Team Roster
-			{#await data.streamed.roster then roster}
-				<span class="ml-2 font-medium tracking-normal text-muted-foreground/60 normal-case">
-					{roster.length} players
-				</span>
-			{/await}
 		</h2>
 
 		<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">

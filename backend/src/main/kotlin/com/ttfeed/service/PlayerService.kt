@@ -77,6 +77,7 @@ object PlayerService {
                 .select(
                     Games.id,
                     Games.homePlayer1Id,
+                    Games.awayPlayer1Id,
                     Games.homeSets,
                     Games.awaySets,
                     Games.result,
@@ -111,9 +112,28 @@ object PlayerService {
                                 .orderBy(GameSets.setNumber to SortOrder.ASC)
                                 .groupBy { it[GameSets.gameId] }
                         }
+                    val opponentIds =
+                        rows.mapNotNull { row ->
+                            val isHome = row[Games.homePlayer1Id] == uuid
+                            if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
+                        }.toSet()
+
+                    val opponentKlassByPlayerId: Map<UUID, String?> =
+                        if (opponentIds.isEmpty()) {
+                            emptyMap()
+                        } else {
+                            (PlayerSeasons innerJoin Seasons)
+                                .select(PlayerSeasons.playerId, PlayerSeasons.klass)
+                                .where { PlayerSeasons.playerId inList opponentIds }
+                                .orderBy(Seasons.name to SortOrder.DESC)
+                                .groupBy { it[PlayerSeasons.playerId] }
+                                .mapValues { (_, seasonRows) -> seasonRows.first()[PlayerSeasons.klass] }
+                        }
+
                     rows.map { row ->
                         val isHome = row[Games.homePlayer1Id] == uuid
                         val gameId = row[Games.id]
+                        val opponentId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
                         PlayerGameResponse(
                             matchId = row[Matches.id].toString(),
                             gameId = gameId.toString(),
@@ -125,12 +145,14 @@ object PlayerService {
                             round = row[Matches.round],
                             status = row[Matches.status],
                             playerSide = if (isHome) "home" else "away",
+                            opponentId = opponentId?.toString(),
                             opponentName =
                                 if (isHome) {
                                     row[awayPlayer[Players.fullName]]
                                 } else {
                                     row[homePlayer[Players.fullName]]
                                 },
+                            opponentKlass = opponentId?.let { opponentKlassByPlayerId[it] },
                             homeSets = row[Games.homeSets]?.toInt(),
                             awaySets = row[Games.awaySets]?.toInt(),
                             result = row[Games.result],

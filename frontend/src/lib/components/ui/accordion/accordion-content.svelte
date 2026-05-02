@@ -17,10 +17,7 @@
 	{...restProps}
 >
 	<div
-		class={cn(
-			'pt-0 pb-4 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4',
-			className
-		)}
+		class={cn('pt-0 pb-4', className)}
 	>
 		{@render children?.()}
 	</div>
