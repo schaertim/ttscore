@@ -10,15 +10,16 @@ import java.util.*
 
 class OverallPlayerScraper(
     private val client: KnobClient,
-    private val parser: KnobParser
+    private val parser: KnobParser,
 ) {
     private val logger = LoggerFactory.getLogger(OverallPlayerScraper::class.java)
 
     suspend fun run() {
-        val seasons = transaction {
-            Seasons.select(Seasons.id, Seasons.name)
-                .map { it[Seasons.id] to it[Seasons.name] }
-        }
+        val seasons =
+            transaction {
+                Seasons.select(Seasons.id, Seasons.name)
+                    .map { it[Seasons.id] to it[Seasons.name] }
+            }
 
         logger.info("OverallPlayerScraper: ${seasons.size} seasons to scrape")
 
@@ -26,20 +27,21 @@ class OverallPlayerScraper(
         // License lives on the player row, not on player_season, so no season scoping needed.
         // After the GroupScraper phase 1 fix, DB names are already clean (no age suffixes),
         // so a direct name lookup is sufficient.
-        val existingPlayers: Map<String, Pair<String?, UUID>> = transaction {
-            Players.select(Players.id, Players.fullName, Players.licenceNr)
-                .associate { row ->
-                    row[Players.fullName] to Pair(row[Players.licenceNr], row[Players.id])
-                }
-        }
+        val existingPlayers: Map<String, Pair<String?, UUID>> =
+            transaction {
+                Players.select(Players.id, Players.fullName, Players.licenceNr)
+                    .associate { row ->
+                        row[Players.fullName] to Pair(row[Players.licenceNr], row[Players.id])
+                    }
+            }
 
-        var totalUpdated  = 0
+        var totalUpdated = 0
         var totalInserted = 0
 
         for ((_, seasonName) in seasons) {
             try {
                 val (updated, inserted) = scrapeSeason(seasonName, existingPlayers)
-                totalUpdated  += updated
+                totalUpdated += updated
                 totalInserted += inserted
             } catch (e: Exception) {
                 logger.error("Failed season=$seasonName: ${e.message}")
@@ -51,9 +53,9 @@ class OverallPlayerScraper(
 
     private suspend fun scrapeSeason(
         seasonName: String,
-        existingPlayers: Map<String, Pair<String?, UUID>>
+        existingPlayers: Map<String, Pair<String?, UUID>>,
     ): Pair<Int, Int> {
-        val html    = client.fetchOverallPlayers(seasonName)
+        val html = client.fetchOverallPlayers(seasonName)
         val players = parser.parseOverallPlayers(html)
 
         if (players.isEmpty()) {
@@ -63,7 +65,7 @@ class OverallPlayerScraper(
 
         logger.info("  $seasonName — ${players.size} licensed players scraped")
 
-        var updated  = 0
+        var updated = 0
         var inserted = 0
 
         transaction {
@@ -74,9 +76,10 @@ class OverallPlayerScraper(
                     val (currentLicence, playerId) = match
                     // Only update if still a placeholder and the license isn't already taken
                     if (currentLicence == null) {
-                        val licenceTaken = Players.select(Players.id)
-                            .where { Players.licenceNr eq player.licenceNr }
-                            .firstOrNull() != null
+                        val licenceTaken =
+                            Players.select(Players.id)
+                                .where { Players.licenceNr eq player.licenceNr }
+                                .firstOrNull() != null
 
                         if (!licenceTaken) {
                             Players.update({ Players.id eq playerId }) {
@@ -90,7 +93,7 @@ class OverallPlayerScraper(
                     // Insert as a bare player record — no team association.
                     Players.insertIgnore {
                         it[Players.licenceNr] = player.licenceNr
-                        it[Players.fullName]  = player.fullName
+                        it[Players.fullName] = player.fullName
                     }
                     inserted++
                 }

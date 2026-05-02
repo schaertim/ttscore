@@ -6,22 +6,22 @@ data class ClickTTGame(
     val opponent: String,
     val opponentElo: Int?,
     val eloDelta: Double?,
-    val isWin: Boolean
+    val isWin: Boolean,
 )
 
 data class ClickTTPlayerPortrait(
     val personId: Int,
     val currentElo: Int?,
-    val games: List<ClickTTGame>
+    val games: List<ClickTTGame>,
 )
 
 data class ClickTTClubMember(
     val licence: String,
     val personId: Int,
-    val fullName: String
+    val fullName: String,
 )
 
 data class ClickTTClubPage(
     val clubName: String?,
-    val members: List<ClickTTClubMember>
+    val members: List<ClickTTClubMember>,
 )

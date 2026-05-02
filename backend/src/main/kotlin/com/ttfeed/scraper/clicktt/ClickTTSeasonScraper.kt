@@ -13,11 +13,14 @@ import com.ttfeed.jobs.ClickTtIdBackfillJob
  * are already linked to their knob records, avoiding duplicate player rows.
  */
 class ClickTTSeasonScraper(
-    private val groupScraper:  ClickTTGroupScraper,
-    private val backfillJob:   ClickTtIdBackfillJob,
-    private val matchScraper:  ClickTTMatchScraper
+    private val groupScraper: ClickTTGroupScraper,
+    private val backfillJob: ClickTtIdBackfillJob,
+    private val matchScraper: ClickTTMatchScraper,
 ) {
-    suspend fun run(season: String = "2025/2026", federations: Collection<String>? = null) {
+    suspend fun run(
+        season: String = "2025/2026",
+        federations: Collection<String>? = null,
+    ) {
         if (federations != null) groupScraper.run(season, federations) else groupScraper.run(season)
         backfillJob.run()
         matchScraper.run()
@@ -29,8 +32,8 @@ class ClickTTSeasonScraper(
             val parser = ClickTTParser()
             return ClickTTSeasonScraper(
                 groupScraper = ClickTTGroupScraper(client, parser),
-                backfillJob  = ClickTtIdBackfillJob(client, parser),
-                matchScraper = ClickTTMatchScraper(client, parser)
+                backfillJob = ClickTtIdBackfillJob(client, parser),
+                matchScraper = ClickTTMatchScraper(client, parser),
             )
         }
     }

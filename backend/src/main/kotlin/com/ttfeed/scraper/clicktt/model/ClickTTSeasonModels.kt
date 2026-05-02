@@ -10,9 +10,12 @@ import com.ttfeed.model.MatchStatus
  */
 data class ParsedClickTTGroup(
     val groupId: Int,
-    val championship: String,   // e.g. "MTTV 25/26"
-    val divisionName: String,   // e.g. "HE 1. Liga"
-    val category: String        // e.g. "Herren", "Damen", "Senioren O40"
+    // e.g. "MTTV 25/26"
+    val championship: String,
+    // e.g. "HE 1. Liga"
+    val divisionName: String,
+    // e.g. "Herren", "Damen", "Senioren O40"
+    val category: String,
 )
 
 /**
@@ -20,7 +23,8 @@ data class ParsedClickTTGroup(
  */
 data class ParsedClickTTStanding(
     val teamName: String,
-    val teamTableId: Int,       // from teamPortrait?teamtable= href — globally unique in click-tt
+    // from teamPortrait?teamtable= href — globally unique in click-tt
+    val teamTableId: Int,
     val position: Int,
     val played: Int,
     val won: Int,
@@ -30,7 +34,7 @@ data class ParsedClickTTStanding(
     val gamesAgainst: Int,
     val points: Int,
     val isPromotion: Boolean,
-    val isRelegation: Boolean
+    val isRelegation: Boolean,
 )
 
 /**
@@ -39,14 +43,17 @@ data class ParsedClickTTStanding(
  */
 data class ParsedClickTTMatch(
     val meetingId: Int?,
-    val date: String,           // "27.08.2025"
-    val time: String?,          // "20:15", null if not listed
-    val round: String?,         // "1", "2", … as printed in the schedule table
+    // "27.08.2025"
+    val date: String,
+    // "20:15", null if not listed
+    val time: String?,
+    // "1", "2", … as printed in the schedule table
+    val round: String?,
     val homeTeamName: String,
     val awayTeamName: String,
     val homeScore: Int?,
     val awayScore: Int?,
-    val status: MatchStatus
+    val status: MatchStatus,
 )
 
 /**
@@ -55,7 +62,7 @@ data class ParsedClickTTMatch(
 data class ParsedClickTTSet(
     val setNumber: Int,
     val homePoints: Int,
-    val awayPoints: Int
+    val awayPoints: Int,
 )
 
 /**
@@ -70,24 +77,28 @@ data class ParsedClickTTGame(
     val homePersonId: Int?,
     val homeName: String?,
     val homeKlass: String?,
-    val homePersonId2: Int?,    // doubles player 2 only
+    // doubles player 2 only
+    val homePersonId2: Int?,
     val homeName2: String?,
-    val homeKlass2: String?,    // doubles player 2 only
+    // doubles player 2 only
+    val homeKlass2: String?,
     // Away side
     val awayPersonId: Int?,
     val awayName: String?,
     val awayKlass: String?,
-    val awayPersonId2: Int?,    // doubles player 2 only
+    // doubles player 2 only
+    val awayPersonId2: Int?,
     val awayName2: String?,
-    val awayKlass2: String?,    // doubles player 2 only
+    // doubles player 2 only
+    val awayKlass2: String?,
     // Result
     val homeSets: Int?,
     val awaySets: Int?,
     val result: GameResult,
-    val sets: List<ParsedClickTTSet>
+    val sets: List<ParsedClickTTSet>,
 )
 
 data class ParsedClickTTMatchDetail(
     val meetingId: Int,
-    val games: List<ParsedClickTTGame>
+    val games: List<ParsedClickTTGame>,
 )

@@ -10,7 +10,6 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
 class KnobParser {
-
     // -------------------------------------------------------------------------
     // Gruppe page — identifies which division/league a gruppe belongs to
     // -------------------------------------------------------------------------
@@ -23,19 +22,24 @@ class KnobParser {
      * [seasonYear] is used to determine league assignment — before 2011 all
      * groups were STT regardless of nav block position.
      */
-    fun parseGruppePage(html: String, requestedGruppe: Int, seasonYear: Int): GruppePageResult? {
+    fun parseGruppePage(
+        html: String,
+        requestedGruppe: Int,
+        seasonYear: Int,
+    ): GruppePageResult? {
         val doc = Jsoup.parse(html)
 
         // Find the red (active) nav item and verify it matches the requested gruppe
-        var selectedGruppe     = -1
+        var selectedGruppe = -1
         var selectedBlockIndex = -1
 
         doc.select("ul#mainNav").forEachIndexed { blockIdx, navList ->
             navList.select("li a").forEach { link ->
                 if (link.selectFirst("font[color=red]") != null) {
-                    val gruppe = extractParam(link.attr("href"), "gruppe")?.toIntOrNull()
-                        ?: return@forEach
-                    selectedGruppe     = gruppe
+                    val gruppe =
+                        extractParam(link.attr("href"), "gruppe")?.toIntOrNull()
+                            ?: return@forEach
+                    selectedGruppe = gruppe
                     selectedBlockIndex = blockIdx
                 }
             }
@@ -44,19 +48,21 @@ class KnobParser {
         if (selectedGruppe == -1 || selectedGruppe != requestedGruppe) return null
 
         // Content header format: "NLB / Gruppe 2" or just "NLA"
-        val contentHeader = doc.select("table.a01Bar td.playerStatTitle")
-            .firstOrNull()?.text()?.trim()
-            ?: return null
+        val contentHeader =
+            doc.select("table.a01Bar td.playerStatTitle")
+                .firstOrNull()?.text()?.trim()
+                ?: return null
 
-        val (divisionName, groupName) = if (contentHeader.contains("/")) {
-            val division  = contentHeader.substringBefore("/").trim()
-            val groupPart = contentHeader.substringAfter("/").trim()
-            // Numeric group parts get a prefix: "2" → "Gruppe 2"
-            val group = if (groupPart.toIntOrNull() != null) "Gruppe $groupPart" else groupPart
-            division to group
-        } else {
-            contentHeader to "Gruppe 1"
-        }
+        val (divisionName, groupName) =
+            if (contentHeader.contains("/")) {
+                val division = contentHeader.substringBefore("/").trim()
+                val groupPart = contentHeader.substringAfter("/").trim()
+                // Numeric group parts get a prefix: "2" → "Gruppe 2"
+                val group = if (groupPart.toIntOrNull() != null) "Gruppe $groupPart" else groupPart
+                division to group
+            } else {
+                contentHeader to "Gruppe 1"
+            }
 
         if (divisionName.isBlank()) return null
 
@@ -64,7 +70,7 @@ class KnobParser {
             gruppeId = selectedGruppe,
             leagueName = resolveLeague(doc, selectedBlockIndex, seasonYear),
             divisionName = divisionName,
-            groupName = groupName
+            groupName = groupName,
         )
     }
 
@@ -73,7 +79,7 @@ class KnobParser {
     // -------------------------------------------------------------------------
 
     fun parseDivisionPage(html: String): ParsedDivisionPage {
-        val doc       = Jsoup.parse(html)
+        val doc = Jsoup.parse(html)
         val standings = parseStandings(html)
         return ParsedDivisionPage(
             teams = parseTeams(doc),
@@ -81,24 +87,25 @@ class KnobParser {
             matches = parseMatches(doc),
             standings = standings.standings,
             promotionSpots = standings.promotionSpots,
-            relegationSpots = standings.relegationSpots
+            relegationSpots = standings.relegationSpots,
         )
     }
 
     private fun parseStandings(html: String): ParsedStandingsPage {
-        val doc   = Jsoup.parse(html)
+        val doc = Jsoup.parse(html)
 
         // The standings table is the first pTitle table — it has the team ranking header
-        val table = doc.select("table.pTitle").firstOrNull {
-            it.selectFirst("tr td:contains(Rang)") != null ||
+        val table =
+            doc.select("table.pTitle").firstOrNull {
+                it.selectFirst("tr td:contains(Rang)") != null ||
                     it.select("tr.psauf, tr.psab, tr.psodd, tr.playerStats").isNotEmpty()
-        } ?: return ParsedStandingsPage(emptyList(), 0, 0)
+            } ?: return ParsedStandingsPage(emptyList(), 0, 0)
 
-        val rows             = table.select("tr")
-        val standings        = mutableListOf<ParsedStandingRow>()
-        var promotionSpots   = 0
-        var relegationStart  = Int.MAX_VALUE
-        var position         = 1
+        val rows = table.select("tr")
+        val standings = mutableListOf<ParsedStandingRow>()
+        var promotionSpots = 0
+        var relegationStart = Int.MAX_VALUE
+        var position = 1
 
         for (row in rows) {
             // Promotion zone separator — rows above this are promotion spots
@@ -112,24 +119,25 @@ class KnobParser {
                 continue
             }
 
-            val isStandingRow = row.hasClass("psauf") || row.hasClass("psab") ||
+            val isStandingRow =
+                row.hasClass("psauf") || row.hasClass("psab") ||
                     row.hasClass("psodd") || row.hasClass("playerStats")
             if (!isStandingRow) continue
 
             val cells = row.select("td")
             if (cells.size < 9) continue
 
-            val teamLink   = cells[1].selectFirst("a") ?: continue
+            val teamLink = cells[1].selectFirst("a") ?: continue
             val knobTeamId = extractParam(teamLink.attr("href"), "teamid")?.toIntOrNull() ?: continue
 
-            val played       = cells[3].text().trim().toIntOrNull() ?: continue
-            val won          = cells[4].text().trim().toIntOrNull() ?: continue
-            val drawn        = cells[5].text().trim().toIntOrNull() ?: continue
-            val lost         = cells[6].text().trim().toIntOrNull() ?: continue
+            val played = cells[3].text().trim().toIntOrNull() ?: continue
+            val won = cells[4].text().trim().toIntOrNull() ?: continue
+            val drawn = cells[5].text().trim().toIntOrNull() ?: continue
+            val lost = cells[6].text().trim().toIntOrNull() ?: continue
 
             // SiegVerh column format: "105:35"
-            val siegVerh     = cells[7].text().trim()
-            val gamesFor     = siegVerh.substringBefore(":").trim().toIntOrNull() ?: 0
+            val siegVerh = cells[7].text().trim()
+            val gamesFor = siegVerh.substringBefore(":").trim().toIntOrNull() ?: 0
             val gamesAgainst = siegVerh.substringAfter(":").trim().toIntOrNull() ?: 0
 
             // Points are in a bold td — cells[9]
@@ -145,27 +153,36 @@ class KnobParser {
                     lost = lost,
                     gamesFor = gamesFor,
                     gamesAgainst = gamesAgainst,
-                    points = points
-                )
+                    points = points,
+                ),
             )
             position++
         }
 
-        val relegationSpots = if (relegationStart == Int.MAX_VALUE) 0
-        else standings.size - relegationStart + 1
+        val relegationSpots =
+            if (relegationStart == Int.MAX_VALUE) {
+                0
+            } else {
+                standings.size - relegationStart + 1
+            }
 
         return ParsedStandingsPage(standings, promotionSpots, relegationSpots)
     }
 
-    private fun resolveLeague(doc: Document, selectedBlockIndex: Int, seasonYear: Int): String {
-        if (seasonYear < 2011) return "STT"   // regional leagues didn't exist before 2011
+    private fun resolveLeague(
+        doc: Document,
+        selectedBlockIndex: Int,
+        seasonYear: Int,
+    ): String {
+        if (seasonYear < 2011) return "STT" // regional leagues didn't exist before 2011
         if (selectedBlockIndex == 0) return "STT"
 
         // Regional — the active league is the grayed-out item (no <a>) in the rvNav
-        val rvNav      = doc.selectFirst("ul#rvNav") ?: return "NWTTV"
-        val grayedItem = rvNav.select("li").firstOrNull { li ->
-            li.selectFirst("a") == null && li.text().trim().isNotBlank()
-        }
+        val rvNav = doc.selectFirst("ul#rvNav") ?: return "NWTTV"
+        val grayedItem =
+            rvNav.select("li").firstOrNull { li ->
+                li.selectFirst("a") == null && li.text().trim().isNotBlank()
+            }
         return grayedItem?.text()?.trim() ?: "NWTTV"
     }
 
@@ -174,8 +191,8 @@ class KnobParser {
             ?.nextElementSibling()
             ?.select("tr.psauf, tr.psab, tr.psodd, tr.playerStats, tr.pshl")
             ?.mapNotNull { row ->
-                val link   = row.select("td.playerName a").firstOrNull() ?: return@mapNotNull null
-                val href   = link.attr("href")
+                val link = row.select("td.playerName a").firstOrNull() ?: return@mapNotNull null
+                val href = link.attr("href")
                 val clubId = extractParam(href, "clubid")?.toIntOrNull() ?: return@mapNotNull null
                 val teamId = extractParam(href, "teamid")?.toIntOrNull() ?: return@mapNotNull null
                 ParsedTeam(name = link.text().trim(), knobClubId = clubId, knobTeamId = teamId)
@@ -186,10 +203,11 @@ class KnobParser {
 
     private fun parsePlayers(doc: Document): List<ParsedPlayer> {
         // The player table (a05Bar) is followed by two filter tables before the actual data table
-        val playerTable = doc.select("table.a05Bar").first()
-            ?.nextElementSibling()   // sort mode toggle table
-            ?.nextElementSibling()   // stammspieler filter table
-            ?.nextElementSibling()   // actual player ranking table
+        val playerTable =
+            doc.select("table.a05Bar").first()
+                ?.nextElementSibling() // sort mode toggle table
+                ?.nextElementSibling() // stammspieler filter table
+                ?.nextElementSibling() // actual player ranking table
 
         return playerTable
             ?.select("tr.psauf, tr.psab, tr.psodd, tr.playerStats, tr.pshl")
@@ -199,20 +217,23 @@ class KnobParser {
                 if (cells.size < 9) return@mapNotNull null
 
                 val playerLink = cells[1].selectFirst("a") ?: return@mapNotNull null
-                val teamLink   = cells[2].selectFirst("a") ?: return@mapNotNull null
-                val knobId     = extractParam(playerLink.attr("href"), "gid")?.toIntOrNull()
-                    ?: return@mapNotNull null
-                val clubId     = extractParam(teamLink.attr("href"), "clubid")?.toIntOrNull()
-                    ?: return@mapNotNull null
-                val teamId     = extractParam(teamLink.attr("href"), "teamid")?.toIntOrNull()
-                    ?: return@mapNotNull null
+                val teamLink = cells[2].selectFirst("a") ?: return@mapNotNull null
+                val knobId =
+                    extractParam(playerLink.attr("href"), "gid")?.toIntOrNull()
+                        ?: return@mapNotNull null
+                val clubId =
+                    extractParam(teamLink.attr("href"), "clubid")?.toIntOrNull()
+                        ?: return@mapNotNull null
+                val teamId =
+                    extractParam(teamLink.attr("href"), "teamid")?.toIntOrNull()
+                        ?: return@mapNotNull null
 
                 ParsedPlayer(
                     fullName = normalizeKnobName(playerLink.text()),
                     knobId = knobId,
                     klass = cells[3].text().trim(),
                     knobClubId = clubId,
-                    knobTeamId = teamId
+                    knobTeamId = teamId,
                 )
             }
             ?: emptyList()
@@ -221,33 +242,38 @@ class KnobParser {
     private fun parseMatches(doc: Document): List<ParsedMatch> {
         // The match table is identified by a header row containing "Runde"
         // This handles both layouts (with and without Vorrunde column)
-        val matchTable = doc.select("tr:has(td:containsOwn(Runde))")
-            .firstOrNull()?.parent()?.parent()
-            ?: return emptyList()
+        val matchTable =
+            doc.select("tr:has(td:containsOwn(Runde))")
+                .firstOrNull()?.parent()?.parent()
+                ?: return emptyList()
 
         return matchTable.select("tr.psodd, tr.playerStats, tr.pshl")
             .mapNotNull { row ->
                 val cells = row.select("td")
                 if (cells.size < 5) return@mapNotNull null
 
-                val matchId = cells[0].attr("title")
-                    .let { extractParamFromTitle(it, "matchid") }
-                    ?.toIntOrNull() ?: return@mapNotNull null
+                val matchId =
+                    cells[0].attr("title")
+                        .let { extractParamFromTitle(it, "matchid") }
+                        ?.toIntOrNull() ?: return@mapNotNull null
 
                 // Round is a number ("8 ( 1 )") or cup label ("Viertelfinal") — store normalised
                 val roundRaw = cells[0].text().trim()
-                val round    = roundRaw.split(" ").first().toIntOrNull()?.toString()
-                    ?: roundRaw.takeIf { it.isNotBlank() }
+                val round =
+                    roundRaw.split(" ").first().toIntOrNull()?.toString()
+                        ?: roundRaw.takeIf { it.isNotBlank() }
 
-                val homeTeamId = extractParam(
-                    cells[2].selectFirst("a")?.attr("href") ?: return@mapNotNull null,
-                    "teamid"
-                )?.toIntOrNull() ?: return@mapNotNull null
+                val homeTeamId =
+                    extractParam(
+                        cells[2].selectFirst("a")?.attr("href") ?: return@mapNotNull null,
+                        "teamid",
+                    )?.toIntOrNull() ?: return@mapNotNull null
 
-                val awayTeamId = extractParam(
-                    cells[3].selectFirst("a")?.attr("href") ?: return@mapNotNull null,
-                    "teamid"
-                )?.toIntOrNull() ?: return@mapNotNull null
+                val awayTeamId =
+                    extractParam(
+                        cells[3].selectFirst("a")?.attr("href") ?: return@mapNotNull null,
+                        "teamid",
+                    )?.toIntOrNull() ?: return@mapNotNull null
 
                 val scoreText = cells[4].selectFirst("a")?.text()?.trim()
                 val (homeScore, awayScore, status) = parseScore(scoreText)
@@ -260,7 +286,7 @@ class KnobParser {
                     playedAt = cells[1].text().trim().takeIf { it.isNotBlank() },
                     homeScore = homeScore,
                     awayScore = awayScore,
-                    status = status
+                    status = status,
                 )
             }
     }
@@ -270,25 +296,32 @@ class KnobParser {
             return Triple(null, null, MatchStatus.SCHEDULED)
         }
         val parts = scoreText.split(":")
-        val home  = parts[0].toIntOrNull()
-        val away  = parts[1].toIntOrNull()
-        return if (home != null && away != null) Triple(home, away, MatchStatus.COMPLETED)
-        else Triple(null, null, MatchStatus.COMPLETED)
+        val home = parts[0].toIntOrNull()
+        val away = parts[1].toIntOrNull()
+        return if (home != null && away != null) {
+            Triple(home, away, MatchStatus.COMPLETED)
+        } else {
+            Triple(null, null, MatchStatus.COMPLETED)
+        }
     }
 
     // -------------------------------------------------------------------------
     // Match detail page — individual game and set results
     // -------------------------------------------------------------------------
 
-    fun parseMatchDetail(html: String, matchId: Int): ParsedMatchDetail {
+    fun parseMatchDetail(
+        html: String,
+        matchId: Int,
+    ): ParsedMatchDetail {
         val doc = Jsoup.parse(html)
 
         // The match detail page is the group page with one match's detail expanded inline.
         // Multiple tables on the page share the same tr CSS classes (psodd, playerStats), so
         // we identify the correct table by the presence of a "Partie" header cell, then
         // additionally guard every row by requiring player links — only genuine game rows have those.
-        val gameTable = doc.select("table:has(tr > td:containsOwn(Partie))").firstOrNull()
-            ?: return ParsedMatchDetail(matchId, emptyList())
+        val gameTable =
+            doc.select("table:has(tr > td:containsOwn(Partie))").firstOrNull()
+                ?: return ParsedMatchDetail(matchId, emptyList())
 
         val games = mutableListOf<ParsedGame>()
         // Built from singles rows so doubles player 2 can be resolved by name.
@@ -348,11 +381,11 @@ class KnobParser {
                 // "Player A / Player B" — split on the slash to get each name
                 homeName1 = homeClean.substringBefore("/").trim().takeIf { it.isNotBlank() }
                 homeName2 = homeClean.substringAfter("/").trim().takeIf { it.isNotBlank() }
-                homeGid2  = homeName2?.let { nameToKnobId[it] }
+                homeGid2 = homeName2?.let { nameToKnobId[it] }
                 homePlayer1Klass = null // doubles klass is an aggregate, not per-player
                 awayName1 = awayClean.substringBefore("/").trim().takeIf { it.isNotBlank() }
                 awayName2 = awayClean.substringAfter("/").trim().takeIf { it.isNotBlank() }
-                awayGid2  = awayName2?.let { nameToKnobId[it] }
+                awayGid2 = awayName2?.let { nameToKnobId[it] }
                 awayPlayer1Klass = null
             }
 
@@ -368,45 +401,50 @@ class KnobParser {
             val homeSets = cells.getOrNull(cells.size - 8)?.text()?.trim()?.toIntOrNull()
             val awaySets = cells.getOrNull(cells.size - 6)?.text()?.trim()?.toIntOrNull()
 
-            val result = when {
-                homeSets != null && awaySets != null && homeSets > awaySets -> GameResult.HOME
-                homeSets != null && awaySets != null && awaySets > homeSets -> GameResult.AWAY
-                else                                                         -> GameResult.NOT_PLAYED
-            }
+            val result =
+                when {
+                    homeSets != null && awaySets != null && homeSets > awaySets -> GameResult.HOME
+                    homeSets != null && awaySets != null && awaySets > homeSets -> GameResult.AWAY
+                    else -> GameResult.NOT_PLAYED
+                }
 
             games.add(
                 ParsedGame(
-                    orderInMatch    = order++,
-                    gameType        = if (isDoubles) GameType.DOUBLES else GameType.SINGLES,
+                    orderInMatch = order++,
+                    gameType = if (isDoubles) GameType.DOUBLES else GameType.SINGLES,
                     homePlayer1KnobId = homeGid1,
-                    homePlayer1Name   = homeName1,
-                    homePlayer1Klass  = homePlayer1Klass,
+                    homePlayer1Name = homeName1,
+                    homePlayer1Klass = homePlayer1Klass,
                     homePlayer2KnobId = homeGid2,
-                    homePlayer2Name   = homeName2,
+                    homePlayer2Name = homeName2,
                     awayPlayer1KnobId = awayGid1,
-                    awayPlayer1Name   = awayName1,
-                    awayPlayer1Klass  = awayPlayer1Klass,
+                    awayPlayer1Name = awayName1,
+                    awayPlayer1Klass = awayPlayer1Klass,
                     awayPlayer2KnobId = awayGid2,
-                    awayPlayer2Name   = awayName2,
+                    awayPlayer2Name = awayName2,
                     homeSets = homeSets,
                     awaySets = awaySets,
-                    result   = result,
-                    sets     = sets
-                )
+                    result = result,
+                    sets = sets,
+                ),
             )
         }
 
         return ParsedMatchDetail(matchId, games)
     }
 
-    private fun parseSetScores(cells: List<Element>, fromIndex: Int, toIndex: Int): List<ParsedSet> {
+    private fun parseSetScores(
+        cells: List<Element>,
+        fromIndex: Int,
+        toIndex: Int,
+    ): List<ParsedSet> {
         val sets = mutableListOf<ParsedSet>()
         for (i in fromIndex..toIndex) {
             val text = cells.getOrNull(i)?.text()?.trim() ?: break
             if (text.isBlank() || text == "\u00a0") break
             val parts = text.split(":")
-            val home  = parts.getOrNull(0)?.toIntOrNull() ?: break
-            val away  = parts.getOrNull(1)?.toIntOrNull() ?: break
+            val home = parts.getOrNull(0)?.toIntOrNull() ?: break
+            val away = parts.getOrNull(1)?.toIntOrNull() ?: break
             sets.add(ParsedSet(setNumber = sets.size + 1, homePoints = home, awayPoints = away))
         }
         return sets
@@ -422,16 +460,16 @@ class KnobParser {
      * Rows with "nicht STT lizenziert" or a blank license are skipped.
      */
     fun parseOverallPlayers(html: String): List<ParsedLicensedPlayer> {
-        val doc   = Jsoup.parse(html)
+        val doc = Jsoup.parse(html)
         val table = doc.selectFirst("table.pTitle") ?: return emptyList()
 
         return table.select("tr.psauf, tr.psab")
             .mapNotNull { row ->
-                val cells    = row.select("td")
+                val cells = row.select("td")
                 if (cells.size < 2) return@mapNotNull null
                 val rawName = cells[0].text().trim()
                 if (rawName.isBlank()) return@mapNotNull null
-                val licence  = cells[1].text().trim()
+                val licence = cells[1].text().trim()
                 if (licence.isBlank() || licence == "-" || licence == "0" || licence.contains("nicht")) {
                     return@mapNotNull null
                 }
@@ -446,16 +484,21 @@ class KnobParser {
     private fun extractKlass(text: String): String? =
         Regex("""\[([^\]]+)\]$""").find(text.trim())?.groupValues?.get(1)?.trim()
 
-    private fun stripKlass(text: String): String =
-        text.trim().replace(Regex("""\s*\[[^\]]+\]$"""), "").trim()
+    private fun stripKlass(text: String): String = text.trim().replace(Regex("""\s*\[[^\]]+\]$"""), "").trim()
 
-    private fun extractParam(url: String, key: String): String? =
+    private fun extractParam(
+        url: String,
+        key: String,
+    ): String? =
         url.split("&", "?")
             .firstOrNull { it.startsWith("$key=") }
             ?.substringAfter("=")
             ?.substringBefore("&")
 
-    private fun extractParamFromTitle(title: String, key: String): String? =
+    private fun extractParamFromTitle(
+        title: String,
+        key: String,
+    ): String? =
         title.split(";")
             .firstOrNull { it.trim().startsWith("$key=") }
             ?.substringAfter("=")

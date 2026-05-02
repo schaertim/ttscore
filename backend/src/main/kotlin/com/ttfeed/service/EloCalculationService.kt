@@ -5,8 +5,11 @@ import kotlin.math.pow
 import kotlin.math.round
 
 object EloCalculationService {
-
-    fun calculateGameDeltas(homeBaseElo: Int, awayBaseElo: Int, result: GameResult): Pair<Double, Double> {
+    fun calculateGameDeltas(
+        homeBaseElo: Int,
+        awayBaseElo: Int,
+        result: GameResult,
+    ): Pair<Double, Double> {
         if (result == GameResult.NOT_PLAYED) return Pair(0.0, 0.0)
 
         val pToWinHome = calculateProbability(homeBaseElo, awayBaseElo)
@@ -23,7 +26,10 @@ object EloCalculationService {
         }
     }
 
-    private fun calculateProbability(eloA: Int, eloB: Int): Double {
+    private fun calculateProbability(
+        eloA: Int,
+        eloB: Int,
+    ): Double {
         return 1.0 / (1.0 + 10.0.pow((eloB - eloA) / 200.0))
     }
 

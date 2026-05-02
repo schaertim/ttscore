@@ -5,7 +5,7 @@ import com.ttfeed.model.MatchStatus
 data class ParsedTeam(
     val name: String,
     val knobClubId: Int,
-    val knobTeamId: Int
+    val knobTeamId: Int,
 )
 
 data class ParsedPlayer(
@@ -13,7 +13,7 @@ data class ParsedPlayer(
     val knobId: Int,
     val klass: String,
     val knobClubId: Int,
-    val knobTeamId: Int
+    val knobTeamId: Int,
 )
 
 data class ParsedMatch(
@@ -24,7 +24,7 @@ data class ParsedMatch(
     val playedAt: String?,
     val homeScore: Int?,
     val awayScore: Int?,
-    val status: MatchStatus
+    val status: MatchStatus,
 )
 
 data class ParsedDivisionPage(
@@ -33,7 +33,7 @@ data class ParsedDivisionPage(
     val matches: List<ParsedMatch>,
     val standings: List<ParsedStandingRow>,
     val promotionSpots: Int,
-    val relegationSpots: Int
+    val relegationSpots: Int,
 )
 
 data class ParsedStandingRow(
@@ -45,16 +45,16 @@ data class ParsedStandingRow(
     val lost: Int,
     val gamesFor: Int,
     val gamesAgainst: Int,
-    val points: Int
+    val points: Int,
 )
 
 data class ParsedStandingsPage(
     val standings: List<ParsedStandingRow>,
     val promotionSpots: Int,
-    val relegationSpots: Int
+    val relegationSpots: Int,
 )
 
 data class ParsedLicensedPlayer(
     val fullName: String,
-    val licenceNr: String
+    val licenceNr: String,
 )

@@ -15,25 +15,25 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 object ClickTTSyncService {
-    private val logger        = LoggerFactory.getLogger(ClickTTSyncService::class.java)
-    private val client        = ClickTTClient()
-    private val parser        = ClickTTParser()
+    private val logger = LoggerFactory.getLogger(ClickTTSyncService::class.java)
+    private val client = ClickTTClient()
+    private val parser = ClickTTParser()
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
-    private val swissZone     = ZoneId.of("Europe/Zurich")
+    private val swissZone = ZoneId.of("Europe/Zurich")
 
     private val syncCooldowns = ConcurrentHashMap<UUID, Instant>()
-    private val COOLDOWN      = Duration.ofMinutes(5)
+    private val COOLDOWN = Duration.ofMinutes(5)
 
     /** Syncs ELO and game history for all players with a click-tt ID. Intended for backfill. */
     suspend fun runPortraitBackfill(seasonId: UUID) {
         val players = PlayerService.getAllPlayersWithClickTtId()
         logger.info("Portrait backfill starting — ${players.size} players with click-tt ID")
 
-        var successCount   = 0
-        var noEloCount     = 0
-        var failCount      = 0
+        var successCount = 0
+        var noEloCount = 0
+        var failCount = 0
         var tourneyInserts = 0
-        var leagueUpdates  = 0
+        var leagueUpdates = 0
 
         for ((index, pair) in players.withIndex()) {
             val (playerId, personId) = pair
@@ -41,13 +41,13 @@ object ClickTTSyncService {
                 val result = syncPlayerDetailed(playerId, seasonId)
                 successCount++
                 tourneyInserts += result.tournamentGamesInserted
-                leagueUpdates  += result.leagueDeltasUpdated
+                leagueUpdates += result.leagueDeltasUpdated
                 if (result.elo == null) noEloCount++
                 if (index % 50 == 0) {
                     logger.info(
                         "Portrait backfill progress: $index / ${players.size} — " +
-                        "$successCount ok, $noEloCount no-elo, $failCount failed, " +
-                        "$tourneyInserts tournament inserts, $leagueUpdates league delta updates"
+                            "$successCount ok, $noEloCount no-elo, $failCount failed, " +
+                            "$tourneyInserts tournament inserts, $leagueUpdates league delta updates",
                     )
                 }
             } catch (e: Exception) {
@@ -58,12 +58,16 @@ object ClickTTSyncService {
 
         logger.info(
             "Portrait backfill complete — $successCount ok, $noEloCount no-elo, $failCount failed, " +
-            "$tourneyInserts tournament inserts, $leagueUpdates league delta updates"
+                "$tourneyInserts tournament inserts, $leagueUpdates league delta updates",
         )
     }
 
     /** Syncs a single player on demand (e.g. triggered from the player detail endpoint). */
-    suspend fun syncPlayer(playerId: UUID, seasonId: UUID, ignoreCooldown: Boolean = false) {
+    suspend fun syncPlayer(
+        playerId: UUID,
+        seasonId: UUID,
+        ignoreCooldown: Boolean = false,
+    ) {
         if (!ignoreCooldown) {
             val lastSync = syncCooldowns[playerId]
             if (lastSync != null && Instant.now().isBefore(lastSync.plus(COOLDOWN))) {
@@ -78,10 +82,13 @@ object ClickTTSyncService {
     private data class SyncResult(
         val elo: Int?,
         val tournamentGamesInserted: Int,
-        val leagueDeltasUpdated: Int
+        val leagueDeltasUpdated: Int,
     )
 
-    private suspend fun syncPlayerDetailed(playerId: UUID, seasonId: UUID): SyncResult {
+    private suspend fun syncPlayerDetailed(
+        playerId: UUID,
+        seasonId: UUID,
+    ): SyncResult {
         val personId = PlayerService.getClickTtIdById(playerId)
         if (personId == null) {
             logger.warn("Cannot sync player $playerId — no clickttId in database")
@@ -91,20 +98,26 @@ object ClickTTSyncService {
         logger.debug("Syncing personId=$personId")
         val portraitHtml = client.fetchPlayerPortrait(personId)
 
-        val eloUrl = parser.extractEloProtokollUrl(portraitHtml)
-            ?.cleanWosid()
-            ?.takeIf { it.isNotBlank() && it != "#" }
+        val eloUrl =
+            parser.extractEloProtokollUrl(portraitHtml)
+                ?.cleanWosid()
+                ?.takeIf { it.isNotBlank() && it != "#" }
 
         if (eloUrl == null) logger.debug("  personId=$personId — no Elo-Protokoll tab found")
 
-        val eloHtml = if (eloUrl != null) {
-            try {
-                client.fetchUrl(eloUrl)
-            } catch (e: Exception) {
-                logger.warn("  personId=$personId — Elo-Protokoll fetch failed, ELO snapshot still saved: ${e.message}")
+        val eloHtml =
+            if (eloUrl != null) {
+                try {
+                    client.fetchUrl(eloUrl)
+                } catch (e: Exception) {
+                    logger.warn(
+                        "  personId=$personId — Elo-Protokoll fetch failed, ELO snapshot still saved: ${e.message}",
+                    )
+                    null
+                }
+            } else {
                 null
             }
-        } else null
 
         val portrait = parser.parsePlayerPortrait(portraitHtml, eloHtml, personId)
         logger.debug("  personId=$personId — elo=${portrait.currentElo}, games=${portrait.games.size}")
@@ -115,26 +128,32 @@ object ClickTTSyncService {
             logger.debug("  personId=$personId — no current ELO on portrait page")
         }
 
-        val (tourneyInserts, leagueUpdates) = if (portrait.games.isNotEmpty())
-            processGames(playerId, portrait.games)
-        else
-            0 to 0
+        val (tourneyInserts, leagueUpdates) =
+            if (portrait.games.isNotEmpty()) {
+                processGames(playerId, portrait.games)
+            } else {
+                0 to 0
+            }
 
         return SyncResult(portrait.currentElo, tourneyInserts, leagueUpdates)
     }
 
-    private suspend fun processGames(playerId: UUID, games: List<ClickTTGame>): Pair<Int, Int> {
+    private suspend fun processGames(
+        playerId: UUID,
+        games: List<ClickTTGame>,
+    ): Pair<Int, Int> {
         var tourneyInserts = 0
-        var leagueUpdates  = 0
+        var leagueUpdates = 0
 
         for (game in games) {
             val opponentName = game.opponent.substringBefore("(").trim()
-            val opponentId   = PlayerService.findPlayerIdByName(opponentName)
-            val result       = if (game.isWin) GameResult.HOME else GameResult.AWAY
+            val opponentId = PlayerService.findPlayerIdByName(opponentName)
+            val result = if (game.isWin) GameResult.HOME else GameResult.AWAY
 
-            val playedAt = LocalDate.parse(game.date, dateFormatter)
-                .atStartOfDay(swissZone)
-                .toOffsetDateTime()
+            val playedAt =
+                LocalDate.parse(game.date, dateFormatter)
+                    .atStartOfDay(swissZone)
+                    .toOffsetDateTime()
 
             // First try to backfill the ELO delta on an existing league game row
             if (game.eloDelta != null) {
@@ -148,13 +167,13 @@ object ClickTTSyncService {
             // No league game found — insert as tournament game if not already stored
             if (!GameService.gameExists(playerId, playedAt, game.competition)) {
                 GameService.insertTournamentGame(
-                    playerId    = playerId,
-                    opponentId  = opponentId,
-                    playedAt    = playedAt,
+                    playerId = playerId,
+                    opponentId = opponentId,
+                    playedAt = playedAt,
                     competition = game.competition,
-                    eloDelta    = game.eloDelta,
-                    result      = result,
-                    gameType    = GameType.SINGLES
+                    eloDelta = game.eloDelta,
+                    result = result,
+                    gameType = GameType.SINGLES,
                 )
                 tourneyInserts++
             }

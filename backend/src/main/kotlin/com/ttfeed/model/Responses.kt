@@ -2,7 +2,6 @@ package com.ttfeed.model
 
 import kotlinx.serialization.Serializable
 
-
 @Serializable
 data class TeamSummaryResponse(
     val id: String,
@@ -36,6 +35,7 @@ data class GroupResponse(
     val roundsPlayed: Int,
     val totalRounds: Int,
 )
+
 @Serializable
 data class StandingResponse(
     val teamId: String,
@@ -72,7 +72,7 @@ data class MatchDetailResponse(
     val round: String?,
     val playedAt: String?,
     val status: MatchStatus,
-    val games: List<GameResponse>
+    val games: List<GameResponse>,
 )
 
 @Serializable
@@ -98,7 +98,7 @@ data class GameResponse(
     val result: GameResult,
     val homePlayer1EloDelta: Double? = null,
     val awayPlayer1EloDelta: Double? = null,
-    val sets: List<SetResponse>
+    val sets: List<SetResponse>,
 )
 
 @Serializable
@@ -128,7 +128,7 @@ data class PlayerResponse(
     val currentClubName: String? = null,
     val klass: String? = null,
     val currentElo: Int? = null,
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
 )
 
 @Serializable
@@ -169,4 +169,5 @@ data class PlayerGameResponse(
     val awaySets: Int?,
     val result: GameResult,
     val eloDelta: Double?,
+    val sets: List<SetResponse>,
 )

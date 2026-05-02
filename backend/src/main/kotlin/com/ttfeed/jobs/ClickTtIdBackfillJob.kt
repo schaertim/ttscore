@@ -11,14 +11,14 @@ import org.slf4j.LoggerFactory
 
 class ClickTtIdBackfillJob(
     private val client: ClickTTClient,
-    private val parser: ClickTTParser
+    private val parser: ClickTTParser,
 ) {
     private val logger = LoggerFactory.getLogger(ClickTtIdBackfillJob::class.java)
 
     suspend fun run() {
         var totalPlayers = 0
-        var totalClubs   = 0
-        var emptyPages   = 0
+        var totalClubs = 0
+        var emptyPages = 0
 
         // Swiss club IDs on click-tt are in this range — generous bounds to avoid missing any
         val clubIdRange = 32980..33290
@@ -46,14 +46,14 @@ class ClickTtIdBackfillJob(
                 PlayerService.updateClickTtDataBatch(playerUpdates)
                 totalPlayers += page.members.size
 
-                val licences  = page.members.map { it.licence }
+                val licences = page.members.map { it.licence }
                 val ourClubId = PlayerService.findClubIdByLicences(licences)
 
                 if (ourClubId != null && page.clubName != null) {
                     dbQuery {
                         Clubs.update({ Clubs.id eq ourClubId }) {
                             it[Clubs.clickttId] = clickttClubId
-                            it[Clubs.name]      = page.clubName
+                            it[Clubs.name] = page.clubName
                         }
                     }
                     totalClubs++
@@ -61,7 +61,6 @@ class ClickTtIdBackfillJob(
                 } else {
                     logger.debug("  Club ID $clickttClubId (${page.clubName}) — no matching club found in DB")
                 }
-
             } catch (e: Exception) {
                 logger.error("  Error fetching club ID $clickttClubId", e)
             }

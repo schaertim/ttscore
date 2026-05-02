@@ -16,7 +16,10 @@ import java.util.UUID
 class NightlyGroupSyncJob(private val groupScraper: ClickTTGroupScraper) {
     private val logger = LoggerFactory.getLogger(NightlyGroupSyncJob::class.java)
 
-    suspend fun run(seasonId: UUID, seasonName: String) {
+    suspend fun run(
+        seasonId: UUID,
+        seasonName: String,
+    ) {
         val groups = getGroupsForSeason(seasonId)
         logger.info("NightlyGroupSyncJob: refreshing ${groups.size} groups for season $seasonName")
 
@@ -35,21 +38,22 @@ class NightlyGroupSyncJob(private val groupScraper: ClickTTGroupScraper) {
         logger.info("NightlyGroupSyncJob: complete — $refreshed / ${groups.size} groups refreshed")
     }
 
-    private fun getGroupsForSeason(seasonId: UUID): List<GroupRef> = transaction {
-        (Groups innerJoin Federations innerJoin Seasons)
-            .select(Groups.id, Groups.clickttId, Federations.name, Seasons.name)
-            .where {
-                (Groups.seasonId eq seasonId) and
-                Groups.clickttId.isNotNull()
-            }
-            .map {
-                GroupRef(
-                    dbId         = it[Groups.id],
-                    clickttId    = it[Groups.clickttId]!!,
-                    championship = ClickTTGroupScraper.toChampionship(it[Federations.name], it[Seasons.name])
-                )
-            }
-    }
+    private fun getGroupsForSeason(seasonId: UUID): List<GroupRef> =
+        transaction {
+            (Groups innerJoin Federations innerJoin Seasons)
+                .select(Groups.id, Groups.clickttId, Federations.name, Seasons.name)
+                .where {
+                    (Groups.seasonId eq seasonId) and
+                        Groups.clickttId.isNotNull()
+                }
+                .map {
+                    GroupRef(
+                        dbId = it[Groups.id],
+                        clickttId = it[Groups.clickttId]!!,
+                        championship = ClickTTGroupScraper.toChampionship(it[Federations.name], it[Seasons.name]),
+                    )
+                }
+        }
 
     companion object {
         fun create(): NightlyGroupSyncJob {

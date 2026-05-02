@@ -12,31 +12,33 @@ import java.time.ZoneId
 import java.util.*
 
 object PlayerService {
-
     suspend fun getById(playerId: String): PlayerResponse? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
-            val playerRow = Players.select(Players.id, Players.fullName, Players.licenceNr)
-                .where { Players.id eq uuid }
-                .firstOrNull() ?: return@dbQuery null
+            val playerRow =
+                Players.select(Players.id, Players.fullName, Players.licenceNr)
+                    .where { Players.id eq uuid }
+                    .firstOrNull() ?: return@dbQuery null
 
-            val seasonData = (PlayerSeasons innerJoin Teams innerJoin Clubs innerJoin Seasons)
-                .select(PlayerSeasons.klass, Clubs.name)
-                .where { PlayerSeasons.playerId eq uuid }
-                .orderBy(Seasons.name to SortOrder.DESC)
-                .firstOrNull()
+            val seasonData =
+                (PlayerSeasons innerJoin Teams innerJoin Clubs innerJoin Seasons)
+                    .select(PlayerSeasons.klass, Clubs.name)
+                    .where { PlayerSeasons.playerId eq uuid }
+                    .orderBy(Seasons.name to SortOrder.DESC)
+                    .firstOrNull()
 
-            val currentElo = PlayerElos
-                .select(PlayerElos.eloValue)
-                .where { PlayerElos.playerId eq uuid }
-                .orderBy(PlayerElos.recordedAt to SortOrder.DESC)
-                .firstOrNull()
-                ?.get(PlayerElos.eloValue)
+            val currentElo =
+                PlayerElos
+                    .select(PlayerElos.eloValue)
+                    .where { PlayerElos.playerId eq uuid }
+                    .orderBy(PlayerElos.recordedAt to SortOrder.DESC)
+                    .firstOrNull()
+                    ?.get(PlayerElos.eloValue)
 
             playerRow.toPlayerResponse(
                 currentClubName = seasonData?.get(Clubs.name),
-                klass           = seasonData?.get(PlayerSeasons.klass),
-                currentElo      = currentElo,
+                klass = seasonData?.get(PlayerSeasons.klass),
+                currentElo = currentElo,
             )
         }
     }
@@ -50,7 +52,7 @@ object PlayerService {
                 .orderBy(PlayerElos.recordedAt to SortOrder.ASC)
                 .map {
                     EloEntryResponse(
-                        eloValue   = it[PlayerElos.eloValue],
+                        eloValue = it[PlayerElos.eloValue],
                         recordedAt = it[PlayerElos.recordedAt].toString(),
                         seasonName = it[Seasons.name],
                     )
@@ -61,17 +63,17 @@ object PlayerService {
     suspend fun getMatchHistory(playerId: String): List<PlayerGameResponse>? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
-            val homeTeam   = Teams.alias("home_team")
-            val awayTeam   = Teams.alias("away_team")
+            val homeTeam = Teams.alias("home_team")
+            val awayTeam = Teams.alias("away_team")
             val homePlayer = Players.alias("home_player")
             val awayPlayer = Players.alias("away_player")
 
             Games
-                .join(Matches,    JoinType.INNER, Games.matchId,       Matches.id)
-                .join(homeTeam,   JoinType.INNER, Matches.homeTeamId,  homeTeam[Teams.id])
-                .join(awayTeam,   JoinType.INNER, Matches.awayTeamId,  awayTeam[Teams.id])
-                .join(homePlayer, JoinType.LEFT,  Games.homePlayer1Id, homePlayer[Players.id])
-                .join(awayPlayer, JoinType.LEFT,  Games.awayPlayer1Id, awayPlayer[Players.id])
+                .join(Matches, JoinType.INNER, Games.matchId, Matches.id)
+                .join(homeTeam, JoinType.INNER, Matches.homeTeamId, homeTeam[Teams.id])
+                .join(awayTeam, JoinType.INNER, Matches.awayTeamId, awayTeam[Teams.id])
+                .join(homePlayer, JoinType.LEFT, Games.homePlayer1Id, homePlayer[Players.id])
+                .join(awayPlayer, JoinType.LEFT, Games.awayPlayer1Id, awayPlayer[Players.id])
                 .select(
                     Games.id,
                     Games.homePlayer1Id,
@@ -93,50 +95,87 @@ object PlayerService {
                 )
                 .where {
                     ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
-                    (Games.gameType eq GameType.SINGLES)
+                        (Games.gameType eq GameType.SINGLES)
                 }
                 .orderBy(Matches.playedAt to SortOrder.DESC)
-                .map { row ->
-                    val isHome = row[Games.homePlayer1Id] == uuid
-                    PlayerGameResponse(
-                        matchId      = row[Matches.id].toString(),
-                        gameId       = row[Games.id].toString(),
-                        playedAt     = row[Matches.playedAt]?.toString(),
-                        homeTeam     = row[homeTeam[Teams.name]],
-                        awayTeam     = row[awayTeam[Teams.name]],
-                        homeScore    = row[Matches.homeScore]?.toInt(),
-                        awayScore    = row[Matches.awayScore]?.toInt(),
-                        round        = row[Matches.round],
-                        status       = row[Matches.status],
-                        playerSide   = if (isHome) "home" else "away",
-                        opponentName = if (isHome) row[awayPlayer[Players.fullName]]
-                                       else        row[homePlayer[Players.fullName]],
-                        homeSets     = row[Games.homeSets]?.toInt(),
-                        awaySets     = row[Games.awaySets]?.toInt(),
-                        result       = row[Games.result],
-                        eloDelta     = if (isHome) row[Games.homePlayer1EloDelta]
-                                       else        row[Games.awayPlayer1EloDelta],
-                    )
+                .toList()
+                .let { rows ->
+                    val gameIds = rows.map { it[Games.id] }
+                    val setsByGame =
+                        if (gameIds.isEmpty()) {
+                            emptyMap()
+                        } else {
+                            GameSets
+                                .select(GameSets.gameId, GameSets.setNumber, GameSets.homePoints, GameSets.awayPoints)
+                                .where { GameSets.gameId inList gameIds }
+                                .orderBy(GameSets.setNumber to SortOrder.ASC)
+                                .groupBy { it[GameSets.gameId] }
+                        }
+                    rows.map { row ->
+                        val isHome = row[Games.homePlayer1Id] == uuid
+                        val gameId = row[Games.id]
+                        PlayerGameResponse(
+                            matchId = row[Matches.id].toString(),
+                            gameId = gameId.toString(),
+                            playedAt = row[Matches.playedAt]?.toString(),
+                            homeTeam = row[homeTeam[Teams.name]],
+                            awayTeam = row[awayTeam[Teams.name]],
+                            homeScore = row[Matches.homeScore]?.toInt(),
+                            awayScore = row[Matches.awayScore]?.toInt(),
+                            round = row[Matches.round],
+                            status = row[Matches.status],
+                            playerSide = if (isHome) "home" else "away",
+                            opponentName =
+                                if (isHome) {
+                                    row[awayPlayer[Players.fullName]]
+                                } else {
+                                    row[homePlayer[Players.fullName]]
+                                },
+                            homeSets = row[Games.homeSets]?.toInt(),
+                            awaySets = row[Games.awaySets]?.toInt(),
+                            result = row[Games.result],
+                            eloDelta =
+                                if (isHome) {
+                                    row[Games.homePlayer1EloDelta]
+                                } else {
+                                    row[Games.awayPlayer1EloDelta]
+                                },
+                            sets =
+                                setsByGame[gameId]?.map { s ->
+                                    SetResponse(
+                                        setNumber = s[GameSets.setNumber].toInt(),
+                                        homePoints = s[GameSets.homePoints].toInt(),
+                                        awayPoints = s[GameSets.awayPoints].toInt(),
+                                    )
+                                } ?: emptyList(),
+                        )
+                    }
                 }
         }
     }
 
-    suspend fun search(name: String, page: Int, size: Int): PagedResponse<PlayerResponse>? {
+    suspend fun search(
+        name: String,
+        page: Int,
+        size: Int,
+    ): PagedResponse<PlayerResponse>? {
         if (name.length < 3) return null
 
         return dbQuery {
             val pattern = LikePattern("%${name.lowercase()}%")
 
-            val total = Players.select(Players.id)
-                .where { Players.fullName.lowerCase() like pattern }
-                .count()
+            val total =
+                Players.select(Players.id)
+                    .where { Players.fullName.lowerCase() like pattern }
+                    .count()
 
             // Step 1 — fetch paged core player rows
-            val basePlayers = Players.select(Players.id, Players.fullName, Players.licenceNr)
-                .where { Players.fullName.lowerCase() like pattern }
-                .orderBy(Players.fullName to SortOrder.ASC)
-                .limit(size).offset(start = (page * size).toLong())
-                .toList()
+            val basePlayers =
+                Players.select(Players.id, Players.fullName, Players.licenceNr)
+                    .where { Players.fullName.lowerCase() like pattern }
+                    .orderBy(Players.fullName to SortOrder.ASC)
+                    .limit(size).offset(start = (page * size).toLong())
+                    .toList()
 
             val playerIds = basePlayers.map { it[Players.id] }
 
@@ -145,44 +184,52 @@ object PlayerService {
             }
 
             // Step 2 — fetch club/klass for found players, picking the most recent season
-            val playerStats = (PlayerSeasons innerJoin Teams innerJoin Clubs innerJoin Seasons)
-                .select(PlayerSeasons.playerId, PlayerSeasons.klass, Clubs.name)
-                .where { PlayerSeasons.playerId inList playerIds }
-                .orderBy(Seasons.name to SortOrder.DESC)
-                .toList()
-                .groupBy { it[PlayerSeasons.playerId] }
-                .mapValues { it.value.first() }
+            val playerStats =
+                (PlayerSeasons innerJoin Teams innerJoin Clubs innerJoin Seasons)
+                    .select(PlayerSeasons.playerId, PlayerSeasons.klass, Clubs.name)
+                    .where { PlayerSeasons.playerId inList playerIds }
+                    .orderBy(Seasons.name to SortOrder.DESC)
+                    .toList()
+                    .groupBy { it[PlayerSeasons.playerId] }
+                    .mapValues { it.value.first() }
 
             // Step 3 — merge results
-            val items = basePlayers.map { row ->
-                val stats = playerStats[row[Players.id]]
-                row.toPlayerResponse(
-                    currentClubName = stats?.get(Clubs.name),
-                    klass           = stats?.get(PlayerSeasons.klass),
-                )
-            }
+            val items =
+                basePlayers.map { row ->
+                    val stats = playerStats[row[Players.id]]
+                    row.toPlayerResponse(
+                        currentClubName = stats?.get(Clubs.name),
+                        klass = stats?.get(PlayerSeasons.klass),
+                    )
+                }
 
             PagedResponse(items = items, page = page, size = size, total = total)
         }
     }
 
-    suspend fun getAllLicensedPlayers(): List<Pair<UUID, String>> = dbQuery {
-        Players.select(Players.id, Players.licenceNr)
-            .where { Players.licenceNr.isNotNull() }
-            .map { it[Players.id] to it[Players.licenceNr]!! }
-    }
+    suspend fun getAllLicensedPlayers(): List<Pair<UUID, String>> =
+        dbQuery {
+            Players.select(Players.id, Players.licenceNr)
+                .where { Players.licenceNr.isNotNull() }
+                .map { it[Players.id] to it[Players.licenceNr]!! }
+        }
 
-    suspend fun getAllPlayersWithClickTtId(): List<Pair<UUID, Int>> = dbQuery {
-        Players.select(Players.id, Players.clickttId)
-            .where { Players.clickttId.isNotNull() }
-            .map { it[Players.id] to it[Players.clickttId]!! }
-    }
+    suspend fun getAllPlayersWithClickTtId(): List<Pair<UUID, Int>> =
+        dbQuery {
+            Players.select(Players.id, Players.clickttId)
+                .where { Players.clickttId.isNotNull() }
+                .map { it[Players.id] to it[Players.clickttId]!! }
+        }
 
-    suspend fun saveBaseElo(playerId: UUID, seasonId: UUID, eloValue: Int) = dbQuery {
+    suspend fun saveBaseElo(
+        playerId: UUID,
+        seasonId: UUID,
+        eloValue: Int,
+    ) = dbQuery {
         PlayerElos.insert {
-            it[PlayerElos.playerId]   = playerId
-            it[PlayerElos.seasonId]   = seasonId
-            it[PlayerElos.eloValue]   = eloValue
+            it[PlayerElos.playerId] = playerId
+            it[PlayerElos.seasonId] = seasonId
+            it[PlayerElos.eloValue] = eloValue
             it[PlayerElos.recordedAt] = OffsetDateTime.now(ZoneId.of("Europe/Zurich"))
         }
     }
@@ -198,20 +245,22 @@ object PlayerService {
         }
     }
 
-    suspend fun getLicenceNrById(playerId: UUID): String? = dbQuery {
-        Players.select(Players.licenceNr)
-            .where { Players.id eq playerId }
-            .map { it[Players.licenceNr] }
-            .firstOrNull()
-    }
+    suspend fun getLicenceNrById(playerId: UUID): String? =
+        dbQuery {
+            Players.select(Players.licenceNr)
+                .where { Players.id eq playerId }
+                .map { it[Players.licenceNr] }
+                .firstOrNull()
+        }
 
-    suspend fun getPlayersMissingClickTtId(): List<Pair<UUID, String>> = dbQuery {
-        Players.select(Players.id, Players.licenceNr)
-            .where {
-                Players.clickttId.isNull() and Players.licenceNr.isNotNull()
-            }
-            .map { it[Players.id] to it[Players.licenceNr]!! }
-    }
+    suspend fun getPlayersMissingClickTtId(): List<Pair<UUID, String>> =
+        dbQuery {
+            Players.select(Players.id, Players.licenceNr)
+                .where {
+                    Players.clickttId.isNull() and Players.licenceNr.isNotNull()
+                }
+                .map { it[Players.id] to it[Players.licenceNr]!! }
+        }
 
     suspend fun updateClickTtIdsBatch(mappings: Map<String, Int>) {
         if (mappings.isEmpty()) return
@@ -232,7 +281,7 @@ object PlayerService {
                 val (personId, fullName) = data
                 Players.update({ Players.licenceNr eq licence }) {
                     it[Players.clickttId] = personId
-                    it[Players.fullName]  = fullName
+                    it[Players.fullName] = fullName
                 }
             }
         }
@@ -260,25 +309,26 @@ object PlayerService {
         }
     }
 
-    suspend fun getClickTtIdById(playerId: UUID): Int? = dbQuery {
-        Players.select(Players.clickttId)
-            .where { Players.id eq playerId }
-            .map { it[Players.clickttId] }
-            .firstOrNull()
-    }
+    suspend fun getClickTtIdById(playerId: UUID): Int? =
+        dbQuery {
+            Players.select(Players.clickttId)
+                .where { Players.id eq playerId }
+                .map { it[Players.clickttId] }
+                .firstOrNull()
+        }
 
     private fun ResultRow.toPlayerResponse(
         currentClubName: String? = null,
         klass: String? = null,
         currentElo: Int? = null,
-        isSyncing: Boolean = false
+        isSyncing: Boolean = false,
     ) = PlayerResponse(
-        id              = this[Players.id].toString(),
-        fullName        = this[Players.fullName],
-        licenceNr       = this[Players.licenceNr],
+        id = this[Players.id].toString(),
+        fullName = this[Players.fullName],
+        licenceNr = this[Players.licenceNr],
         currentClubName = currentClubName,
-        klass           = klass,
-        currentElo      = currentElo,
-        isSyncing       = isSyncing
+        klass = klass,
+        currentElo = currentElo,
+        isSyncing = isSyncing,
     )
 }

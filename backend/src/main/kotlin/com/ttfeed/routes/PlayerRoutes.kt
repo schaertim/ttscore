@@ -14,23 +14,27 @@ import java.util.*
 fun Route.playerRoutes() {
     route("/players") {
         get("/search") {
-            val name = call.request.queryParameters["name"]
-                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing name parameter")
+            val name =
+                call.request.queryParameters["name"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing name parameter")
             val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 0
             val size = call.request.queryParameters["size"]?.toIntOrNull() ?: 20
 
-            val result = PlayerService.search(name, page, size)
-                ?: return@get call.respond(HttpStatusCode.BadRequest, "Name must be at least 3 characters")
+            val result =
+                PlayerService.search(name, page, size)
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Name must be at least 3 characters")
 
             call.respond(result)
         }
 
         get("/{id}") {
-            val id = call.parameters["id"]
-                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
 
-            val player = PlayerService.getById(id)
-                ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
+            val player =
+                PlayerService.getById(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
 
             val shouldSync = player.licenceNr != null
             if (shouldSync) {
@@ -51,21 +55,25 @@ fun Route.playerRoutes() {
         }
 
         get("/{id}/elo") {
-            val id = call.parameters["id"]
-                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
 
-            val history = PlayerService.getEloHistory(id)
-                ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
+            val history =
+                PlayerService.getEloHistory(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
 
             call.respond(HttpStatusCode.OK, history)
         }
 
         get("/{id}/matches") {
-            val id = call.parameters["id"]
-                ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
 
-            val matches = PlayerService.getMatchHistory(id)
-                ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
+            val matches =
+                PlayerService.getMatchHistory(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
 
             call.respond(HttpStatusCode.OK, matches)
         }

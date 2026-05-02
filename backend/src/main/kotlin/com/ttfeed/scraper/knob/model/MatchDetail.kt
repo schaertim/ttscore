@@ -6,7 +6,7 @@ import com.ttfeed.model.GameType
 data class ParsedSet(
     val setNumber: Int,
     val homePoints: Int,
-    val awayPoints: Int
+    val awayPoints: Int,
 )
 
 data class ParsedGame(
@@ -25,17 +25,17 @@ data class ParsedGame(
     val homeSets: Int?,
     val awaySets: Int?,
     val result: GameResult,
-    val sets: List<ParsedSet>
+    val sets: List<ParsedSet>,
 )
 
 data class ParsedMatchDetail(
     val knobMatchId: Int,
-    val games: List<ParsedGame>
+    val games: List<ParsedGame>,
 )
 
 data class GruppePageResult(
     val gruppeId: Int,
     val leagueName: String,
     val divisionName: String,
-    val groupName: String
+    val groupName: String,
 )

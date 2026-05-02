@@ -9,9 +9,10 @@ import io.ktor.server.routing.*
 fun Route.statsRoutes() {
     route("/stats") {
         get {
-            val seasonName = call.request.queryParameters["season"]
-                ?: SeasonService.getCurrentSeason()?.second
-                ?: return@get call.respond(HttpStatusCode.BadRequest, "No seasons available")
+            val seasonName =
+                call.request.queryParameters["season"]
+                    ?: SeasonService.getCurrentSeason()?.second
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "No seasons available")
             call.respond(StatsService.getStats(seasonName))
         }
     }

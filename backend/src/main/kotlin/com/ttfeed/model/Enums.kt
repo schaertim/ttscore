@@ -2,22 +2,22 @@ package com.ttfeed.model
 
 enum class GameType {
     SINGLES,
-    DOUBLES
+    DOUBLES,
 }
 
 enum class GameResult {
     HOME,
     AWAY,
-    NOT_PLAYED  // Game position exists but was not played (forfeit, or result not yet scraped)
+    NOT_PLAYED, // Game position exists but was not played (forfeit, or result not yet scraped)
 }
 
 enum class MatchStatus {
     SCHEDULED,
     COMPLETED,
-    WALKOVER
+    WALKOVER,
 }
 
 enum class GenderCategory {
     MENS,
-    WOMENS
+    WOMENS,
 }

@@ -7,17 +7,17 @@ import com.ttfeed.scraper.knob.model.ParsedStandingRow
 import com.ttfeed.scraper.knob.model.ParsedTeam
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
-import java.util.UUID
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.*
+import java.util.UUID
 
 class GroupScraper(
     private val client: KnobClient,
-    private val parser: KnobParser
+    private val parser: KnobParser,
 ) {
     private val logger = LoggerFactory.getLogger(GroupScraper::class.java)
 
@@ -34,7 +34,7 @@ class GroupScraper(
             year == 2014 -> 1..550
             year == 2015 -> 500..1000
             year == 2016 -> 4050..4600
-            else         -> 1..600
+            else -> 1..600
         }
     }
 
@@ -47,15 +47,17 @@ class GroupScraper(
         logger.info("GroupScraper: ${seasons.size} seasons to scrape")
 
         for (season in seasons) {
-            val range      = gruppeRange(season)
+            val range = gruppeRange(season)
             val seasonYear = season.substringBefore("/").toInt()
             logger.info("Season $season — gruppe range $range")
 
             // Regional federations were introduced in 2011/12 — only run STT for earlier seasons
-            val federationsToRun = if (seasonYear < 2011)
-                FEDERATION_RVIDS.filter { it.value == null }
-            else
-                FEDERATION_RVIDS
+            val federationsToRun =
+                if (seasonYear < 2011) {
+                    FEDERATION_RVIDS.filter { it.value == null }
+                } else {
+                    FEDERATION_RVIDS
+                }
 
             for ((leagueName, rvid) in federationsToRun) {
                 runPass(season, seasonYear, leagueName = leagueName, rvid = rvid, range = range)
@@ -70,14 +72,14 @@ class GroupScraper(
         seasonYear: Int,
         leagueName: String,
         rvid: Int?,
-        range: IntRange
+        range: IntRange,
     ) {
         logger.info("  [$season] $leagueName pass${if (rvid != null) " (rvid=$rvid)" else ""}")
         var found = 0
 
         for (gruppeId in range) {
             try {
-                val html   = client.fetchDivisionPage(gruppeId, season, rvid)
+                val html = client.fetchDivisionPage(gruppeId, season, rvid)
                 val result = parser.parseGruppePage(html, gruppeId, seasonYear) ?: continue
 
                 // Cross-check — the page's active league must match this pass's league
@@ -94,11 +96,15 @@ class GroupScraper(
                 val page = parser.parseDivisionPage(html)
 
                 transaction {
-                    val seasonId     = upsertSeason(season)
+                    val seasonId = upsertSeason(season)
                     val federationId = upsertFederation(leagueName)
                     // Combine division + group name when they differ (e.g. "1. Liga - Gruppe A")
-                    val groupName = if (result.groupName != result.divisionName)
-                        "${result.divisionName} - ${result.groupName}" else result.divisionName
+                    val groupName =
+                        if (result.groupName != result.divisionName) {
+                            "${result.divisionName} - ${result.groupName}"
+                        } else {
+                            result.divisionName
+                        }
                     val groupId = upsertGroup(federationId, seasonId, groupName, gruppeId)
 
                     if (page.teams.isNotEmpty()) {
@@ -110,7 +116,10 @@ class GroupScraper(
                 }
 
                 found++
-                logger.info("    gruppe=$gruppeId → $leagueName / ${result.divisionName} / ${result.groupName} — ${page.teams.size} teams, ${page.matches.size} matches")
+                logger.info(
+                    "    gruppe=$gruppeId → $leagueName / ${result.divisionName} / " +
+                        "${result.groupName} — ${page.teams.size} teams, ${page.matches.size} matches",
+                )
             } catch (e: Exception) {
                 logger.error("    gruppe=$gruppeId failed: ${e.message}")
             }
@@ -119,14 +128,18 @@ class GroupScraper(
         logger.info("  [$season] $leagueName done — $found groups found")
     }
 
-    private fun isAlreadyScraped(gruppeId: Int, season: String): Boolean = transaction {
-        (Groups innerJoin Seasons)
-            .select(Groups.id)
-            .where { (Groups.knobGruppe eq gruppeId) and (Seasons.name eq season) }
-            .firstOrNull()
-            ?.let { row -> Teams.selectAll().where { Teams.groupId eq row[Groups.id] }.count() > 0 }
-            ?: false
-    }
+    private fun isAlreadyScraped(
+        gruppeId: Int,
+        season: String,
+    ): Boolean =
+        transaction {
+            (Groups innerJoin Seasons)
+                .select(Groups.id)
+                .where { (Groups.knobGruppe eq gruppeId) and (Seasons.name eq season) }
+                .firstOrNull()
+                ?.let { row -> Teams.selectAll().where { Teams.groupId eq row[Groups.id] }.count() > 0 }
+                ?: false
+        }
 
     // -------------------------------------------------------------------------
     // DB upserts — insert-ignore then select to get the ID
@@ -146,54 +159,66 @@ class GroupScraper(
             .first()[Federations.id]
     }
 
-    private fun upsertGroup(federationId: UUID, seasonId: UUID, name: String, knobGruppe: Int): UUID {
+    private fun upsertGroup(
+        federationId: UUID,
+        seasonId: UUID,
+        name: String,
+        knobGruppe: Int,
+    ): UUID {
         Groups.insertIgnore {
             it[Groups.federationId] = federationId
-            it[Groups.seasonId]     = seasonId
-            it[Groups.name]         = name
-            it[Groups.knobGruppe]   = knobGruppe
+            it[Groups.seasonId] = seasonId
+            it[Groups.name] = name
+            it[Groups.knobGruppe] = knobGruppe
         }
         return Groups.select(Groups.id).where {
             (Groups.federationId eq federationId) and
-            (Groups.seasonId     eq seasonId) and
-            (Groups.knobGruppe   eq knobGruppe)
+                (Groups.seasonId eq seasonId) and
+                (Groups.knobGruppe eq knobGruppe)
         }.first()[Groups.id]
     }
 
     private fun upsertStandings(
         standings: List<ParsedStandingRow>,
         groupId: UUID,
-        teamIdMap: Map<Int, UUID>
+        teamIdMap: Map<Int, UUID>,
     ) {
         for (standing in standings) {
             val teamId = teamIdMap[standing.knobTeamId] ?: continue
 
             // Exposed upsert: insert, and on conflict (group_id, team_id) update all stats
             Standings.upsert(Standings.groupId, Standings.teamId) {
-                it[Standings.groupId]      = groupId
-                it[Standings.teamId]       = teamId
-                it[Standings.position]     = standing.position.toShort()
-                it[Standings.played]       = standing.played.toShort()
-                it[Standings.won]          = standing.won.toShort()
-                it[Standings.drawn]        = standing.drawn.toShort()
-                it[Standings.lost]         = standing.lost.toShort()
-                it[Standings.gamesFor]     = standing.gamesFor.toShort()
+                it[Standings.groupId] = groupId
+                it[Standings.teamId] = teamId
+                it[Standings.position] = standing.position.toShort()
+                it[Standings.played] = standing.played.toShort()
+                it[Standings.won] = standing.won.toShort()
+                it[Standings.drawn] = standing.drawn.toShort()
+                it[Standings.lost] = standing.lost.toShort()
+                it[Standings.gamesFor] = standing.gamesFor.toShort()
                 it[Standings.gamesAgainst] = standing.gamesAgainst.toShort()
-                it[Standings.points]       = standing.points.toShort()
+                it[Standings.points] = standing.points.toShort()
             }
         }
     }
 
-    private fun updateGroupZones(groupId: UUID, promotionSpots: Int, relegationSpots: Int) {
+    private fun updateGroupZones(
+        groupId: UUID,
+        promotionSpots: Int,
+        relegationSpots: Int,
+    ) {
         if (promotionSpots > 0 || relegationSpots > 0) {
             Groups.update({ Groups.id eq groupId }) {
-                it[Groups.promotionSpots]  = promotionSpots.toShort()
+                it[Groups.promotionSpots] = promotionSpots.toShort()
                 it[Groups.relegationSpots] = relegationSpots.toShort()
             }
         }
     }
 
-    private fun upsertTeams(teams: List<ParsedTeam>, groupId: UUID): Map<Int, UUID> {
+    private fun upsertTeams(
+        teams: List<ParsedTeam>,
+        groupId: UUID,
+    ): Map<Int, UUID> {
         return teams.associate { team ->
             // Strip only trailing numbers, roman numerals, or single letters from team names
             // to derive the club name. e.g. "Burgdorf 1" → "Burgdorf", "Young Stars ZH" → "Young Stars ZH"
@@ -203,78 +228,89 @@ class GroupScraper(
             Clubs.insertIgnore {
                 it[Clubs.name] = cleanClubName
             }
-            val clubId = Clubs.select(Clubs.id)
-                .where { Clubs.name eq cleanClubName }
-                .first()[Clubs.id]
+            val clubId =
+                Clubs.select(Clubs.id)
+                    .where { Clubs.name eq cleanClubName }
+                    .first()[Clubs.id]
 
             // Team knobIds are only unique within a group — scope lookup to (knobId, groupId)
-            val existingTeamId = Teams.select(Teams.id)
-                .where { (Teams.knobId eq team.knobTeamId) and (Teams.groupId eq groupId) }
-                .firstOrNull()?.get(Teams.id)
-
-            val teamId = existingTeamId ?: run {
-                Teams.insert {
-                    it[Teams.name]    = team.name
-                    it[Teams.clubId]  = clubId
-                    it[Teams.groupId] = groupId
-                    it[Teams.knobId]  = team.knobTeamId
-                }
+            val existingTeamId =
                 Teams.select(Teams.id)
                     .where { (Teams.knobId eq team.knobTeamId) and (Teams.groupId eq groupId) }
-                    .first()[Teams.id]
-            }
+                    .firstOrNull()?.get(Teams.id)
+
+            val teamId =
+                existingTeamId ?: run {
+                    Teams.insert {
+                        it[Teams.name] = team.name
+                        it[Teams.clubId] = clubId
+                        it[Teams.groupId] = groupId
+                        it[Teams.knobId] = team.knobTeamId
+                    }
+                    Teams.select(Teams.id)
+                        .where { (Teams.knobId eq team.knobTeamId) and (Teams.groupId eq groupId) }
+                        .first()[Teams.id]
+                }
 
             team.knobTeamId to teamId
         }
     }
 
-    private fun upsertMatches(matches: List<ParsedMatch>, groupId: UUID, teamIdMap: Map<Int, UUID>) {
+    private fun upsertMatches(
+        matches: List<ParsedMatch>,
+        groupId: UUID,
+        teamIdMap: Map<Int, UUID>,
+    ) {
         for (match in matches) {
             val homeTeamId = teamIdMap[match.homeKnobTeamId] ?: continue
             val awayTeamId = teamIdMap[match.awayKnobTeamId] ?: continue
-            val playedAt   = match.playedAt?.let { parseMatchDate(it) }
+            val playedAt = match.playedAt?.let { parseMatchDate(it) }
 
             // Match knobIds are only unique within a group — scope lookup to (groupId, knobMatchId)
-            val exists = Matches.select(Matches.id)
-                .where { (Matches.groupId eq groupId) and (Matches.knobMatchId eq match.knobMatchId) }
-                .firstOrNull() != null
+            val exists =
+                Matches.select(Matches.id)
+                    .where { (Matches.groupId eq groupId) and (Matches.knobMatchId eq match.knobMatchId) }
+                    .firstOrNull() != null
 
             if (!exists) {
                 Matches.insert {
-                    it[Matches.groupId]     = groupId
-                    it[Matches.homeTeamId]  = homeTeamId
-                    it[Matches.awayTeamId]  = awayTeamId
-                    it[Matches.round]       = match.round
-                    it[Matches.playedAt]    = playedAt
-                    it[Matches.homeScore]   = match.homeScore?.toShort()
-                    it[Matches.awayScore]   = match.awayScore?.toShort()
+                    it[Matches.groupId] = groupId
+                    it[Matches.homeTeamId] = homeTeamId
+                    it[Matches.awayTeamId] = awayTeamId
+                    it[Matches.round] = match.round
+                    it[Matches.playedAt] = playedAt
+                    it[Matches.homeScore] = match.homeScore?.toShort()
+                    it[Matches.awayScore] = match.awayScore?.toShort()
                     it[Matches.knobMatchId] = match.knobMatchId
-                    it[Matches.status]      = match.status
+                    it[Matches.status] = match.status
                 }
             } else if (match.status == MatchStatus.COMPLETED) {
                 // Only update if the match has just completed — completed matches are immutable
                 Matches.update({
                     (Matches.groupId eq groupId) and (Matches.knobMatchId eq match.knobMatchId) and
-                            (Matches.status eq MatchStatus.SCHEDULED)
+                        (Matches.status eq MatchStatus.SCHEDULED)
                 }) {
                     it[Matches.homeScore] = match.homeScore?.toShort()
                     it[Matches.awayScore] = match.awayScore?.toShort()
-                    it[Matches.status]    = MatchStatus.COMPLETED
+                    it[Matches.status] = MatchStatus.COMPLETED
                 }
             }
         }
     }
 
     // Date format from knob: "Sa. 12.10.2024 14:00" — strip the day-of-week prefix
-    private fun parseMatchDate(raw: String): OffsetDateTime? = try {
-        val withoutDay = raw.substringAfter(". ").trim()
-        LocalDateTime.parse(withoutDay, DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
-            .atOffset(ZoneOffset.UTC)
-    } catch (e: Exception) {
-        null
-    }
+    private fun parseMatchDate(raw: String): OffsetDateTime? =
+        try {
+            val withoutDay = raw.substringAfter(". ").trim()
+            LocalDateTime.parse(withoutDay, DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
+                .atOffset(ZoneOffset.UTC)
+        } catch (e: Exception) {
+            null
+        }
 }
 
 // Top-level so it can be reused without instantiating GroupScraper
-fun generateSeasons(fromYear: Int, toYear: Int): List<String> =
-    (fromYear..toYear).map { year -> "$year/${(year + 1).toString().takeLast(4)}" }
+fun generateSeasons(
+    fromYear: Int,
+    toYear: Int,
+): List<String> = (fromYear..toYear).map { year -> "$year/${(year + 1).toString().takeLast(4)}" }

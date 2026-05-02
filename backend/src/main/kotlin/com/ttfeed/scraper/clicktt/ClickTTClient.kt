@@ -13,26 +13,39 @@ class ClickTTClient {
     private val baseUrl = "https://www.click-tt.ch/cgi-bin/WebObjects/nuLigaTTCH.woa/wa"
     private val logger = LoggerFactory.getLogger(ClickTTClient::class.java)
 
-    private val client = HttpClient(CIO) {
-        install(HttpCookies)
-        install(HttpTimeout) {
-            connectTimeoutMillis = 10_000
-            requestTimeoutMillis = 30_000
-            socketTimeoutMillis  = 30_000
+    private val client =
+        HttpClient(CIO) {
+            install(HttpCookies)
+            install(HttpTimeout) {
+                connectTimeoutMillis = 10_000
+                requestTimeoutMillis = 30_000
+                socketTimeoutMillis = 30_000
+            }
+            followRedirects = true
         }
-        followRedirects = true
-    }
 
-    suspend fun fetchPlayerPortrait(personId: Int, season: String? = null): String {
-        val url = buildString {
-            append("$baseUrl/playerPortrait?federation=STT&person=$personId")
-            if (season != null) append("&season=${season.replace("/", "%2F")}")
-        }
+    suspend fun fetchPlayerPortrait(
+        personId: Int,
+        season: String? = null,
+    ): String {
+        val url =
+            buildString {
+                append("$baseUrl/playerPortrait?federation=STT&person=$personId")
+                if (season != null) append("&season=${season.replace("/", "%2F")}")
+            }
         return fetchWithRetry(url)
     }
 
     suspend fun fetchUrl(relativeOrAbsoluteUrl: String): String {
-        val fullUrl = if (relativeOrAbsoluteUrl.startsWith("http")) relativeOrAbsoluteUrl else "https://www.click-tt.ch$relativeOrAbsoluteUrl"
+        val fullUrl =
+            if (relativeOrAbsoluteUrl.startsWith(
+                    "http",
+                )
+            ) {
+                relativeOrAbsoluteUrl
+            } else {
+                "https://www.click-tt.ch$relativeOrAbsoluteUrl"
+            }
         return fetchWithRetry(fullUrl)
     }
 
@@ -54,26 +67,38 @@ class ClickTTClient {
      * Fetches a group page — either the standings view (default) or the full match schedule
      * (displayDetail = "meetings").
      */
-    suspend fun fetchGroupPage(championship: String, groupId: Int, displayDetail: String? = null): String {
+    suspend fun fetchGroupPage(
+        championship: String,
+        groupId: Int,
+        displayDetail: String? = null,
+    ): String {
         val encoded = championship.replace("/", "%2F").replace(" ", "+")
-        val url = buildString {
-            append("$baseUrl/groupPage?championship=$encoded&group=$groupId&displayTyp=gesamt")
-            if (displayDetail != null) append("&displayDetail=$displayDetail")
-        }
+        val url =
+            buildString {
+                append("$baseUrl/groupPage?championship=$encoded&group=$groupId&displayTyp=gesamt")
+                if (displayDetail != null) append("&displayDetail=$displayDetail")
+            }
         return fetchWithRetry(url)
     }
 
     /**
      * Fetches the individual match detail (Begegnungsbericht) page.
      */
-    suspend fun fetchMatchDetail(meetingId: Int, championship: String, groupId: Int): String {
+    suspend fun fetchMatchDetail(
+        meetingId: Int,
+        championship: String,
+        groupId: Int,
+    ): String {
         val encoded = championship.replace("/", "%2F").replace(" ", "+")
         return fetchWithRetry(
-            "$baseUrl/groupMeetingReport?meeting=$meetingId&championship=$encoded&group=$groupId"
+            "$baseUrl/groupMeetingReport?meeting=$meetingId&championship=$encoded&group=$groupId",
         )
     }
 
-    private suspend fun fetchWithRetry(url: String, maxAttempts: Int = 3): String {
+    private suspend fun fetchWithRetry(
+        url: String,
+        maxAttempts: Int = 3,
+    ): String {
         delay(10)
         var lastException: Exception? = null
         repeat(maxAttempts) { attempt ->

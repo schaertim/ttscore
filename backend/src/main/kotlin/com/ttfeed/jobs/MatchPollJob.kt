@@ -21,7 +21,7 @@ import java.time.OffsetDateTime
 
 class MatchPollJob(
     private val groupScraper: ClickTTGroupScraper,
-    private val matchScraper: ClickTTMatchScraper
+    private val matchScraper: ClickTTMatchScraper,
 ) {
     private val logger = LoggerFactory.getLogger(MatchPollJob::class.java)
 
@@ -71,27 +71,30 @@ class MatchPollJob(
             delay(500L)
         }
 
-        logger.info("MatchPollJob: complete — ${newlyCompletedMatchIds.size} new matches, ${playerIds.size} players synced")
+        logger.info(
+            "MatchPollJob: complete — ${newlyCompletedMatchIds.size} new matches, ${playerIds.size} players synced",
+        )
     }
 
-    private fun findGroupsWithPastDueMatches(): List<GroupRef> = transaction {
-        val now = OffsetDateTime.now()
-        (Groups innerJoin Federations innerJoin Seasons innerJoin Matches)
-            .select(Groups.id, Groups.clickttId, Federations.name, Seasons.name)
-            .where {
-                (Matches.status    eq MatchStatus.SCHEDULED) and
-                (Matches.playedAt  less now) and
-                (Groups.clickttId.isNotNull())
-            }
-            .withDistinct()
-            .map {
-                GroupRef(
-                    dbId         = it[Groups.id],
-                    clickttId    = it[Groups.clickttId]!!,
-                    championship = ClickTTGroupScraper.toChampionship(it[Federations.name], it[Seasons.name])
-                )
-            }
-    }
+    private fun findGroupsWithPastDueMatches(): List<GroupRef> =
+        transaction {
+            val now = OffsetDateTime.now()
+            (Groups innerJoin Federations innerJoin Seasons innerJoin Matches)
+                .select(Groups.id, Groups.clickttId, Federations.name, Seasons.name)
+                .where {
+                    (Matches.status eq MatchStatus.SCHEDULED) and
+                        (Matches.playedAt less now) and
+                        (Groups.clickttId.isNotNull())
+                }
+                .withDistinct()
+                .map {
+                    GroupRef(
+                        dbId = it[Groups.id],
+                        clickttId = it[Groups.clickttId]!!,
+                        championship = ClickTTGroupScraper.toChampionship(it[Federations.name], it[Seasons.name]),
+                    )
+                }
+        }
 
     companion object {
         fun create(): MatchPollJob {
@@ -99,7 +102,7 @@ class MatchPollJob(
             val parser = ClickTTParser()
             return MatchPollJob(
                 groupScraper = ClickTTGroupScraper(client, parser),
-                matchScraper = ClickTTMatchScraper(client, parser)
+                matchScraper = ClickTTMatchScraper(client, parser),
             )
         }
     }
