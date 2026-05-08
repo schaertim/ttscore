@@ -163,6 +163,25 @@ export type FavoriteResponse = {
 	targetName: string;
 };
 
+export type FollowResponse = {
+	id: string;
+	targetType: string;
+	targetId: string;
+	targetName: string;
+};
+
+export type NextMatch = {
+	matchId: string;
+	homeTeam: string;
+	awayTeam: string;
+	playerTeamId: string;
+	playerTeamName: string;
+	playedAt: string | null;
+	round: string | null;
+	groupId: string;
+	groupName: string;
+};
+
 // ── API functions ────────────────────────────────────────────
 
 export const api = {
@@ -208,6 +227,7 @@ export const api = {
 			),
 		get: (playerId: string) => get<Player>(`/players/${playerId}`),
 		elo: (playerId: string) => get<EloEntry[]>(`/players/${playerId}/elo`),
-		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`)
+		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
+		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`)
 	}
 };

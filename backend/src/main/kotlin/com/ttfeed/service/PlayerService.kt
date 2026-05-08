@@ -176,6 +176,61 @@ object PlayerService {
         }
     }
 
+    suspend fun getPlayerNextMatch(playerId: String): NextMatchResponse? {
+        val uuid = playerId.toUuidOrNull() ?: return null
+        return dbQuery {
+            val teamRow =
+                PlayerSeasons
+                    .join(Teams, JoinType.INNER, PlayerSeasons.teamId, Teams.id)
+                    .join(Groups, JoinType.INNER, Teams.groupId, Groups.id)
+                    .join(Seasons, JoinType.INNER, PlayerSeasons.seasonId, Seasons.id)
+                    .select(Teams.id, Teams.name, Groups.id, Groups.name)
+                    .where { PlayerSeasons.playerId eq uuid }
+                    .orderBy(Seasons.name to SortOrder.DESC)
+                    .firstOrNull() ?: return@dbQuery null
+
+            val teamId = teamRow[Teams.id]
+            val teamName = teamRow[Teams.name]
+            val groupId = teamRow[Groups.id]
+            val groupName = teamRow[Groups.name]
+
+            val homeTeamAlias = Teams.alias("ht")
+            val awayTeamAlias = Teams.alias("at")
+
+            Matches
+                .join(homeTeamAlias, JoinType.INNER, Matches.homeTeamId, homeTeamAlias[Teams.id])
+                .join(awayTeamAlias, JoinType.INNER, Matches.awayTeamId, awayTeamAlias[Teams.id])
+                .select(
+                    Matches.id,
+                    Matches.homeTeamId,
+                    Matches.awayTeamId,
+                    Matches.round,
+                    Matches.playedAt,
+                    homeTeamAlias[Teams.name],
+                    awayTeamAlias[Teams.name],
+                )
+                .where {
+                    ((Matches.homeTeamId eq teamId) or (Matches.awayTeamId eq teamId)) and
+                        (Matches.status eq MatchStatus.SCHEDULED)
+                }
+                .orderBy(Matches.playedAt to SortOrder.ASC_NULLS_LAST)
+                .firstOrNull()
+                ?.let { row ->
+                    NextMatchResponse(
+                        matchId = row[Matches.id].toString(),
+                        homeTeam = row[homeTeamAlias[Teams.name]],
+                        awayTeam = row[awayTeamAlias[Teams.name]],
+                        playerTeamId = teamId.toString(),
+                        playerTeamName = teamName,
+                        playedAt = row[Matches.playedAt]?.toString(),
+                        round = row[Matches.round],
+                        groupId = groupId.toString(),
+                        groupName = groupName,
+                    )
+                }
+        }
+    }
+
     suspend fun search(
         name: String,
         page: Int,

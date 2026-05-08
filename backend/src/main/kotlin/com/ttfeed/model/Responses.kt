@@ -206,6 +206,19 @@ data class FavoriteRequest(
 )
 
 @Serializable
+data class NextMatchResponse(
+    val matchId: String,
+    val homeTeam: String,
+    val awayTeam: String,
+    val playerTeamId: String,
+    val playerTeamName: String,
+    val playedAt: String?,
+    val round: String?,
+    val groupId: String,
+    val groupName: String,
+)
+
+@Serializable
 data class PlayerGameResponse(
     val matchId: String,
     val gameId: String,
