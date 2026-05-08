@@ -7,8 +7,9 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { CaretDown, CaretRight, Globe, MapTrifold, TrendUp, Clock } from 'phosphor-svelte';
+	import { CaretDown, CaretRight, Globe, MapTrifold, TrendUp, Clock, Trophy } from 'phosphor-svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
+	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -87,11 +88,7 @@
 
 	<section class="space-y-4">
 		<div class="flex items-center justify-between px-1">
-			<h3
-				class="text-[10px] font-black tracking-[0.2em] whitespace-nowrap text-muted-foreground uppercase"
-			>
-				Browse Regions
-			</h3>
+			<SectionLabel label="Regions" icon={Trophy} />
 			<Separator class="ml-4 flex-1 bg-border/60" />
 		</div>
 

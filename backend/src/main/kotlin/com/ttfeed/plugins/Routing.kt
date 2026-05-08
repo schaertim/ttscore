@@ -14,6 +14,9 @@ fun Application.configureRouting() {
             matchRoutes()
             playerRoutes()
             statsRoutes()
+            userProfileRoutes()
+            followRoutes()
+            favoriteRoutes()
         }
     }
 }

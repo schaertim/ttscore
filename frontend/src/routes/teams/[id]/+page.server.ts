@@ -1,17 +1,44 @@
-import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { error, fail } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
 import { api } from '$lib/api';
+import { authedKtor } from '$lib/server/ktor';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
 	try {
-		// Await the fast, essential data
 		const team = await api.teams.get(params.id);
-
 		if (!team) throw error(404, 'Team not found');
 
-		// Do NOT await these. Pass the promises to enable streaming.
+		const { session } = await locals.safeGetSession();
+
+		let favorited = false;
+		let favoriteId: string | null = null;
+		let notifying = false;
+		let notifyId: string | null = null;
+
+		if (session) {
+			const ktor = authedKtor(session.access_token);
+			const [favRes, followRes] = await Promise.allSettled([
+				ktor.get(`/favorites/check?targetType=team&targetId=${params.id}`),
+				ktor.get(`/follows/check?targetType=team&targetId=${params.id}`)
+			]);
+			if (favRes.status === 'fulfilled' && favRes.value.ok) {
+				const d = await favRes.value.json();
+				favorited = d.favorited;
+				favoriteId = d.favoriteId ?? null;
+			}
+			if (followRes.status === 'fulfilled' && followRes.value.ok) {
+				const d = await followRes.value.json();
+				notifying = d.notifying;
+				notifyId = d.notifyId ?? null;
+			}
+		}
+
 		return {
 			team,
+			favorited,
+			favoriteId,
+			notifying,
+			notifyId,
 			streamed: {
 				roster: api.teams.roster(params.id),
 				matches: api.teams.matches(params.id)
@@ -19,5 +46,49 @@ export const load: PageServerLoad = async ({ params }) => {
 		};
 	} catch (e) {
 		throw error(404, 'Team not found or backend unavailable');
+	}
+};
+
+export const actions: Actions = {
+	favorite: async ({ locals, request }) => {
+		const { session } = await locals.safeGetSession();
+		if (!session) return fail(401, { error: 'Not authenticated' });
+		const formData = await request.formData();
+		const res = await authedKtor(session.access_token).post('/favorites', {
+			targetType: formData.get('targetType'),
+			targetId: formData.get('targetId')
+		});
+		if (!res.ok) return fail(500, { error: 'Failed' });
+		const body = await res.json();
+		return { favoriteId: body.id };
+	},
+
+	unfavorite: async ({ locals, request }) => {
+		const { session } = await locals.safeGetSession();
+		if (!session) return fail(401, { error: 'Not authenticated' });
+		const formData = await request.formData();
+		await authedKtor(session.access_token).delete(`/favorites/${formData.get('favoriteId')}`);
+		return { success: true };
+	},
+
+	follow: async ({ locals, request }) => {
+		const { session } = await locals.safeGetSession();
+		if (!session) return fail(401, { error: 'Not authenticated' });
+		const formData = await request.formData();
+		const res = await authedKtor(session.access_token).post('/follows', {
+			targetType: formData.get('targetType'),
+			targetId: formData.get('targetId')
+		});
+		if (!res.ok) return fail(500, { error: 'Failed' });
+		const body = await res.json();
+		return { notifyId: body.id };
+	},
+
+	unfollow: async ({ locals, request }) => {
+		const { session } = await locals.safeGetSession();
+		if (!session) return fail(401, { error: 'Not authenticated' });
+		const formData = await request.formData();
+		await authedKtor(session.access_token).delete(`/follows/${formData.get('notifyId')}`);
+		return { success: true };
 	}
 };

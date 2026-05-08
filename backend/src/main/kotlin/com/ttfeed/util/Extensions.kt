@@ -1,9 +1,20 @@
 package com.ttfeed.util
 
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.*
 import java.util.UUID
 
 /** Parses a UUID string, returning null on any malformed input instead of throwing. */
 fun String.toUuidOrNull(): UUID? = runCatching { UUID.fromString(this) }.getOrNull()
+
+/** Returns the authenticated user ID from the JWT principal, or null if not authenticated. */
+fun ApplicationCall.userIdOrNull(): String? =
+    principal<JWTPrincipal>()?.payload?.subject
+
+/** Returns the authenticated user ID. Throws if called outside an authenticated route. */
+fun ApplicationCall.userId(): String =
+    userIdOrNull() ?: error("userId() called on an unauthenticated route")
 
 /**
  * Converts a knob.ch name ("Lastname Firstname") to "Firstname Lastname".

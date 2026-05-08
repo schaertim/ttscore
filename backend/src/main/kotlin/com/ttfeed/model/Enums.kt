@@ -21,3 +21,9 @@ enum class GenderCategory {
     MENS,
     WOMENS,
 }
+
+enum class FollowTargetType {
+    PLAYER,
+    TEAM,
+    DIVISION_GROUP,
+}

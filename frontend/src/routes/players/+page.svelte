@@ -4,13 +4,19 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { api } from '$lib/api';
 	import type { Player, PagedResponse } from '$lib/api';
-	import { CaretLeft, CaretRight } from 'phosphor-svelte';
+	import { CaretLeft, CaretRight, MagnifyingGlass, Star } from 'phosphor-svelte';
 	import KlassBadge from '$lib/components/KlassBadge.svelte';
+	import FavoritePlayerCard from '$lib/components/FavoritePlayerCard.svelte';
+	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
+	import SectionLabel from '$lib/components/SectionLabel.svelte';
+
+	let { data } = $props();
 
 	let searchQuery = $state('');
 	let isSearching = $state(false);
 	let currentPage = $state(0);
 	let response = $state<PagedResponse<Player> | null>(null);
+	let favoritePlayers = $state([...data.favoritePlayers]);
 
 	const PAGE_SIZE = 20;
 
@@ -46,16 +52,8 @@
 		return () => clearTimeout(timer);
 	});
 
-	function initials(name: string) {
-		return name
-			.split(' ')
-			.filter(Boolean)
-			.slice(0, 2)
-			.map((w) => w[0].toUpperCase())
-			.join('');
-	}
-
 	const totalPages = $derived(response ? Math.ceil(response.total / PAGE_SIZE) : 0);
+	const showFavorites = $derived(favoritePlayers.length > 0 && searchQuery.length < 3);
 </script>
 
 <div class="space-y-6 py-4 pb-20">
@@ -64,12 +62,38 @@
 		<h1 class="text-3xl font-extrabold tracking-tight">Search</h1>
 	</div>
 
-	<Input
-		bind:value={searchQuery}
-		class="w-full py-5 pl-4 text-base"
-		placeholder="Search players..."
-	/>
+	<!-- Search input -->
+	<div class="relative">
+		<MagnifyingGlass class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+		<Input
+			bind:value={searchQuery}
+			class="w-full py-5 pl-9 text-base"
+			placeholder="Search players..."
+		/>
+	</div>
 
+	<!-- Favorites carousel — hidden while searching -->
+	{#if showFavorites}
+		<section class="space-y-3">
+			<SectionLabel label="Favourites" icon={Star} class="px-1" />
+			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
+				{#each favoritePlayers as player (player.id)}
+					<FavoritePlayerCard
+						id={player.id}
+						fullName={player.fullName}
+						klass={player.klass}
+						currentElo={player.currentElo}
+						favoriteId={player.favoriteId}
+						onunfavorite={() => {
+							favoritePlayers = favoritePlayers.filter((p) => p.id !== player.id);
+						}}
+					/>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
+	<!-- Search results -->
 	{#if searchQuery.length >= 3}
 		<section class="space-y-4">
 			<h2 class="px-1 text-xs font-bold tracking-[0.1em] text-muted-foreground uppercase">
@@ -103,12 +127,7 @@
 							href="/players/{player.id}"
 							class="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 						>
-							<div
-								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted
-							            text-[11px] font-black tracking-tight text-muted-foreground"
-							>
-								{initials(player.fullName)}
-							</div>
+							<PlayerAvatar fullName={player.fullName} size="md" />
 
 							<div class="min-w-0 flex-1">
 								<p class="truncate text-sm font-semibold">{player.fullName}</p>

@@ -156,6 +156,13 @@ export type PagedResponse<T> = {
 	total: number;
 };
 
+export type FavoriteResponse = {
+	id: string;
+	targetType: string;
+	targetId: string;
+	targetName: string;
+};
+
 // ── API functions ────────────────────────────────────────────
 
 export const api = {

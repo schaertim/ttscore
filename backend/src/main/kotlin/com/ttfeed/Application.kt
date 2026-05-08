@@ -1,6 +1,7 @@
 package com.ttfeed
 
 import com.ttfeed.database.configureDatabase
+import com.ttfeed.plugins.configureAuthentication
 import com.ttfeed.plugins.configureCors
 import com.ttfeed.plugins.configureRouting
 import com.ttfeed.plugins.configureSerialization
@@ -14,6 +15,7 @@ fun main(args: Array<String>) {
 fun Application.module() {
     configureDatabase()
     configureSerialization()
+    configureAuthentication() // must be before routing
     configureRouting()
     configureCors()
 }

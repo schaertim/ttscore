@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { klassColors } from '$lib/utils';
+	import PlayerAvatar from './PlayerAvatar.svelte';
+	import KlassBadge from './KlassBadge.svelte';
 
 	interface Props {
 		id: string;
@@ -10,36 +11,17 @@
 	}
 
 	let { id, fullName, klass, wins, losses }: Props = $props();
-
-	const initials = fullName
-		.split(' ')
-		.filter(Boolean)
-		.slice(0, 2)
-		.map((w) => w[0].toUpperCase())
-		.join('');
 </script>
 
 <a
 	href="/players/{id}"
 	class="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
 >
-	<div
-		class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border/50
-		       text-[11px] font-black tracking-tight text-muted-foreground"
-	>
-		{initials}
-	</div>
+	<PlayerAvatar {fullName} size="md" />
 
 	<div class="min-w-0 flex-1">
 		<p class="truncate text-sm font-semibold">{fullName}</p>
-		{#if klass}
-			<span
-				class="mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-black
-			             tracking-wide {klassColors(klass)}"
-			>
-				{klass}
-			</span>
-		{/if}
+		<KlassBadge {klass} />
 	</div>
 
 	{#if wins !== undefined && losses !== undefined}

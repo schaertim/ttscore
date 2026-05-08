@@ -1,35 +1,41 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
+	import { goto, invalidate } from '$app/navigation';
+	import { page } from '$app/state';
 	import { theme } from '$lib/theme.svelte';
+	import { House, Trophy, MagnifyingGlass, UserCircle, SignIn } from 'phosphor-svelte';
+
+	let { children, data } = $props();
 
 	const navItems = [
-		{ href: '/divisions', label: 'Leagues', icon: 'emoji_events' },
-		{ href: '/players', label: 'Search', icon: 'search' }
+		{ href: '/', label: 'Home', icon: House },
+		{ href: '/divisions', label: 'Leagues', icon: Trophy },
+		{ href: '/players', label: 'Search', icon: MagnifyingGlass }
 	];
 
-	let { children } = $props();
+	onMount(() => {
+		theme.init();
 
-	onMount(() => theme.init());
+		const {
+			data: { subscription }
+		} = data.supabase.auth.onAuthStateChange((event, session) => {
+			if (session?.expires_at !== data.session?.expires_at) {
+				invalidate('supabase:auth');
+			}
+		});
+
+		return () => subscription.unsubscribe();
+	});
+
+	function handleAccountClick() {
+		if (data.user) {
+			goto('/account');
+		} else {
+			goto(`/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`);
+		}
+	}
 </script>
-
-<svelte:head>
-	<link
-		href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-		rel="stylesheet"
-	/>
-</svelte:head>
-
-<!-- Theme toggle -->
-<button
-	onclick={() => theme.toggle()}
-	class="fixed top-3 right-4 z-50 p-1 text-on-surface-muted transition-colors hover:text-on-surface"
-	aria-label="Toggle theme"
->
-	<span class="material-symbols-outlined" style="font-size:22px">
-		{theme.dark ? 'light_mode' : 'dark_mode'}
-	</span>
-</button>
 
 <!-- Page content -->
 <main class="mx-auto max-w-2xl px-4 pt-4 pb-20">
@@ -48,9 +54,26 @@
 				class="flex flex-1 flex-col items-center justify-center gap-0.5 pt-1
                text-on-surface-subtle transition-colors hover:text-on-surface"
 			>
-				<span class="material-symbols-outlined" style="font-size:22px">{item.icon}</span>
+				<item.icon class="h-5 w-5" />
 				<span class="text-label tracking-widest uppercase">{item.label}</span>
 			</a>
 		{/each}
+
+		<!-- Account button -->
+		<button
+			onclick={handleAccountClick}
+			class="flex flex-1 flex-col items-center justify-center gap-0.5 pt-1
+             text-on-surface-subtle transition-colors hover:text-on-surface"
+			aria-label={data.user ? 'Account' : 'Sign in'}
+		>
+			{#if data.user}
+				<UserCircle class="h-5 w-5" />
+			{:else}
+				<SignIn class="h-5 w-5" />
+			{/if}
+			<span class="text-label tracking-widest uppercase">
+				{data.user ? 'Account' : 'Sign in'}
+			</span>
+		</button>
 	</div>
 </nav>

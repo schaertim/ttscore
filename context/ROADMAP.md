@@ -84,12 +84,21 @@ Features added after the MVP is live and being used. Order driven by community f
 
 The feature that turns a casual visitor into a retained user. Solves the core pain: having to manually check for results.
 
-- User accounts (email / magic link — no password)
-- Follow a player, team, or division
+**Identity approach:**
+- "Set as my player" on any player profile triggers Google Sign In immediately — no anonymous/local-store state
+- Account is the entry point from the first personalisation action, keeping the experience consistent across devices
+- Sign in with Google, Apple, or other OAuth providers (Better Auth) — one tap on mobile
+- Email + password as a fallback for users who prefer not to use OAuth
+
+**Scope:**
+- "Set as my player" on any player profile — prompts Google Sign In, then saves home player to account (server-side, synced across devices)
+- Follow a player, team, or division (requires account)
 - Push notifications when a followed match result lands (scheduled → completed)
-- PWA install prompt — nudge to add to homescreen for notifications
+- PWA install prompt — nudge to add to homescreen for notifications (required on iOS)
 - Notification preferences — mute, pause, manage follows
 - Personal dashboard on login — your ELO badge, rank, classification, recent results
+
+**Auth stack:** Better Auth in SvelteKit layer, users stored in Railway PostgreSQL, Ktor verifies signed tokens from SvelteKit.
 
 ---
 

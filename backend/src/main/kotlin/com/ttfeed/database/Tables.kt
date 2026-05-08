@@ -1,10 +1,12 @@
 package com.ttfeed.database
 
+import com.ttfeed.model.FollowTargetType
 import com.ttfeed.model.GameResult
 import com.ttfeed.model.GameType
 import com.ttfeed.model.MatchStatus
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.kotlin.datetime.timestampWithTimeZone
+import org.postgresql.util.PGobject
 
 object Seasons : Table("season") {
     val id = uuid("id").autoGenerate()
@@ -136,4 +138,39 @@ object GameSets : Table("game_set") {
     val homePoints = short("home_points")
     val awayPoints = short("away_points")
     override val primaryKey = PrimaryKey(id)
+}
+
+/** Shared helper — maps the native PG follow_target_type enum to/from our Kotlin enum. */
+private fun targetTypeColumn(table: Table) = table.customEnumeration(
+    name = "target_type",
+    sql = "follow_target_type",
+    fromDb = { value -> FollowTargetType.valueOf(value.toString().uppercase()) },
+    toDb = { value -> PGobject().apply { type = "follow_target_type"; this.value = value.name.lowercase() } },
+)
+
+/** Notification subscriptions (bell). */
+object Follows : Table("follow") {
+    val id = uuid("id").autoGenerate()
+    val userId = text("user_id")
+    val targetType = targetTypeColumn(this)
+    val targetId = uuid("target_id")
+    val createdAt = timestampWithTimeZone("created_at")
+    override val primaryKey = PrimaryKey(id)
+}
+
+/** Starred bookmarks (star). */
+object Favorites : Table("favorite") {
+    val id = uuid("id").autoGenerate()
+    val userId = text("user_id")
+    val targetType = targetTypeColumn(this)
+    val targetId = uuid("target_id")
+    val createdAt = timestampWithTimeZone("created_at")
+    override val primaryKey = PrimaryKey(id)
+}
+
+object UserProfiles : Table("user_profile") {
+    val userId = text("user_id")
+    val homePlayerId = uuid("home_player_id").references(Players.id).nullable()
+    val createdAt = timestampWithTimeZone("created_at")
+    override val primaryKey = PrimaryKey(userId)
 }

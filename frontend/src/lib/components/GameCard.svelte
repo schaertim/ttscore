@@ -49,7 +49,7 @@
 	{@const notPlayed = pg.result === 'NOT_PLAYED'}
 	{@const scoreColor = won ? 'text-win' : notPlayed ? 'text-muted-foreground' : 'text-loss'}
 	<a href="/matches/{pg.matchId}" class="block">
-		<Card.Root>
+		<Card.Root class="transition-colors hover:bg-accent">
 			<div class="space-y-2 px-6">
 				<p class="truncate text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
 					{formatDate(pg.playedAt)} · {pg.homeTeam} vs {pg.awayTeam}

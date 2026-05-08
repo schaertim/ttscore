@@ -34,6 +34,8 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.exposed.kotlin.datetime)
     implementation("io.ktor:ktor-server-cors")
+    implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.auth.jwt)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
 }

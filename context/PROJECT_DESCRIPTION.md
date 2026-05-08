@@ -63,9 +63,10 @@ Built for the community, free for everyone.
 | Frontend | SvelteKit (TypeScript, Svelte 5 Runes) |
 | PWA | vite-plugin-pwa + Web Push API |
 | Backend | Ktor (Kotlin) |
-| Database | PostgreSQL (Supabase) |
+| Database | PostgreSQL (Railway) |
+| Auth | Better Auth (Google OAuth, runs in SvelteKit layer) |
 | Frontend hosting | Vercel |
-| Backend hosting | Railway |
+| Backend hosting | Railway (also hosts PostgreSQL) |
 
 ---
 

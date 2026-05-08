@@ -6,8 +6,14 @@
 	import MatchCard from '$lib/components/MatchCard.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
+	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
+	import NotifyButton from '$lib/components/NotifyButton.svelte';
 
 	let { data }: { data: PageData } = $props();
+	let favorited = $state(data.favorited);
+	let favoriteId = $state(data.favoriteId);
+	let notifying = $state(data.notifying);
+	let notifyId = $state(data.notifyId);
 
 	const sorted = $derived([...data.standings].sort((a, b) => a.position - b.position));
 
@@ -65,14 +71,34 @@
 </script>
 
 <div class="space-y-1 px-1 py-4">
-	<BackButton />
-	<h1 class="text-3xl font-extrabold tracking-tight">{data.group.name}</h1>
-	<p class="text-sm text-muted-foreground">
-		{data.group.season}
-		{#if data.group.totalRounds > 0}
-			· <span class="font-medium">Rd {data.group.roundsPlayed}/{data.group.totalRounds}</span>
+	<div class="flex items-center justify-between mb-4">
+		<BackButton class="mb-0" />
+		{#if data.user}
+			<div class="flex items-center gap-0.5">
+				<FavoriteButton
+					bind:favorited
+					bind:favoriteId
+					targetType="division_group"
+					targetId={data.group.id}
+				/>
+				<NotifyButton
+					bind:notifying
+					bind:notifyId
+					targetType="division_group"
+					targetId={data.group.id}
+				/>
+			</div>
 		{/if}
-	</p>
+	</div>
+	<div class="min-w-0 space-y-1">
+		<h1 class="text-3xl font-extrabold tracking-tight">{data.group.name}</h1>
+		<p class="text-sm text-muted-foreground">
+			{data.group.season}
+			{#if data.group.totalRounds > 0}
+				· <span class="font-medium">Rd {data.group.roundsPlayed}/{data.group.totalRounds}</span>
+			{/if}
+		</p>
+	</div>
 </div>
 
 <Tabs.Root value="standings">
@@ -176,9 +202,9 @@
 							<span class="truncate font-medium">{match.awayTeam}</span>
 						</div>
 					</div>
-					<Badge variant="outline" class="ml-3 flex-shrink-0 text-xs text-muted-foreground">
+					<span class="ml-3 shrink-0 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
 						{formatDate(match.playedAt)}
-					</Badge>
+					</span>
 				</div>
 			{/each}
 		{/if}

@@ -7,6 +7,10 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
+/* Safelist: klass badge utilities — generated dynamically from utils.ts so we
+   pin them here to guarantee Tailwind always compiles them. */
+@source inline("text-klass-a bg-klass-a-subtle text-klass-b bg-klass-b-subtle text-klass-c bg-klass-c-subtle text-klass-d bg-klass-d-subtle text-klass-e bg-klass-e-subtle");
+
 @theme inline {
 	/* shadcn mappings — untouched */
 	--font-sans: 'DM Sans Variable', sans-serif;
@@ -211,15 +215,4 @@
 	html {
 		@apply font-sans;
 	}
-}
-
-.material-symbols-outlined {
-	font-variation-settings:
-		'FILL' 0,
-		'wght' 400,
-		'GRAD' 0,
-		'opsz' 24;
-	vertical-align: middle;
-	line-height: 1;
-	user-select: none;
 }

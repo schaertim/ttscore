@@ -3,6 +3,17 @@ package com.ttfeed.model
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class UserProfileResponse(
+    val homePlayerId: String?,
+    val homePlayerName: String?,
+)
+
+@Serializable
+data class SetHomePlayerRequest(
+    val playerId: String,
+)
+
+@Serializable
 data class TeamSummaryResponse(
     val id: String,
     val name: String,
@@ -150,6 +161,48 @@ data class EloEntryResponse(
 data class StatsResponse(
     val registeredPlayers: Long,
     val matchesLast24h: Long,
+)
+
+/** A notification subscription (bell). */
+@Serializable
+data class FollowResponse(
+    val id: String,
+    val targetType: String,
+    val targetId: String,
+    val targetName: String,
+)
+
+@Serializable
+data class FollowCheckResponse(
+    val notifying: Boolean,
+    val notifyId: String?,
+)
+
+@Serializable
+data class FollowRequest(
+    val targetType: String,
+    val targetId: String,
+)
+
+/** A starred bookmark (star). */
+@Serializable
+data class FavoriteResponse(
+    val id: String,
+    val targetType: String,
+    val targetId: String,
+    val targetName: String,
+)
+
+@Serializable
+data class FavoriteCheckResponse(
+    val favorited: Boolean,
+    val favoriteId: String?,
+)
+
+@Serializable
+data class FavoriteRequest(
+    val targetType: String,
+    val targetId: String,
 )
 
 @Serializable

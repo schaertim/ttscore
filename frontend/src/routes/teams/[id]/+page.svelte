@@ -4,16 +4,41 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import PlayerCard from '$lib/components/PlayerCard.svelte';
 	import MatchCard from '$lib/components/MatchCard.svelte';
-	import { CheckCircle, XCircle, MinusCircle } from 'phosphor-svelte';
+	import { CheckCircle, XCircle, MinusCircle, UsersThree, PingPong } from 'phosphor-svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
+	import NotifyButton from '$lib/components/NotifyButton.svelte';
+	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	const [won, drawn, lost] = data.team.record.split('-').map(Number);
+	let favorited = $state(data.favorited);
+	let favoriteId = $state(data.favoriteId);
+	let notifying = $state(data.notifying);
+	let notifyId = $state(data.notifyId);
 </script>
 
 <div class="space-y-8 py-4 pb-20">
-	<BackButton />
+	<div class="flex items-center justify-between mb-4 px-1">
+		<BackButton class="mb-0" />
+		{#if data.user}
+			<div class="flex items-center gap-0.5">
+				<FavoriteButton
+					bind:favorited
+					bind:favoriteId
+					targetType="team"
+					targetId={data.team.id}
+				/>
+				<NotifyButton
+					bind:notifying
+					bind:notifyId
+					targetType="team"
+					targetId={data.team.id}
+				/>
+			</div>
+		{/if}
+	</div>
 
 	<!-- Header -->
 	<div class="flex items-start justify-between gap-4 px-1">
@@ -61,9 +86,7 @@
 
 	<!-- Roster -->
 	<section class="space-y-2">
-		<h2 class="px-1 text-[10px] font-black tracking-[0.2em] text-muted-foreground uppercase">
-			Team Roster
-		</h2>
+		<SectionLabel label="Team Roster" icon={UsersThree} class="px-1" />
 
 		<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 			{#await data.streamed.roster}
@@ -93,9 +116,7 @@
 
 	<!-- Match history -->
 	<section class="space-y-2">
-		<h2 class="px-1 text-[10px] font-black tracking-[0.2em] text-muted-foreground uppercase">
-			Match History
-		</h2>
+		<SectionLabel label="Match History" icon={PingPong} class="px-1" />
 
 		{#await data.streamed.matches}
 			<Skeleton class="h-16 w-full rounded-xl" />
