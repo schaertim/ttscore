@@ -176,6 +176,54 @@ object PlayerService {
         }
     }
 
+    suspend fun getPlayerLeagueContext(playerId: String): LeagueContextResponse? {
+        val uuid = playerId.toUuidOrNull() ?: return null
+        return dbQuery {
+            val teamRow =
+                PlayerSeasons
+                    .join(Teams, JoinType.INNER, PlayerSeasons.teamId, Teams.id)
+                    .join(Groups, JoinType.INNER, Teams.groupId, Groups.id)
+                    .join(Seasons, JoinType.INNER, PlayerSeasons.seasonId, Seasons.id)
+                    .select(Teams.id, Teams.name, Groups.id, Groups.name)
+                    .where { PlayerSeasons.playerId eq uuid }
+                    .orderBy(Seasons.name to SortOrder.DESC)
+                    .firstOrNull() ?: return@dbQuery null
+
+            val teamId = teamRow[Teams.id]
+            val teamName = teamRow[Teams.name]
+            val groupId = teamRow[Groups.id]
+            val groupName = teamRow[Groups.name]
+
+            val standing =
+                Standings
+                    .select(Standings.position, Standings.won, Standings.drawn, Standings.lost)
+                    .where { (Standings.teamId eq teamId) and (Standings.groupId eq groupId) }
+                    .firstOrNull()
+
+            val scheduledCount =
+                Matches
+                    .select(Matches.id)
+                    .where {
+                        ((Matches.homeTeamId eq teamId) or (Matches.awayTeamId eq teamId)) and
+                            (Matches.status eq MatchStatus.SCHEDULED)
+                    }
+                    .count()
+                    .toInt()
+
+            LeagueContextResponse(
+                teamId = teamId.toString(),
+                teamName = teamName,
+                groupId = groupId.toString(),
+                groupName = groupName,
+                position = standing?.get(Standings.position)?.toInt() ?: 0,
+                won = standing?.get(Standings.won)?.toInt() ?: 0,
+                drawn = standing?.get(Standings.drawn)?.toInt() ?: 0,
+                lost = standing?.get(Standings.lost)?.toInt() ?: 0,
+                scheduledMatchCount = scheduledCount,
+            )
+        }
+    }
+
     suspend fun getPlayerNextMatch(playerId: String): NextMatchResponse? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {

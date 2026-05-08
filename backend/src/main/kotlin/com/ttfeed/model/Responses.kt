@@ -219,6 +219,19 @@ data class NextMatchResponse(
 )
 
 @Serializable
+data class LeagueContextResponse(
+    val teamId: String,
+    val teamName: String,
+    val groupId: String,
+    val groupName: String,
+    val position: Int,
+    val won: Int,
+    val drawn: Int,
+    val lost: Int,
+    val scheduledMatchCount: Int,
+)
+
+@Serializable
 data class PlayerGameResponse(
     val matchId: String,
     val gameId: String,

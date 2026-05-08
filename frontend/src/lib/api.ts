@@ -182,6 +182,18 @@ export type NextMatch = {
 	groupName: string;
 };
 
+export type LeagueContext = {
+	teamId: string;
+	teamName: string;
+	groupId: string;
+	groupName: string;
+	position: number;
+	won: number;
+	drawn: number;
+	lost: number;
+	scheduledMatchCount: number;
+};
+
 // ── API functions ────────────────────────────────────────────
 
 export const api = {
@@ -228,6 +240,7 @@ export const api = {
 		get: (playerId: string) => get<Player>(`/players/${playerId}`),
 		elo: (playerId: string) => get<EloEntry[]>(`/players/${playerId}/elo`),
 		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
-		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`)
+		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`),
+		leagueContext: (playerId: string) => get<LeagueContext>(`/players/${playerId}/league-context`)
 	}
 };

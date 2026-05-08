@@ -90,5 +90,17 @@ fun Route.playerRoutes() {
                 call.respond(HttpStatusCode.OK, nextMatch)
             }
         }
+
+        get("/{id}/league-context") {
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+
+            val context =
+                PlayerService.getPlayerLeagueContext(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "No league context found")
+
+            call.respond(HttpStatusCode.OK, context)
+        }
     }
 }

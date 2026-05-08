@@ -29,10 +29,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		player,
 		streamed: {
 			recentMatches: api.players.matches(homePlayerId),
-			nextMatch: ktor
-				.get(`/players/${homePlayerId}/next-match`)
-				.then((res) => (res.status === 204 ? null : res.json())),
-			follows: ktor.get('/follows').then((res) => (res.ok ? res.json() : []))
+			leagueContext: api.players.leagueContext(homePlayerId).catch(() => null),
+			favorites: ktor.get('/favorites').then((res) => (res.ok ? res.json() : []))
 		}
 	};
 };
