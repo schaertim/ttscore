@@ -14,8 +14,6 @@
 	}
 
 	let { player, streamed }: Props = $props();
-
-	const recentMatchCount = streamed.recentMatches.then((ms) => ms.length);
 </script>
 
 <div class="space-y-6 pb-4">
@@ -27,7 +25,6 @@
 		<HomeQuicklinks
 			{player}
 			leagueContext={streamed.leagueContext}
-			{recentMatchCount}
 		/>
 	</section>
 
