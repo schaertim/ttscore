@@ -2,7 +2,7 @@
 	import type { Player, LeagueContext } from '$lib/api';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import QuicklinkRow from '$lib/components/home/QuicklinkRow.svelte';
-	import { User, ListBullets, Trophy, UsersThree } from 'phosphor-svelte';
+	import { User, ListBullets, Trophy, UsersThree, ClockCounterClockwise } from 'phosphor-svelte';
 
 	interface Props {
 		player: Player;
@@ -25,7 +25,7 @@
 	<!-- My Matches -->
 	<QuicklinkRow
 		href="/players/{player.id}/games"
-		icon={ListBullets}
+		icon={ClockCounterClockwise}
 		label="My Matches"
 		sublabel="Your game history"
 	/>
