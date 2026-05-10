@@ -40,6 +40,20 @@ Items that were consciously scoped out during planning — not forgotten, not re
 
 ---
 
+## Feed: Full-feed page (`/feed`)
+
+**What:** A dedicated page showing the complete chronological feed across all favorites — all events, not just the 5 shown on the homepage.
+
+**Why deferred:** No route exists yet. The "Show full feed →" link on the homepage currently points to `/account` as a placeholder.
+
+**What's needed:**
+- New route `frontend/src/routes/feed/+page.svelte` + `+page.server.ts`
+- Server load fetches the user's favorites (already available via authed ktor)
+- Client-side feed resolution reuses the same logic as `FavoritesFeed.svelte` — consider extracting to a shared utility
+- Update the "Show full feed →" href in `FavoritesFeed.svelte` from `/account` to `/feed`
+
+---
+
 ## Standing history infrastructure (prerequisite for T5 + G3)
 
 **What:** A mechanism to record standings at a point in time so changes can be detected.
