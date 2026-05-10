@@ -5,7 +5,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { api, type Player } from '$lib/api';
-	import { Star, BellRinging, Sun, Moon } from 'phosphor-svelte';
+	import { Star, BellRinging, Sun, Moon, Trash, User, UsersThree, Trophy } from 'phosphor-svelte';
 	import { theme } from '$lib/theme.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
@@ -42,13 +42,14 @@
 	}
 </script>
 
-<BackButton />
-
 <div class="flex flex-col gap-8 pt-2">
-	<div>
-		<h1 class="text-2xl font-bold">Account</h1>
-		<p class="text-sm text-muted-foreground mt-1">{data.user?.email}</p>
-	</div>
+	<header class="space-y-4">
+		<BackButton />
+		<div>
+			<h1 class="text-3xl font-black tracking-tighter leading-none">Account</h1>
+			<p class="text-sm text-muted-foreground mt-1">{data.user?.email}</p>
+		</div>
+	</header>
 
 	<!-- My player -->
 	<section class="flex flex-col gap-3">
@@ -56,18 +57,22 @@
 
 		{#if data.profile.homePlayerId}
 			<div class="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-				<a
-					href="/players/{data.profile.homePlayerId}"
-					class="font-semibold hover:text-primary transition-colors"
-				>
-					{data.profile.homePlayerName ?? 'Unknown player'}
-				</a>
+				<div class="flex items-center gap-3 min-w-0">
+					<User size={18} class="shrink-0 text-muted-foreground" />
+					<a
+						href="/players/{data.profile.homePlayerId}"
+						class="font-semibold hover:text-primary transition-colors"
+					>
+						{data.profile.homePlayerName ?? 'Unknown player'}
+					</a>
+				</div>
 				<form method="POST" action="?/removeHomePlayer" use:enhance>
 					<button
 						type="submit"
-						class="text-xs font-bold tracking-widest uppercase text-muted-foreground hover:text-destructive transition-colors"
+						class="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+						aria-label="Remove home player"
 					>
-						Remove
+						<Trash size={16} />
 					</button>
 				</form>
 			</div>
@@ -126,13 +131,13 @@
 			<SectionLabel label="Favorites" icon={Star} />
 			<ul class="flex flex-col gap-1">
 				{#each data.favorites as item (item.id)}
+					{@const EntityIcon = item.targetType === 'player' ? User : item.targetType === 'team' ? UsersThree : Trophy}
+					{@const href = `/${item.targetType === 'division_group' ? 'groups' : item.targetType === 'team' ? 'teams' : 'players'}/${item.targetId}`}
 					<li class="flex items-center justify-between rounded-xl border border-border px-4 py-3">
 						<div class="flex items-center gap-3 min-w-0">
-							<span class="text-[10px] font-bold tracking-widest uppercase text-muted-foreground shrink-0">
-								{item.targetType === 'division_group' ? 'League' : item.targetType === 'team' ? 'Team' : 'Player'}
-							</span>
+							<EntityIcon size={18} class="shrink-0 text-muted-foreground" />
 							<a
-								href="/{item.targetType === 'division_group' ? 'groups' : item.targetType === 'team' ? 'teams' : 'players'}/{item.targetId}"
+								{href}
 								class="font-semibold truncate hover:text-primary transition-colors"
 							>
 								{item.targetName}
@@ -140,8 +145,8 @@
 						</div>
 						<form method="POST" action="?/removeFavorite" use:enhance>
 							<input type="hidden" name="favoriteId" value={item.id} />
-							<button type="submit" class="ml-3 shrink-0 text-xs font-bold tracking-widest uppercase text-muted-foreground transition-colors hover:text-destructive">
-								Remove
+							<button type="submit" class="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-destructive" aria-label="Remove favorite">
+								<Trash size={16} />
 							</button>
 						</form>
 					</li>
@@ -156,13 +161,13 @@
 			<SectionLabel label="Notifications" icon={BellRinging} />
 			<ul class="flex flex-col gap-1">
 				{#each data.notifications as item (item.id)}
+					{@const EntityIcon = item.targetType === 'player' ? User : item.targetType === 'team' ? UsersThree : Trophy}
+					{@const href = `/${item.targetType === 'division_group' ? 'groups' : item.targetType === 'team' ? 'teams' : 'players'}/${item.targetId}`}
 					<li class="flex items-center justify-between rounded-xl border border-border px-4 py-3">
 						<div class="flex items-center gap-3 min-w-0">
-							<span class="text-[10px] font-bold tracking-widest uppercase text-muted-foreground shrink-0">
-								{item.targetType === 'division_group' ? 'League' : item.targetType === 'team' ? 'Team' : 'Player'}
-							</span>
+							<EntityIcon size={18} class="shrink-0 text-muted-foreground" />
 							<a
-								href="/{item.targetType === 'division_group' ? 'groups' : item.targetType === 'team' ? 'teams' : 'players'}/{item.targetId}"
+								{href}
 								class="font-semibold truncate hover:text-primary transition-colors"
 							>
 								{item.targetName}
@@ -170,8 +175,8 @@
 						</div>
 						<form method="POST" action="?/removeNotification" use:enhance>
 							<input type="hidden" name="notifyId" value={item.id} />
-							<button type="submit" class="ml-3 shrink-0 text-xs font-bold tracking-widest uppercase text-muted-foreground transition-colors hover:text-destructive">
-								Remove
+							<button type="submit" class="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-destructive" aria-label="Remove notification">
+								<Trash size={16} />
 							</button>
 						</form>
 					</li>

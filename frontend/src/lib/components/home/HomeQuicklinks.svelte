@@ -22,11 +22,11 @@
 		sublabel="Stats, ELO history & more"
 	/>
 
-	<!-- My Matches -->
+	<!-- My Games -->
 	<QuicklinkRow
 		href="/players/{player.id}/games"
 		icon={ClockCounterClockwise}
-		label="My Matches"
+		label="My Games"
 		sublabel="Your game history"
 	/>
 

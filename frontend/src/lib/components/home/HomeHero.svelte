@@ -68,28 +68,26 @@
 </script>
 
 <a href="/players/{player.id}" class="block py-4">
-	<div class="relative overflow-hidden rounded-2xl bg-card border border-border/50 p-5">
+	<div
+		class="relative overflow-hidden rounded-2xl bg-card border border-border/50 p-5"
+		style="background-image: radial-gradient(circle at calc(100% - 3.25rem) 3.25rem, color-mix(in srgb, {klassVar} 32%, transparent) 0%, color-mix(in srgb, {klassVar} 7%, transparent) 30%, transparent 56%);"
+	>
 
-		<!-- Top row: name/club + glowing class badge -->
-		<div class="flex items-start justify-between gap-4">
+		<!-- Top row: name/club + class badge -->
+		<div class="relative flex items-start justify-between gap-4">
 			<div class="min-w-0">
-				<h2 class="text-xl font-black leading-tight tracking-tight">
+				<h2 class="text-2xl font-black leading-tight tracking-tight">
 					{player.fullName}
 				</h2>
 				{#if player.currentClubName}
-					<p class="mt-0.5 text-xs text-muted-foreground">{player.currentClubName}</p>
+					<p class="mt-1 text-sm text-muted-foreground">{player.currentClubName}</p>
 				{/if}
 			</div>
 
 			{#if player.klass}
-				<!-- Class badge with colour glow -->
 				<div
-					class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-lg font-black text-white"
-					style="
-						background: {klassVar};
-						box-shadow: 0 0 18px color-mix(in srgb, {klassVar} 70%, transparent),
-						            0 0 40px color-mix(in srgb, {klassVar} 35%, transparent);
-					"
+					class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-black"
+					style="background: {klassVar}; color: var(--card);"
 				>
 					{player.klass}
 				</div>
@@ -129,11 +127,12 @@
 							viewBox="0 0 300 56"
 							preserveAspectRatio="none"
 							class="h-full w-full"
+							style="overflow: hidden;"
 							aria-hidden="true"
 						>
 							<defs>
 								<linearGradient id="hero-fill-{player.klass}" x1="0" y1="0" x2="0" y2="1">
-									<stop offset="0%" style="stop-color:{klassVar}; stop-opacity:0.4" />
+									<stop offset="0%" style="stop-color:{klassVar}; stop-opacity:0.25" />
 									<stop offset="100%" style="stop-color:{klassVar}; stop-opacity:0" />
 								</linearGradient>
 							</defs>

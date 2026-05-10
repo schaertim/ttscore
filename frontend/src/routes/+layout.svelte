@@ -14,6 +14,13 @@
 		{ href: '/players', label: 'Search', icon: MagnifyingGlass }
 	];
 
+	function isActive(href: string): boolean {
+		if (href === '/') return page.url.pathname === '/';
+		return page.url.pathname.startsWith(href);
+	}
+
+	const accountActive = $derived(page.url.pathname.startsWith('/account'));
+
 	onMount(() => {
 		theme.init();
 
@@ -38,42 +45,47 @@
 </script>
 
 <!-- Page content -->
-<main class="mx-auto max-w-2xl px-4 pt-4 pb-20">
+<main class="mx-auto max-w-2xl px-4 pt-4 pb-24">
 	{@render children()}
 </main>
 
 <!-- Bottom nav -->
 <nav
-	class="fixed bottom-0 left-0 z-50 h-16 w-full border-t border-border-base bg-surface"
+	class="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-card"
 	style="backdrop-filter: blur(24px);"
 >
-	<div class="mx-auto flex h-full max-w-2xl items-center justify-around px-4">
+	<div class="mx-auto flex h-16 max-w-2xl items-center justify-center gap-2 px-4">
 		{#each navItems as item}
+			{@const active = isActive(item.href)}
 			<a
 				href={item.href}
-				class="flex flex-1 flex-col items-center justify-center gap-0.5 pt-1
-               text-on-surface-subtle transition-colors hover:text-on-surface"
+				class="flex w-16 flex-col items-center justify-center gap-0.5 transition-colors
+				       {active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
 			>
-				<item.icon class="h-5 w-5" />
-				<span class="text-label tracking-widest uppercase">{item.label}</span>
+				<item.icon size={22} weight={active ? 'fill' : 'regular'} />
+				{#if active}
+					<span class="text-[10px] font-bold tracking-wide">{item.label}</span>
+				{/if}
 			</a>
 		{/each}
 
-		<!-- Account button -->
+		<!-- Account / Sign in -->
 		<button
 			onclick={handleAccountClick}
-			class="flex flex-1 flex-col items-center justify-center gap-0.5 pt-1
-             text-on-surface-subtle transition-colors hover:text-on-surface"
+			class="flex w-16 flex-col items-center justify-center gap-0.5 transition-colors
+			       {accountActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
 			aria-label={data.user ? 'Account' : 'Sign in'}
 		>
 			{#if data.user}
-				<UserCircle class="h-5 w-5" />
+				<UserCircle size={22} weight={accountActive ? 'fill' : 'regular'} />
 			{:else}
-				<SignIn class="h-5 w-5" />
+				<SignIn size={22} weight="regular" />
 			{/if}
-			<span class="text-label tracking-widest uppercase">
-				{data.user ? 'Account' : 'Sign in'}
-			</span>
+			{#if accountActive}
+				<span class="text-[10px] font-bold tracking-wide">
+					{data.user ? 'Account' : 'Sign in'}
+				</span>
+			{/if}
 		</button>
 	</div>
 </nav>
