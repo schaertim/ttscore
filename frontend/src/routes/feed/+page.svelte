@@ -3,6 +3,7 @@
 	import type { ResolvedEvent } from '$lib/feed';
 	import { resolveFeed } from '$lib/feed';
 	import FeedItemCard from '$lib/components/home/FeedItemCard.svelte';
+	import BackButton from '$lib/components/BackButton.svelte';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 
 	let { data }: { data: PageData } = $props();
@@ -30,13 +31,11 @@
 	const feedPromise = data.favorites.then(resolveFeed);
 </script>
 
-<div class="mx-auto max-w-2xl px-4 pb-20 pt-6">
-	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-2xl font-black tracking-tight">Feed</h1>
-		<a href="/" class="text-xs font-bold tracking-widest text-muted-foreground uppercase hover:text-foreground">
-			← Home
-		</a>
-	</div>
+<div class="mx-auto max-w-2xl space-y-6 p-4 pb-20">
+	<header class="space-y-4">
+		<BackButton />
+		<h1 class="text-3xl font-black tracking-tighter leading-none">Feed</h1>
+	</header>
 
 	{#await feedPromise}
 		<div class="space-y-6">
