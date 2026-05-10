@@ -176,6 +176,24 @@ object PlayerService {
         }
     }
 
+    suspend fun getClassHistory(playerId: String): List<ClassHistoryEntryResponse>? {
+        val uuid = playerId.toUuidOrNull() ?: return null
+        return dbQuery {
+            (PlayerSeasons innerJoin Seasons)
+                .select(PlayerSeasons.klass, Seasons.name)
+                .where { PlayerSeasons.playerId eq uuid }
+                .orderBy(Seasons.name to SortOrder.DESC)
+                .limit(5)
+                .mapNotNull { row ->
+                    val klass = row[PlayerSeasons.klass] ?: return@mapNotNull null
+                    ClassHistoryEntryResponse(
+                        klass = klass,
+                        seasonName = row[Seasons.name],
+                    )
+                }
+        }
+    }
+
     suspend fun getPlayerLeagueContext(playerId: String): LeagueContextResponse? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {

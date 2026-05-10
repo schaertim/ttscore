@@ -91,6 +91,18 @@ fun Route.playerRoutes() {
             }
         }
 
+        get("/{id}/class-history") {
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+
+            val history =
+                PlayerService.getClassHistory(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
+
+            call.respond(HttpStatusCode.OK, history)
+        }
+
         get("/{id}/league-context") {
             val id =
                 call.parameters["id"]

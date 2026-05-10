@@ -28,6 +28,8 @@ object MatchService {
                 .join(awayTeam, JoinType.INNER, Matches.awayTeamId, awayTeam[Teams.id])
                 .select(
                     Matches.id,
+                    Matches.homeTeamId,
+                    Matches.awayTeamId,
                     homeTeam[Teams.name],
                     awayTeam[Teams.name],
                     Matches.homeScore,
@@ -185,6 +187,8 @@ object MatchService {
     private fun ResultRow.toMatchResponse() =
         MatchResponse(
             id = this[Matches.id].toString(),
+            homeTeamId = this[Matches.homeTeamId].toString(),
+            awayTeamId = this[Matches.awayTeamId].toString(),
             homeTeam = this[homeTeam[Teams.name]],
             awayTeam = this[awayTeam[Teams.name]],
             homeScore = this[Matches.homeScore]?.toInt(),

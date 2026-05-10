@@ -64,6 +64,8 @@ data class StandingResponse(
 @Serializable
 data class MatchResponse(
     val id: String,
+    val homeTeamId: String,
+    val awayTeamId: String,
     val homeTeam: String,
     val awayTeam: String,
     val homeScore: Int?,
@@ -216,6 +218,12 @@ data class NextMatchResponse(
     val round: String?,
     val groupId: String,
     val groupName: String,
+)
+
+@Serializable
+data class ClassHistoryEntryResponse(
+    val klass: String,
+    val seasonName: String,
 )
 
 @Serializable

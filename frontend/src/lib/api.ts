@@ -66,6 +66,8 @@ export type Standing = {
 
 export type Match = {
 	id: string;
+	homeTeamId: string;
+	awayTeamId: string;
 	homeTeam: string;
 	awayTeam: string;
 	homeScore: number | null;
@@ -182,6 +184,11 @@ export type NextMatch = {
 	groupName: string;
 };
 
+export type ClassHistoryEntry = {
+	klass: string;
+	seasonName: string;
+};
+
 export type LeagueContext = {
 	teamId: string;
 	teamName: string;
@@ -241,6 +248,7 @@ export const api = {
 		elo: (playerId: string) => get<EloEntry[]>(`/players/${playerId}/elo`),
 		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
 		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`),
-		leagueContext: (playerId: string) => get<LeagueContext>(`/players/${playerId}/league-context`)
+		leagueContext: (playerId: string) => get<LeagueContext>(`/players/${playerId}/league-context`),
+		classHistory: (playerId: string) => get<ClassHistoryEntry[]>(`/players/${playerId}/class-history`)
 	}
 };

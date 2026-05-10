@@ -167,6 +167,8 @@ object TeamService {
     private fun ResultRow.toMatchResponse() =
         MatchResponse(
             id = this[Matches.id].toString(),
+            homeTeamId = this[Matches.homeTeamId].toString(),
+            awayTeamId = this[Matches.awayTeamId].toString(),
             homeTeam = this[homeTeam[Teams.name]],
             awayTeam = this[awayTeam[Teams.name]],
             homeScore = this[Matches.homeScore]?.toInt(),
