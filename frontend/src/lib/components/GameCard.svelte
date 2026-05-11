@@ -89,7 +89,7 @@
 									: set.awayPoints > set.homePoints}
 							<span
 								class="rounded px-2.5 py-1 text-xs font-medium tabular-nums
-							{playerWonSet ? 'bg-win/10 text-win' : 'bg-loss/10 text-loss'}"
+							{playerWonSet ? 'bg-win/15 text-win' : 'bg-loss/15 text-loss'}"
 							>
 								{pg.playerSide === 'home'
 									? `${set.homePoints}:${set.awayPoints}`

@@ -33,14 +33,14 @@
 
 	function getBadge(i: FeedItem): BadgeSpec {
 		if (i.kind === 'player_match' || i.kind === 'team_match') {
-			if (i.result === 'WIN') return { icon: TrendUp, bg: 'bg-emerald-500/15', text: 'text-emerald-500' };
-			if (i.result === 'LOSS') return { icon: TrendDown, bg: 'bg-red-500/15', text: 'text-red-500' };
+			if (i.result === 'WIN') return { icon: TrendUp, bg: 'bg-win/15', text: 'text-win' };
+			if (i.result === 'LOSS') return { icon: TrendDown, bg: 'bg-loss/15', text: 'text-loss' };
 			return { icon: Minus, bg: 'bg-amber-500/15', text: 'text-amber-500' };
 		}
 		if (i.kind === 'class_change') {
 			return i.direction === 'UP'
-				? { icon: ArrowUp, bg: 'bg-emerald-500/15', text: 'text-emerald-500' }
-				: { icon: ArrowDown, bg: 'bg-red-500/15', text: 'text-red-500' };
+				? { icon: ArrowUp, bg: 'bg-win/15', text: 'text-win' }
+				: { icon: ArrowDown, bg: 'bg-loss/15', text: 'text-loss' };
 		}
 		return { icon: Minus, bg: 'bg-muted', text: 'text-muted-foreground' };
 	}
@@ -76,7 +76,7 @@
 
 <a href={entityHref} class="flex items-center gap-3 px-4 py-3.5 hover:bg-accent">
 	<!-- Left: entity type icon -->
-	<div class="flex h-10 w-10 shrink-0 items-center justify-center">
+	<div class="flex h-10 w-10 shrink-0 items-center justify-center bg-muted rounded-xl">
 		<EntityIcon size={20} class="text-muted-foreground" />
 	</div>
 

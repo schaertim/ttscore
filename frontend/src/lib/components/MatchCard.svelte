@@ -27,12 +27,12 @@
 
 	const scoreClass =
 		result === 'win'
-			? 'text-win border-win/30 bg-win/10'
+			? 'text-win bg-win/15'
 			: result === 'loss'
-				? 'text-loss border-loss/30 bg-loss/10'
+				? 'text-loss bg-loss/15'
 				: result != null
-					? 'text-muted-foreground border-muted-foreground/25 bg-muted'
-					: 'text-muted-foreground border-border';
+					? 'text-muted-foreground bg-muted'
+					: 'text-muted-foreground';
 
 	const isHome = perspectiveTeam === match.homeTeam;
 	const opponent = perspectiveTeam ? (isHome ? match.awayTeam : match.homeTeam) : null;

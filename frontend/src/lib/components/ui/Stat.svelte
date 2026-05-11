@@ -12,7 +12,7 @@
 	let { label, value, variant = 'default', size = 'md', class: className = '' }: Props = $props();
 
 	const valueClasses: Record<Variant, string> = {
-		default: 'text-on-surface',
+		default: 'text-foreground',
 		win: 'text-win',
 		loss: 'text-loss'
 	};
@@ -25,7 +25,7 @@
 </script>
 
 <div class={className}>
-	<p class="text-label mb-1 text-on-surface-subtle uppercase">
+	<p class="text-label mb-1 text-muted-foreground uppercase">
 		{label}
 	</p>
 	<p class="leading-none font-black tabular-nums {sizeClasses[size]} {valueClasses[variant]}">

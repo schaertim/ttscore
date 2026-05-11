@@ -6,11 +6,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 const KLASS_CLASSES: Record<string, string> = {
-	A: 'text-klass-a bg-klass-a-subtle',
-	B: 'text-klass-b bg-klass-b-subtle',
-	C: 'text-klass-c bg-klass-c-subtle',
-	D: 'text-klass-d bg-klass-d-subtle',
-	E: 'text-klass-e bg-klass-e-subtle'
+	A: 'text-klass-a bg-klass-a/15',
+	B: 'text-klass-b bg-klass-b/15',
+	C: 'text-klass-c bg-klass-c/15',
+	D: 'text-klass-d bg-klass-d/15',
+	E: 'text-klass-e bg-klass-e/15'
 };
 
 export function klassColors(klass: string | null | undefined): string {

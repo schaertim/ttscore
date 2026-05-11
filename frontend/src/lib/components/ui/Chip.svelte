@@ -12,13 +12,11 @@
 
 	let { variant = 'default', size = 'md', class: className = '', children }: Props = $props();
 
-	// win/loss chips use the vivid color as bg (e.g. green pill with dark text)
-	// unlike Badge which uses subtle bg + vivid text
 	const variantClasses: Record<Variant, string> = {
-		default: 'bg-surface-elevated text-on-surface',
-		win: 'bg-win             text-win-subtle',
-		loss: 'bg-loss            text-loss-subtle',
-		neutral: 'bg-surface-elevated text-on-surface-muted'
+		default: 'bg-card text-foreground ring-1 ring-border',
+		win: 'bg-win/15 text-win ring-1 ring-win/30',
+		loss: 'bg-loss/15 text-loss ring-1 ring-loss/30',
+		neutral: 'bg-card text-muted-foreground ring-1 ring-border'
 	};
 
 	const sizeClasses: Record<string, string> = {

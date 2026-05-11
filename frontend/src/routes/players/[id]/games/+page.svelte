@@ -129,7 +129,7 @@
 							</div>
 						</Accordion.Trigger>
 						<Accordion.Content class="p-0">
-							<div class="space-y-4 px-4 pb-4">
+							<div class="space-y-4 bg-background/30 px-4 py-4">
 								{#each group.games as game (game.gameId)}
 									<GameCard mode="player" {game} />
 								{/each}

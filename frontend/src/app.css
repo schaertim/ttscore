@@ -7,12 +7,7 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
-/* Safelist: klass badge utilities — generated dynamically from utils.ts so we
-   pin them here to guarantee Tailwind always compiles them. */
-@source inline("text-klass-a bg-klass-a-subtle text-klass-b bg-klass-b-subtle text-klass-c bg-klass-c-subtle text-klass-d bg-klass-d-subtle text-klass-e bg-klass-e-subtle");
-
 @theme inline {
-	/* shadcn mappings — untouched */
 	--font-sans: 'DM Sans Variable', sans-serif;
 	--font-heading: var(--font-sans);
 	--color-sidebar-ring: var(--sidebar-ring);
@@ -54,31 +49,14 @@
 	--radius-3xl: calc(var(--radius) * 2.2);
 	--radius-4xl: calc(var(--radius) * 2.6);
 
-	/* surface aliases → bg-surface, text-on-surface, border-border-base etc. */
-	--color-surface: var(--surface);
-	--color-surface-elevated: var(--surface-elevated);
-	--color-on-surface: var(--on-surface);
-	--color-on-surface-muted: var(--on-surface-muted);
-	--color-on-surface-subtle: var(--on-surface-subtle);
-	--color-border-base: var(--border-base);
-
-	/* TTFeed additions → Tailwind classes
-       bg-win, text-win, bg-win-subtle, text-klass-b etc. */
+	/* TTFeed additions → Tailwind classes: bg-win, text-win, bg-klass-b etc. */
 	--color-win: var(--win);
-	--color-win-subtle: var(--win-subtle);
 	--color-loss: var(--loss);
-	--color-loss-subtle: var(--loss-subtle);
 
-	--color-klass-e: var(--klass-e);
-	--color-klass-e-subtle: var(--klass-e-subtle);
 	--color-klass-d: var(--klass-d);
-	--color-klass-d-subtle: var(--klass-d-subtle);
 	--color-klass-c: var(--klass-c);
-	--color-klass-c-subtle: var(--klass-c-subtle);
 	--color-klass-b: var(--klass-b);
-	--color-klass-b-subtle: var(--klass-b-subtle);
 	--color-klass-a: var(--klass-a);
-	--color-klass-a-subtle: var(--klass-a-subtle);
 }
 
 :root {
@@ -116,34 +94,16 @@
 	--sidebar-ring: oklch(0.705 0.015 286.067);
 
 	/* ── TTFeed additions ─────────────────────────────────────
-       surface/on-surface alias the shadcn tokens so they
-       respond to .dark automatically.
        win/loss for match results, klass-* for player tiers.
        ──────────────────────────────────────────────────────── */
 
-	/* surface layer aliases */
-	--surface: var(--background);
-	--surface-elevated: var(--card);
-	--on-surface: var(--foreground);
-	--on-surface-muted: var(--muted-foreground);
-	--on-surface-subtle: oklch(0.62 0.008 286);
-	--border-base: var(--border);
+	--win: oklch(62.7% 0.194 149.214);   /* green-600 */
+	--loss: oklch(57.7% 0.245 27.325);   /* red-600 */
 
-	--win: #16a34a;
-	--win-subtle: #dcfce7;
-	--loss: #dc2626;
-	--loss-subtle: #fee2e2;
-
-	--klass-e: #6b6b92;
-	--klass-e-subtle: #ededf5;
-	--klass-d: #2563eb;
-	--klass-d-subtle: #dbeafe;
-	--klass-c: #059669;
-	--klass-c-subtle: #d1fae5;
-	--klass-b: #d97706;
-	--klass-b-subtle: #fef3c7;
-	--klass-a: #9333ea;
-	--klass-a-subtle: #f3e8ff;
+	--klass-d: oklch(44.6% 0.043 257.281);   /* slate-600 */
+	--klass-c: oklch(54.6% 0.245 262.881);   /* blue-600 */
+	--klass-b: oklch(66.6% 0.179 58.318);    /* amber-600 */
+	--klass-a: oklch(54.1% 0.281 293.009);   /* violet-600 */
 }
 
 .dark {
@@ -179,26 +139,11 @@
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.552 0.016 285.938);
 
-	/* surface aliases override for dark */
-	--on-surface-subtle: oklch(0.38 0.008 286);
-
-	/* win/loss dark overrides */
-	--win: #1db954;
-	--win-subtle: #052912;
-	--loss: #f03a3a;
-	--loss-subtle: #2d0000;
-
 	/* klass dark overrides */
-	--klass-e: #8888a8;
-	--klass-e-subtle: #252530;
-	--klass-d: #60a5fa;
-	--klass-d-subtle: #1a2535;
-	--klass-c: #34d399;
-	--klass-c-subtle: #0f3d2e;
-	--klass-b: #fbbf24;
-	--klass-b-subtle: #3d2a00;
-	--klass-a: #c084fc;
-	--klass-a-subtle: #2d1b4e;
+	--klass-d: oklch(70.4% 0.04 256.788);          /* slate-400 */
+	--klass-c: oklch(70.7% 0.165 254.624);          /* blue-400 */
+	--klass-b: oklch(82.8% 0.189 84.429);           /* amber-400 */
+	--klass-a: oklch(60.6% 0.25 292.717);          /* violet-400 */
 }
 
 @layer base {
