@@ -65,11 +65,9 @@
 
 <div class="w-full max-w-sm">
 	<form onsubmit={handleSubmit} class="flex flex-col gap-6">
-
-		<!-- Logo + heading -->
 		<div class="flex flex-col items-center gap-2 text-center">
 			<div class="flex size-8 items-center justify-center rounded-md bg-foreground text-background">
-				<span class="text-sm font-bold leading-none">tt</span>
+				<span class="text-sm leading-none font-bold">tt</span>
 			</div>
 			<h1 class="text-xl font-bold">
 				{mode === 'signin' ? 'Welcome back' : 'Create an account'}
@@ -80,20 +78,25 @@
 					<button
 						type="button"
 						class="underline underline-offset-4 hover:text-foreground"
-						onclick={() => { mode = 'signup'; error = ''; }}
-					>Sign up</button>
+						onclick={() => {
+							mode = 'signup';
+							error = '';
+						}}>Sign up</button
+					>
 				{:else}
 					Already have an account?
 					<button
 						type="button"
 						class="underline underline-offset-4 hover:text-foreground"
-						onclick={() => { mode = 'signin'; error = ''; }}
-					>Sign in</button>
+						onclick={() => {
+							mode = 'signin';
+							error = '';
+						}}>Sign in</button
+					>
 				{/if}
 			</p>
 		</div>
 
-		<!-- Google -->
 		<Button variant="outline" type="button" class="w-full" onclick={handleGoogleSignIn}>
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="mr-2 size-4 shrink-0">
 				<path
@@ -104,16 +107,14 @@
 			Continue with Google
 		</Button>
 
-		<!-- Divider -->
 		<div class="flex items-center gap-3">
 			<div class="h-px flex-1 bg-border"></div>
 			<span class="text-xs text-muted-foreground">Or</span>
 			<div class="h-px flex-1 bg-border"></div>
 		</div>
 
-		<!-- Fields -->
 		<div class="flex flex-col gap-4">
-			<div class="flex flex-col gap-1.5">
+			<div class="flex flex-col gap-2">
 				<label class="text-sm font-medium" for="email">Email</label>
 				<Input
 					id="email"
@@ -125,7 +126,7 @@
 				/>
 			</div>
 
-			<div class="flex flex-col gap-1.5">
+			<div class="flex flex-col gap-2">
 				<label class="text-sm font-medium" for="password">Password</label>
 				<Input
 					id="password"

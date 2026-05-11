@@ -19,7 +19,7 @@
 		<Icon size={16} class="text-muted-foreground" />
 	</div>
 	<div class="min-w-0">
-		<p class="text-sm font-semibold leading-snug">{label}</p>
+		<p class="text-sm leading-snug font-semibold">{label}</p>
 		<p class="truncate text-xs text-muted-foreground">{sublabel}</p>
 	</div>
 </a>

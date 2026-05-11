@@ -8,7 +8,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const [seasons, federations] = await Promise.all([api.seasons.list(), api.federations.list()]);
 
 	if (!session) {
-		return { state: 'unauthenticated' as const, seasons, federations, player: null, streamed: null };
+		return {
+			state: 'unauthenticated' as const,
+			seasons,
+			federations,
+			player: null,
+			streamed: null
+		};
 	}
 
 	const ktor = authedKtor(session.access_token);
@@ -30,7 +36,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		streamed: {
 			recentMatches: api.players.matches(homePlayerId),
 			leagueContext: api.players.leagueContext(homePlayerId).catch(() => null),
-			favorites: ktor.get('/favorites').then((res) => (res.ok ? res.json() : []))
+			favorites: ktor
+				.get('/favorites')
+				.then((res) => (res.ok ? res.json() : []))
+				.catch(() => [])
 		}
 	};
 };

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { goto, invalidate } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -11,9 +12,8 @@
 
 	import { page } from '$app/state';
 
-	let { data } = $props();
+	let { data }: { data: PageData } = $props();
 
-	// ── Player search ──────────────────────────────────────────
 	let query = $state('');
 	let results = $state<Player[]>([]);
 	let searching = $state(false);
@@ -34,7 +34,6 @@
 		}, 300);
 	}
 
-	// ── Sign out ───────────────────────────────────────────────
 	async function signOut() {
 		await data.supabase.auth.signOut();
 		invalidate('supabase:auth');
@@ -42,26 +41,25 @@
 	}
 </script>
 
-<div class="flex flex-col gap-8 pt-2">
+<div class="flex flex-col gap-6 pt-2">
 	<header class="space-y-4">
 		<BackButton />
 		<div>
-			<h1 class="text-3xl font-black tracking-tighter leading-none">Account</h1>
-			<p class="text-sm text-muted-foreground mt-1">{data.user?.email}</p>
+			<h1 class="text-3xl leading-none font-black tracking-tighter">Account</h1>
+			<p class="mt-1 text-sm text-muted-foreground">{data.user?.email}</p>
 		</div>
 	</header>
 
-	<!-- My player -->
 	<section class="flex flex-col gap-3">
 		<SectionLabel label="My Player" />
 
 		{#if data.profile.homePlayerId}
 			<div class="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-				<div class="flex items-center gap-3 min-w-0">
+				<div class="flex min-w-0 items-center gap-3">
 					<User size={18} class="shrink-0 text-muted-foreground" />
 					<a
 						href="/players/{data.profile.homePlayerId}"
-						class="font-semibold hover:text-primary transition-colors"
+						class="font-semibold transition-colors hover:text-primary"
 					>
 						{data.profile.homePlayerName ?? 'Unknown player'}
 					</a>
@@ -84,7 +82,6 @@
 			<p class="text-sm text-destructive">{page.form.error}</p>
 		{/if}
 
-		<!-- Search -->
 		<div class="flex flex-col gap-2">
 			<Input
 				type="search"
@@ -94,25 +91,29 @@
 			/>
 
 			{#if searching}
-				<p class="text-xs text-muted-foreground px-1">Searching…</p>
+				<p class="px-1 text-xs text-muted-foreground">Searching…</p>
 			{/if}
 
 			{#if results.length > 0}
 				<ul class="flex flex-col gap-1">
 					{#each results as player (player.id)}
 						<li>
-							<form method="POST" action="?/setHomePlayer" use:enhance={() => {
-								return async ({ update }) => {
-									query = '';
-									results = [];
-									await update();
-								};
-							}}>
+							<form
+								method="POST"
+								action="?/setHomePlayer"
+								use:enhance={() => {
+									return async ({ update }) => {
+										query = '';
+										results = [];
+										await update();
+									};
+								}}
+							>
 								<input type="hidden" name="playerId" value={player.id} />
 								<button
 									type="submit"
-									class="w-full flex items-center justify-between rounded-lg border border-border
-									       px-4 py-2.5 text-left hover:bg-muted transition-colors"
+									class="flex w-full items-center justify-between rounded-lg border border-border
+									       px-4 py-2.5 text-left transition-colors hover:bg-muted"
 								>
 									<span class="font-medium">{player.fullName}</span>
 									<span class="text-xs text-muted-foreground">{player.currentClubName ?? ''}</span>
@@ -125,27 +126,28 @@
 		</div>
 	</section>
 
-	<!-- Favorites -->
 	{#if data.favorites.length > 0}
 		<section class="flex flex-col gap-3">
 			<SectionLabel label="Favorites" icon={Star} />
 			<ul class="flex flex-col gap-1">
 				{#each data.favorites as item (item.id)}
-					{@const EntityIcon = item.targetType === 'player' ? User : item.targetType === 'team' ? UsersThree : Trophy}
+					{@const EntityIcon =
+						item.targetType === 'player' ? User : item.targetType === 'team' ? UsersThree : Trophy}
 					{@const href = `/${item.targetType === 'division_group' ? 'groups' : item.targetType === 'team' ? 'teams' : 'players'}/${item.targetId}`}
 					<li class="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-						<div class="flex items-center gap-3 min-w-0">
+						<div class="flex min-w-0 items-center gap-3">
 							<EntityIcon size={18} class="shrink-0 text-muted-foreground" />
-							<a
-								{href}
-								class="font-semibold truncate hover:text-primary transition-colors"
-							>
+							<a {href} class="truncate font-semibold transition-colors hover:text-primary">
 								{item.targetName}
 							</a>
 						</div>
 						<form method="POST" action="?/removeFavorite" use:enhance>
 							<input type="hidden" name="favoriteId" value={item.id} />
-							<button type="submit" class="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-destructive" aria-label="Remove favorite">
+							<button
+								type="submit"
+								class="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+								aria-label="Remove favorite"
+							>
 								<Trash size={16} />
 							</button>
 						</form>
@@ -155,27 +157,28 @@
 		</section>
 	{/if}
 
-	<!-- Notifications -->
 	{#if data.notifications.length > 0}
 		<section class="flex flex-col gap-3">
 			<SectionLabel label="Notifications" icon={BellRinging} />
 			<ul class="flex flex-col gap-1">
 				{#each data.notifications as item (item.id)}
-					{@const EntityIcon = item.targetType === 'player' ? User : item.targetType === 'team' ? UsersThree : Trophy}
+					{@const EntityIcon =
+						item.targetType === 'player' ? User : item.targetType === 'team' ? UsersThree : Trophy}
 					{@const href = `/${item.targetType === 'division_group' ? 'groups' : item.targetType === 'team' ? 'teams' : 'players'}/${item.targetId}`}
 					<li class="flex items-center justify-between rounded-xl border border-border px-4 py-3">
-						<div class="flex items-center gap-3 min-w-0">
+						<div class="flex min-w-0 items-center gap-3">
 							<EntityIcon size={18} class="shrink-0 text-muted-foreground" />
-							<a
-								{href}
-								class="font-semibold truncate hover:text-primary transition-colors"
-							>
+							<a {href} class="truncate font-semibold transition-colors hover:text-primary">
 								{item.targetName}
 							</a>
 						</div>
 						<form method="POST" action="?/removeNotification" use:enhance>
 							<input type="hidden" name="notifyId" value={item.id} />
-							<button type="submit" class="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-destructive" aria-label="Remove notification">
+							<button
+								type="submit"
+								class="ml-3 shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+								aria-label="Remove notification"
+							>
 								<Trash size={16} />
 							</button>
 						</form>
@@ -185,7 +188,6 @@
 		</section>
 	{/if}
 
-	<!-- Appearance -->
 	<section class="flex flex-col gap-3">
 		<SectionLabel label="Appearance" />
 		<button
@@ -202,8 +204,5 @@
 		</button>
 	</section>
 
-	<!-- Sign out -->
-	<Button variant="destructive" onclick={signOut} class="w-full">
-		Sign out
-	</Button>
+	<Button variant="destructive" onclick={signOut} class="w-full">Sign out</Button>
 </div>

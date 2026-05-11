@@ -22,10 +22,7 @@
 
 	<!-- Quicklinks: My Profile, My Matches, My League, My Team -->
 	<section class="space-y-3">
-		<HomeQuicklinks
-			{player}
-			leagueContext={streamed.leagueContext}
-		/>
+		<HomeQuicklinks {player} leagueContext={streamed.leagueContext} />
 	</section>
 
 	<!-- Favorites feed -->

@@ -10,7 +10,6 @@
 	}
 
 	let { player, leagueContext }: Props = $props();
-
 </script>
 
 <div class="space-y-2">

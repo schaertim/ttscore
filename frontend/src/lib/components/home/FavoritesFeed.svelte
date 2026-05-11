@@ -37,7 +37,9 @@
 			{:then events}
 				{@const preview = events.slice(0, PREVIEW_COUNT)}
 				{#if preview.length > 0}
-					<div class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+					<div
+						class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
+					>
 						{#each preview as event (event.key)}
 							<FeedItemCard
 								entityType={event.entityType}

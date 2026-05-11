@@ -21,8 +21,8 @@
 </script>
 
 <div
-	class="flex shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border/50
-	       font-black tracking-tight text-muted-foreground {sizeClasses[size]}"
+	class="flex shrink-0 items-center justify-center rounded-full bg-muted font-black tracking-tight
+	       text-muted-foreground ring-1 ring-border/50 {sizeClasses[size]}"
 >
 	{initials}
 </div>

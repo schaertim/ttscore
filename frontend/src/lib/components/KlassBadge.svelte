@@ -6,7 +6,9 @@
 
 {#if klass}
 	<span
-		class="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-black tracking-wide ring-1 ring-current/30 {klassColors(klass)}"
+		class="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-black tracking-wide ring-1 ring-current/30 {klassColors(
+			klass
+		)}"
 	>
 		{klass}
 	</span>

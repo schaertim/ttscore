@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Game, PlayerGame } from '$lib/api';
+	import { cn } from '$lib/utils';
 	import KlassBadge from '$lib/components/KlassBadge.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 
@@ -51,7 +52,7 @@
 	<a href="/matches/{pg.matchId}" class="block">
 		<Card.Root class="transition-colors hover:bg-accent">
 			<div class="space-y-2 px-6">
-				<p class="truncate text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+				<p class="truncate text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
 					{formatDate(pg.playedAt)} · {pg.homeTeam} vs {pg.awayTeam}
 				</p>
 
@@ -60,16 +61,15 @@
 						<svelte:element
 							this={pg.opponentId ? 'a' : 'p'}
 							href={pg.opponentId ? `/players/${pg.opponentId}` : undefined}
-							class="min-w-0 truncate text-lg font-normal {pg.opponentId
-								? 'hover:underline'
-								: ''}"
+							class={cn('min-w-0 truncate text-lg font-normal', pg.opponentId && 'hover:underline')}
 							onclick={pg.opponentId ? (e: MouseEvent) => e.stopPropagation() : undefined}
-						>{pg.opponentName ?? '—'}</svelte:element>
+							>{pg.opponentName ?? '—'}</svelte:element
+						>
 						<KlassBadge klass={pg.opponentKlass} />
 					</div>
 
 					<div class="flex shrink-0 flex-col items-end gap-0.5">
-						<p class="text-3xl font-black tabular-nums {scoreColor}">
+						<p class={cn('text-3xl font-black tabular-nums', scoreColor)}>
 							{playerSets(pg)}:{opponentSets(pg)}
 						</p>
 						{#if pg.eloDelta != null}
@@ -88,8 +88,10 @@
 									? set.homePoints > set.awayPoints
 									: set.awayPoints > set.homePoints}
 							<span
-								class="rounded px-2.5 py-1 text-xs font-medium tabular-nums
-							{playerWonSet ? 'bg-win/15 text-win' : 'bg-loss/15 text-loss'}"
+								class={cn(
+									'rounded px-2.5 py-1 text-xs font-medium tabular-nums',
+									playerWonSet ? 'bg-win/15 text-win' : 'bg-loss/15 text-loss'
+								)}
 							>
 								{pg.playerSide === 'home'
 									? `${set.homePoints}:${set.awayPoints}`
@@ -107,24 +109,25 @@
 	{@const awayWon = mg.result === 'AWAY'}
 	<Card.Root>
 		<div class="space-y-3 px-5">
-			<p class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+			<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
 				Game #{mg.orderInMatch} · {mg.gameType}
 			</p>
 
 			<div class="flex items-center gap-4">
 				<div class="min-w-0 flex-1 space-y-1.5">
-					<!-- Home player(s) -->
 					<div class="flex min-w-0 items-center gap-1.5">
 						{#if mg.homePlayer2Name}
 							<div class="flex min-w-0 shrink items-center gap-1">
 								<svelte:element
 									this={mg.homePlayerId ? 'a' : 'span'}
 									href={mg.homePlayerId ? `/players/${mg.homePlayerId}` : undefined}
-									class="truncate {homeWon
-										? 'text-lg font-semibold text-foreground'
-										: 'text-base font-normal text-muted-foreground'} {mg.homePlayerId
-										? 'hover:underline'
-										: ''}">{lastName(mg.homePlayerName)}</svelte:element
+									class={cn(
+										'truncate',
+										homeWon
+											? 'text-lg font-semibold text-foreground'
+											: 'text-base font-normal text-muted-foreground',
+										mg.homePlayerId && 'hover:underline'
+									)}>{lastName(mg.homePlayerName)}</svelte:element
 								>
 								<KlassBadge klass={mg.homePlayerKlass} />
 							</div>
@@ -133,11 +136,13 @@
 								<svelte:element
 									this={mg.homePlayer2Id ? 'a' : 'span'}
 									href={mg.homePlayer2Id ? `/players/${mg.homePlayer2Id}` : undefined}
-									class="truncate {homeWon
-										? 'text-lg font-semibold text-foreground'
-										: 'text-base font-normal text-muted-foreground'} {mg.homePlayer2Id
-										? 'hover:underline'
-										: ''}">{lastName(mg.homePlayer2Name)}</svelte:element
+									class={cn(
+										'truncate',
+										homeWon
+											? 'text-lg font-semibold text-foreground'
+											: 'text-base font-normal text-muted-foreground',
+										mg.homePlayer2Id && 'hover:underline'
+									)}>{lastName(mg.homePlayer2Name)}</svelte:element
 								>
 								<KlassBadge klass={mg.homePlayer2Klass} />
 							</div>
@@ -145,27 +150,30 @@
 							<svelte:element
 								this={mg.homePlayerId ? 'a' : 'span'}
 								href={mg.homePlayerId ? `/players/${mg.homePlayerId}` : undefined}
-								class="min-w-0 truncate {homeWon
-									? 'text-lg font-semibold text-foreground'
-									: 'text-base font-normal text-muted-foreground'} {mg.homePlayerId
-									? 'hover:underline'
-									: ''}">{mg.homePlayerName ?? '—'}</svelte:element
+								class={cn(
+									'min-w-0 truncate',
+									homeWon
+										? 'text-lg font-semibold text-foreground'
+										: 'text-base font-normal text-muted-foreground',
+									mg.homePlayerId && 'hover:underline'
+								)}>{mg.homePlayerName ?? '—'}</svelte:element
 							>
 							<KlassBadge klass={mg.homePlayerKlass} />
 						{/if}
 					</div>
-					<!-- Away player(s) -->
 					<div class="flex min-w-0 items-center gap-1.5">
 						{#if mg.awayPlayer2Name}
 							<div class="flex min-w-0 shrink items-center gap-1">
 								<svelte:element
 									this={mg.awayPlayerId ? 'a' : 'span'}
 									href={mg.awayPlayerId ? `/players/${mg.awayPlayerId}` : undefined}
-									class="truncate {awayWon
-										? 'text-lg font-semibold text-foreground'
-										: 'text-base font-normal text-muted-foreground'} {mg.awayPlayerId
-										? 'hover:underline'
-										: ''}">{lastName(mg.awayPlayerName)}</svelte:element
+									class={cn(
+										'truncate',
+										awayWon
+											? 'text-lg font-semibold text-foreground'
+											: 'text-base font-normal text-muted-foreground',
+										mg.awayPlayerId && 'hover:underline'
+									)}>{lastName(mg.awayPlayerName)}</svelte:element
 								>
 								<KlassBadge klass={mg.awayPlayerKlass} />
 							</div>
@@ -174,11 +182,13 @@
 								<svelte:element
 									this={mg.awayPlayer2Id ? 'a' : 'span'}
 									href={mg.awayPlayer2Id ? `/players/${mg.awayPlayer2Id}` : undefined}
-									class="truncate {awayWon
-										? 'text-lg font-semibold text-foreground'
-										: 'text-base font-normal text-muted-foreground'} {mg.awayPlayer2Id
-										? 'hover:underline'
-										: ''}">{lastName(mg.awayPlayer2Name)}</svelte:element
+									class={cn(
+										'truncate',
+										awayWon
+											? 'text-lg font-semibold text-foreground'
+											: 'text-base font-normal text-muted-foreground',
+										mg.awayPlayer2Id && 'hover:underline'
+									)}>{lastName(mg.awayPlayer2Name)}</svelte:element
 								>
 								<KlassBadge klass={mg.awayPlayer2Klass} />
 							</div>
@@ -186,11 +196,13 @@
 							<svelte:element
 								this={mg.awayPlayerId ? 'a' : 'span'}
 								href={mg.awayPlayerId ? `/players/${mg.awayPlayerId}` : undefined}
-								class="min-w-0 truncate {awayWon
-									? 'text-lg font-semibold text-foreground'
-									: 'text-base font-normal text-muted-foreground'} {mg.awayPlayerId
-									? 'hover:underline'
-									: ''}">{mg.awayPlayerName ?? '—'}</svelte:element
+								class={cn(
+									'min-w-0 truncate',
+									awayWon
+										? 'text-lg font-semibold text-foreground'
+										: 'text-base font-normal text-muted-foreground',
+									mg.awayPlayerId && 'hover:underline'
+								)}>{mg.awayPlayerName ?? '—'}</svelte:element
 							>
 							<KlassBadge klass={mg.awayPlayerKlass} />
 						{/if}

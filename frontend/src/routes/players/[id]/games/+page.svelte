@@ -67,7 +67,7 @@
 	<header class="space-y-4">
 		<BackButton />
 		<div>
-			<h1 class="wrap-break-word text-3xl font-black tracking-tighter leading-none">
+			<h1 class="text-3xl leading-none font-black tracking-tighter wrap-break-word">
 				{data.player.fullName}
 			</h1>
 			<p class="mt-1.5 text-sm text-muted-foreground">Game History</p>
@@ -86,11 +86,7 @@
 		{#if groups.length === 0}
 			<p class="py-8 text-center text-sm text-muted-foreground">No games found.</p>
 		{:else}
-			<Accordion.Root
-				type="multiple"
-				bind:value={expandedMonths}
-				class="space-y-3"
-			>
+			<Accordion.Root type="multiple" bind:value={expandedMonths} class="space-y-3">
 				{#each groups as group (group.key)}
 					{@const expanded = expandedMonths.includes(group.key)}
 					<Accordion.Item
@@ -101,11 +97,11 @@
 							class="w-full items-center px-5 py-4 hover:no-underline [&_[data-slot=accordion-trigger-icon]]:hidden"
 						>
 							<div class="min-w-0 flex-1 text-left">
-								<p class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+								<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
 									{group.games.length}
 									{group.games.length === 1 ? 'Game' : 'Games'}
 								</p>
-								<p class="mt-0.5 text-xl font-black tracking-tight">{group.label}</p>
+								<p class="mt-0.5 text-xl font-bold tracking-tight">{group.label}</p>
 							</div>
 							<div class="flex shrink-0 items-center gap-3">
 								{#if group.totalElo !== 0}

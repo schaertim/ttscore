@@ -44,14 +44,12 @@
 	}
 </script>
 
-<!-- Page content -->
 <main class="mx-auto max-w-2xl px-4 pt-4 pb-24">
 	{@render children()}
 </main>
 
-<!-- Bottom nav -->
 <nav
-	class="fixed bottom-0 inset-x-0 z-50 border-t border-border bg-card"
+	class="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card"
 	style="backdrop-filter: blur(24px);"
 >
 	<div class="mx-auto flex h-16 max-w-2xl items-center justify-center gap-2 px-4">
@@ -64,12 +62,11 @@
 			>
 				<item.icon size={22} weight={active ? 'fill' : 'regular'} />
 				{#if active}
-					<span class="text-[10px] font-bold tracking-wide">{item.label}</span>
+					<span class="text-[10px] font-medium tracking-wide">{item.label}</span>
 				{/if}
 			</a>
 		{/each}
 
-		<!-- Account / Sign in -->
 		<button
 			onclick={handleAccountClick}
 			class="flex w-16 flex-col items-center justify-center gap-0.5 transition-colors
@@ -82,7 +79,7 @@
 				<SignIn size={22} weight="regular" />
 			{/if}
 			{#if accountActive}
-				<span class="text-[10px] font-bold tracking-wide">
+				<span class="text-[10px] font-medium tracking-wide">
 					{data.user ? 'Account' : 'Sign in'}
 				</span>
 			{/if}

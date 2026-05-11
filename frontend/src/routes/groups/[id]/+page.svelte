@@ -71,7 +71,7 @@
 </script>
 
 <div class="space-y-1 px-1 py-4">
-	<div class="flex items-center justify-between mb-4">
+	<div class="mb-4 flex items-center justify-between">
 		<BackButton class="mb-0" />
 		{#if data.user}
 			<div class="flex items-center gap-0.5">
@@ -91,7 +91,7 @@
 		{/if}
 	</div>
 	<div class="min-w-0 space-y-1">
-		<h1 class="text-3xl font-extrabold tracking-tight">{data.group.name}</h1>
+		<h1 class="text-3xl font-black tracking-tight">{data.group.name}</h1>
 		<p class="text-sm text-muted-foreground">
 			{data.group.season}
 			{#if data.group.totalRounds > 0}
@@ -193,7 +193,7 @@
                  bg-card px-4 py-3"
 				>
 					<div class="flex min-w-0 flex-col gap-0.5">
-						<span class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+						<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
 							Rd {match.round} · {formatDate(match.playedAt)}
 						</span>
 						<div class="flex min-w-0 items-center gap-1.5 text-sm">
@@ -202,7 +202,9 @@
 							<span class="truncate font-medium">{match.awayTeam}</span>
 						</div>
 					</div>
-					<span class="ml-3 shrink-0 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+					<span
+						class="ml-3 shrink-0 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground"
+					>
 						{formatDate(match.playedAt)}
 					</span>
 				</div>

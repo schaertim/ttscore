@@ -21,9 +21,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			const allFavorites: FavoriteResponse[] = favoritesRes.ok ? await favoritesRes.json() : [];
 
 			const favoriteIdMap = new Map(
-				allFavorites
-					.filter((f) => f.targetType === 'player')
-					.map((f) => [f.targetId, f.id])
+				allFavorites.filter((f) => f.targetType === 'player').map((f) => [f.targetId, f.id])
 			);
 
 			favoritePlayers = players.map((p) => ({

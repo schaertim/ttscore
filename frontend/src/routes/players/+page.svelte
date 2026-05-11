@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PageData } from './$types';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
@@ -10,7 +11,7 @@
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
-	let { data } = $props();
+	let { data }: { data: PageData } = $props();
 
 	let searchQuery = $state('');
 	let isSearching = $state(false);
@@ -58,13 +59,16 @@
 
 <div class="space-y-6 py-4 pb-20">
 	<div class="px-1">
-		<p class="text-xs font-bold tracking-widest text-muted-foreground uppercase">Players & Clubs</p>
-		<h1 class="text-3xl font-extrabold tracking-tight">Search</h1>
+		<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+			Players & Clubs
+		</p>
+		<h1 class="text-3xl font-black tracking-tight">Search</h1>
 	</div>
 
-	<!-- Search input -->
 	<div class="relative">
-		<MagnifyingGlass class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+		<MagnifyingGlass
+			class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+		/>
 		<Input
 			bind:value={searchQuery}
 			class="w-full py-5 pl-9 text-base"
@@ -72,7 +76,6 @@
 		/>
 	</div>
 
-	<!-- Favorites carousel — hidden while searching -->
 	{#if showFavorites}
 		<section class="space-y-3">
 			<SectionLabel label="Favourites" icon={Star} class="px-1" />
@@ -93,10 +96,9 @@
 		</section>
 	{/if}
 
-	<!-- Search results -->
 	{#if searchQuery.length >= 3}
 		<section class="space-y-4">
-			<h2 class="px-1 text-xs font-bold tracking-[0.1em] text-muted-foreground uppercase">
+			<h2 class="px-1 text-xs font-medium tracking-widest text-muted-foreground uppercase">
 				Results for "{searchQuery}"
 				{#if response}
 					<span class="ml-1 font-normal tracking-normal text-muted-foreground/60 normal-case">
@@ -146,7 +148,6 @@
 					{/each}
 				</div>
 
-				<!-- Pagination -->
 				{#if totalPages > 1}
 					<div class="flex items-center justify-center gap-2 pt-2">
 						<Button

@@ -10,7 +10,9 @@
 	let { player, recentMatches }: Props = $props();
 
 	const klassLetter = $derived((player.klass?.[0] ?? '').toLowerCase());
-	const klassVar = $derived(klassLetter ? `var(--klass-${klassLetter})` : 'var(--muted-foreground)');
+	const klassVar = $derived(
+		klassLetter ? `var(--klass-${klassLetter})` : 'var(--muted-foreground)'
+	);
 
 	// ── Sparkline ─────────────────────────────────────────────────────────────────
 
@@ -69,14 +71,13 @@
 
 <a href="/players/{player.id}" class="block py-4">
 	<div
-		class="relative overflow-hidden rounded-2xl bg-card border border-border/50 p-5"
+		class="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5"
 		style="background-image: radial-gradient(circle at calc(100% - 3.25rem) 3.25rem, color-mix(in srgb, {klassVar} 32%, transparent) 0%, color-mix(in srgb, {klassVar} 7%, transparent) 30%, transparent 56%);"
 	>
-
 		<!-- Top row: name/club + class badge -->
 		<div class="relative flex items-start justify-between gap-4">
 			<div class="min-w-0">
-				<h2 class="text-2xl font-black leading-tight tracking-tight">
+				<h2 class="text-2xl leading-tight font-black tracking-tight">
 					{player.fullName}
 				</h2>
 				{#if player.currentClubName}
@@ -96,8 +97,10 @@
 
 		<!-- ELO number + label -->
 		<div class="mt-4">
-			<p class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">ELO Rating</p>
-			<p class="mt-0.5 text-5xl font-black tabular-nums leading-none">
+			<p class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+				ELO Rating
+			</p>
+			<p class="mt-0.5 text-5xl leading-none font-black tabular-nums">
 				{player.currentElo ?? '—'}
 			</p>
 		</div>
@@ -107,7 +110,11 @@
 			{@const delta = monthDelta(matches)}
 			{@const rounded = Math.round(delta)}
 			{#if rounded !== 0}
-				<p class="mt-2 flex items-center gap-1 text-sm font-bold {delta > 0 ? 'text-emerald-500' : 'text-red-500'}">
+				<p
+					class="mt-2 flex items-center gap-1 text-sm font-bold {delta > 0
+						? 'text-emerald-500'
+						: 'text-red-500'}"
+				>
 					{#if delta > 0}
 						<ArrowUp size={14} weight="bold" />+{rounded} this month
 					{:else}
@@ -149,13 +156,7 @@
 							/>
 							<!-- End dot -->
 							<circle cx="300" cy={endDotY(pts)} r="3.5" fill={klassVar} />
-							<circle
-								cx="300"
-								cy={endDotY(pts)}
-								r="6"
-								fill={klassVar}
-								opacity="0.25"
-							/>
+							<circle cx="300" cy={endDotY(pts)} r="6" fill={klassVar} opacity="0.25" />
 						</svg>
 					</div>
 				{/if}

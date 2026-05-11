@@ -29,7 +29,7 @@
 	>
 		<PlayerAvatar {fullName} size="lg" />
 
-		<p class="w-full truncate text-center text-xs font-semibold leading-tight">
+		<p class="w-full truncate text-center text-xs leading-tight font-semibold">
 			{shortName}
 		</p>
 
@@ -59,7 +59,7 @@
 			       transition-colors hover:text-foreground"
 			aria-label="Remove from favourites"
 		>
-			<Star weight="fill" class="size-4.5" />
+			<Star weight="fill" class="size-4" />
 		</button>
 	</form>
 </div>

@@ -249,6 +249,7 @@ export const api = {
 		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
 		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`),
 		leagueContext: (playerId: string) => get<LeagueContext>(`/players/${playerId}/league-context`),
-		classHistory: (playerId: string) => get<ClassHistoryEntry[]>(`/players/${playerId}/class-history`)
+		classHistory: (playerId: string) =>
+			get<ClassHistoryEntry[]>(`/players/${playerId}/class-history`)
 	}
 };

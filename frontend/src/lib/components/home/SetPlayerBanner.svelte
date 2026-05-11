@@ -13,10 +13,7 @@
 			<p class="mt-0.5 text-sm text-muted-foreground">
 				Set your player to see your ELO, next match, and recent results right here.
 			</p>
-			<a
-				href="/account"
-				class="mt-3 inline-block text-sm font-bold text-primary hover:underline"
-			>
+			<a href="/account" class="mt-3 inline-block text-sm font-bold text-primary hover:underline">
 				Set your player →
 			</a>
 		</div>

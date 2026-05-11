@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Match } from '$lib/api';
+	import { cn } from '$lib/utils';
 	import { HouseLine, Train } from 'phosphor-svelte';
 
 	interface Props {
@@ -53,13 +54,12 @@
 	       border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 >
 	<div class="flex min-w-0 flex-col gap-0.5">
-		<span class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+		<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
 			{#if match.round}Rd {match.round} ·
 			{/if}{formatDate(match.playedAt)}
 		</span>
 
 		{#if perspectiveTeam}
-			<!-- Perspective mode: icon inline with opponent name -->
 			<div class="flex min-w-0 items-center gap-1.5">
 				{#if isHome}
 					<HouseLine weight="fill" class="h-4 w-4 shrink-0 text-muted-foreground/60" />
@@ -69,7 +69,6 @@
 				<span class="truncate text-sm font-semibold">{opponent}</span>
 			</div>
 		{:else}
-			<!-- Neutral mode: both team names -->
 			<div class="flex min-w-0 items-center gap-1.5 text-sm">
 				<span class="truncate font-medium">{match.homeTeam}</span>
 				<span class="flex-shrink-0 text-xs text-muted-foreground">vs</span>
@@ -79,8 +78,10 @@
 	</div>
 
 	<span
-		class="ml-3 min-w-[3rem] shrink-0 rounded-md border px-2.5 py-1 text-center text-sm
-	             font-black tabular-nums {scoreClass}"
+		class={cn(
+			'ml-3 min-w-[3rem] shrink-0 rounded-md border px-2.5 py-1 text-center text-sm font-black tabular-nums',
+			scoreClass
+		)}
 	>
 		{#if hasScore}
 			{match.homeScore}:{match.awayScore}

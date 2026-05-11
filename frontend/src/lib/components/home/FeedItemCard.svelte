@@ -76,7 +76,7 @@
 
 <a href={entityHref} class="flex items-center gap-3 px-4 py-3.5 hover:bg-accent">
 	<!-- Left: entity type icon -->
-	<div class="flex h-10 w-10 shrink-0 items-center justify-center bg-muted rounded-xl">
+	<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
 		<EntityIcon size={20} class="text-muted-foreground" />
 	</div>
 

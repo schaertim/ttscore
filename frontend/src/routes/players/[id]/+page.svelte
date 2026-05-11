@@ -30,7 +30,7 @@
 
 <div class="mx-auto max-w-2xl space-y-6 p-4 pb-20">
 	<header class="space-y-4">
-		<div class="flex items-center justify-between mb-4">
+		<div class="mb-4 flex items-center justify-between">
 			<BackButton class="mb-0" />
 			{#if data.user}
 				<div class="flex items-center gap-0.5">
@@ -62,15 +62,17 @@
 
 			<div class="flex shrink-0 flex-col items-end gap-2">
 				{#if data.player.currentElo}
-					<span class="text-4xl leading-none font-black tabular-nums">{data.player.currentElo}</span>
-					<span class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">ELO</span>
+					<span class="text-4xl leading-none font-black tabular-nums">{data.player.currentElo}</span
+					>
+					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
+						>ELO</span
+					>
 				{/if}
 				<KlassBadge klass={data.player.klass} />
 			</div>
 		</div>
 	</header>
 
-	<!-- ELO History Chart -->
 	<section class="space-y-2">
 		<SectionLabel label="ELO History" icon={ChartLine} class="px-1" />
 		<Card.Root class="overflow-hidden border-border/50">
@@ -116,7 +118,6 @@
 		</Card.Root>
 	</section>
 
-	<!-- Season Stats + Game History (single await) -->
 	{#await data.streamed.matches}
 		<div class="grid grid-cols-3 gap-3">
 			{#each [1, 2, 3] as _}
@@ -147,7 +148,7 @@
 		<div class="grid grid-cols-3 gap-3">
 			<Card.Root class="bg-card/50">
 				<Card.Content class="flex flex-col items-center p-4">
-					<span class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
 						>Wins</span
 					>
 					<span class="text-2xl font-black text-win">{wins}</span>
@@ -155,7 +156,7 @@
 			</Card.Root>
 			<Card.Root class="bg-card/50">
 				<Card.Content class="flex flex-col items-center p-4">
-					<span class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
 						>Losses</span
 					>
 					<span class="text-2xl font-black text-loss">{losses}</span>
@@ -163,7 +164,7 @@
 			</Card.Root>
 			<Card.Root class="bg-card/50">
 				<Card.Content class="flex flex-col items-center p-4">
-					<span class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase"
+					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
 						>Win %</span
 					>
 					<span class="text-2xl font-black">{winPct}%</span>
@@ -185,7 +186,7 @@
 				{#if matches.length > 3}
 					<a
 						href="/players/{data.player.id}/games"
-						class="block pt-1 text-center text-xs font-bold tracking-widest text-muted-foreground uppercase hover:text-foreground"
+						class="block pt-1 text-center text-xs font-medium tracking-widest text-muted-foreground uppercase hover:text-foreground"
 					>
 						Show Full History →
 					</a>

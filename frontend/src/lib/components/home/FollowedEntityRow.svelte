@@ -33,7 +33,7 @@
 		: Promise.resolve([] as Awaited<ReturnType<typeof api.teams.matches>>);
 </script>
 
-<div class="rounded-xl border border-border bg-card p-4 space-y-3">
+<div class="space-y-3 rounded-xl border border-border bg-card p-4">
 	<a href={hrefBase} class="flex items-center justify-between">
 		<p class="text-sm font-bold hover:underline">{follow.targetName}</p>
 		<CaretRight class="h-4 w-4 shrink-0 text-muted-foreground" />

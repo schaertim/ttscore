@@ -5,7 +5,15 @@
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { CaretDown, CaretRight, Globe, MapTrifold, TrendUp, Clock, Trophy } from 'phosphor-svelte';
+	import {
+		CaretDown,
+		CaretRight,
+		Globe,
+		MapTrifold,
+		TrendUp,
+		Clock,
+		Trophy
+	} from 'phosphor-svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
@@ -104,11 +112,7 @@
 		{:else if groupsByFederation.length === 0}
 			<p class="py-12 text-center text-sm text-muted-foreground">No groups found for this season</p>
 		{:else}
-			<Accordion.Root
-				type="multiple"
-				bind:value={expandedFederations}
-				class="space-y-2"
-			>
+			<Accordion.Root type="multiple" bind:value={expandedFederations} class="space-y-2">
 				{#each groupsByFederation as fed (fed.id)}
 					{@const isExpanded = expandedFederations.includes(fed.id)}
 					{@const isNational = fed.name === 'STT'}

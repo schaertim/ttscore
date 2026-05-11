@@ -97,13 +97,13 @@
        win/loss for match results, klass-* for player tiers.
        ──────────────────────────────────────────────────────── */
 
-	--win: oklch(62.7% 0.194 149.214);   /* green-600 */
-	--loss: oklch(57.7% 0.245 27.325);   /* red-600 */
+	--win: oklch(62.7% 0.194 149.214); /* green-600 */
+	--loss: oklch(57.7% 0.245 27.325); /* red-600 */
 
-	--klass-d: oklch(44.6% 0.043 257.281);   /* slate-600 */
-	--klass-c: oklch(54.6% 0.245 262.881);   /* blue-600 */
-	--klass-b: oklch(66.6% 0.179 58.318);    /* amber-600 */
-	--klass-a: oklch(54.1% 0.281 293.009);   /* violet-600 */
+	--klass-d: oklch(44.6% 0.043 257.281); /* slate-600 */
+	--klass-c: oklch(54.6% 0.245 262.881); /* blue-600 */
+	--klass-b: oklch(66.6% 0.179 58.318); /* amber-600 */
+	--klass-a: oklch(54.1% 0.281 293.009); /* violet-600 */
 }
 
 .dark {
@@ -140,10 +140,10 @@
 	--sidebar-ring: oklch(0.552 0.016 285.938);
 
 	/* klass dark overrides */
-	--klass-d: oklch(70.4% 0.04 256.788);          /* slate-400 */
-	--klass-c: oklch(70.7% 0.165 254.624);          /* blue-400 */
-	--klass-b: oklch(82.8% 0.189 84.429);           /* amber-400 */
-	--klass-a: oklch(60.6% 0.25 292.717);          /* violet-400 */
+	--klass-d: oklch(70.4% 0.04 256.788); /* slate-400 */
+	--klass-c: oklch(70.7% 0.165 254.624); /* blue-400 */
+	--klass-b: oklch(82.8% 0.189 84.429); /* amber-400 */
+	--klass-a: oklch(60.6% 0.25 292.717); /* violet-400 */
 }
 
 @layer base {

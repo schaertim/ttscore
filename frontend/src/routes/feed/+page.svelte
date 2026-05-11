@@ -34,7 +34,7 @@
 <div class="mx-auto max-w-2xl space-y-6 p-4 pb-20">
 	<header class="space-y-4">
 		<BackButton />
-		<h1 class="text-3xl font-black tracking-tighter leading-none">Feed</h1>
+		<h1 class="text-3xl leading-none font-black tracking-tighter">Feed</h1>
 	</header>
 
 	{#await feedPromise}
@@ -42,7 +42,9 @@
 			{#each [1, 2, 3] as i (i)}
 				<div class="space-y-2">
 					<Skeleton class="h-4 w-24 rounded" />
-					<div class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+					<div
+						class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
+					>
 						{#each [1, 2, 3] as j (j)}
 							<div class="flex items-center gap-3 px-4 py-3.5">
 								<Skeleton class="h-10 w-10 shrink-0 rounded-xl" />
@@ -79,7 +81,9 @@
 						<p class="px-1 text-xs font-bold tracking-widest text-muted-foreground uppercase">
 							{group.label}
 						</p>
-						<div class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+						<div
+							class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
+						>
 							{#each group.events as event (event.key)}
 								<FeedItemCard
 									entityType={event.entityType}
