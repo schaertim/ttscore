@@ -53,7 +53,7 @@
 		<Card.Root class="py-4 transition-colors hover:bg-accent">
 			<div class="space-y-2 px-6">
 				<p class="truncate text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-					{formatDate(pg.playedAt)} Â· {pg.homeTeam} vs {pg.awayTeam}
+					{formatDate(pg.playedAt)} · {pg.homeTeam} vs {pg.awayTeam}
 				</p>
 
 				<div class="flex items-baseline gap-4">
