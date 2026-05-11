@@ -56,22 +56,22 @@
 	<div class="flex min-w-0 flex-col gap-0.5">
 		<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
 			{#if match.round}Rd {match.round} ·
-			{/if}{formatDate(match.playedAt)}
+			{/if} {formatDate(match.playedAt)}
 		</span>
 
 		{#if perspectiveTeam}
 			<div class="flex min-w-0 items-center gap-1.5">
 				{#if isHome}
-					<HouseLine weight="fill" class="h-4 w-4 shrink-0 text-muted-foreground/60" />
+					<HouseLine weight="fill" size={16} class="text-muted-foreground/60" />
 				{:else}
-					<Train weight="fill" class="h-4 w-4 shrink-0 text-muted-foreground/60" />
+					<Train weight="fill" size={16} class="text-muted-foreground/60" />
 				{/if}
 				<span class="truncate text-sm font-semibold">{opponent}</span>
 			</div>
 		{:else}
 			<div class="flex min-w-0 items-center gap-1.5 text-sm">
 				<span class="truncate font-medium">{match.homeTeam}</span>
-				<span class="flex-shrink-0 text-xs text-muted-foreground">vs</span>
+				<span class="shrink-0 text-xs text-muted-foreground">vs</span>
 				<span class="truncate font-medium">{match.awayTeam}</span>
 			</div>
 		{/if}
@@ -79,7 +79,7 @@
 
 	<span
 		class={cn(
-			'ml-3 min-w-[3rem] shrink-0 rounded-md border px-2.5 py-1 text-center text-sm font-black tabular-nums',
+			'min-w-12 shrink-0 rounded-md border px-2.5 py-1 text-center text-sm font-black tabular-nums',
 			scoreClass
 		)}
 	>

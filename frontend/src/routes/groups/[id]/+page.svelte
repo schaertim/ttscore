@@ -70,36 +70,27 @@
 	}
 </script>
 
-<div class="space-y-1 px-1 py-4">
-	<div class="mb-4 flex items-center justify-between">
-		<BackButton class="mb-0" />
-		{#if data.user}
-			<div class="flex items-center gap-0.5">
-				<FavoriteButton
-					bind:favorited
-					bind:favoriteId
-					targetType="division_group"
-					targetId={data.group.id}
-				/>
-				<NotifyButton
-					bind:notifying
-					bind:notifyId
-					targetType="division_group"
-					targetId={data.group.id}
-				/>
-			</div>
-		{/if}
-	</div>
-	<div class="min-w-0 space-y-1">
-		<h1 class="text-3xl font-black tracking-tight">{data.group.name}</h1>
-		<p class="text-sm text-muted-foreground">
-			{data.group.season}
-			{#if data.group.totalRounds > 0}
-				· <span class="font-medium">Rd {data.group.roundsPlayed}/{data.group.totalRounds}</span>
+<div class="space-y-6">
+	<header class="space-y-4">
+		<div class="flex items-center justify-between">
+			<BackButton class="" />
+			{#if data.user}
+				<div class="flex items-center">
+					<FavoriteButton bind:favorited bind:favoriteId targetType="division_group" targetId={data.group.id} />
+					<NotifyButton bind:notifying bind:notifyId targetType="division_group" targetId={data.group.id} />
+				</div>
 			{/if}
-		</p>
-	</div>
-</div>
+		</div>
+		<div class="min-w-0">
+			<h1 class="mb-1 text-3xl font-black tracking-tight">{data.group.name}</h1>
+			<p class="text-sm text-muted-foreground">
+				{data.group.season}
+				{#if data.group.totalRounds > 0}
+					· <span class="font-medium">Rd {data.group.roundsPlayed}/{data.group.totalRounds}</span>
+				{/if}
+			</p>
+		</div>
+	</header>
 
 <Tabs.Root value="standings">
 	<Tabs.List class="w-full">
@@ -212,3 +203,4 @@
 		{/if}
 	</Tabs.Content>
 </Tabs.Root>
+</div>

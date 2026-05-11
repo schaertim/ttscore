@@ -42,37 +42,41 @@ async function fetchPlayerEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]
 		});
 	}
 
-	// All completed matches — one event per match (dedup by matchId)
-	const seen = new Set<string>();
+	// Group completed games by matchId, then count personal wins per team match
+	const byMatch = new Map<string, typeof games>();
 	for (const game of games) {
-		if (game.status === 'SCHEDULED' || seen.has(game.matchId)) continue;
-		seen.add(game.matchId);
+		if (game.status === 'SCHEDULED') continue;
+		if (!byMatch.has(game.matchId)) byMatch.set(game.matchId, []);
+		byMatch.get(game.matchId)!.push(game);
+	}
 
-		const isHome = game.playerSide === 'home';
-		const myScore = isHome ? game.homeScore : game.awayScore;
-		const oppScore = isHome ? game.awayScore : game.homeScore;
-		const result =
-			myScore != null && oppScore != null
-				? myScore > oppScore
-					? 'WIN'
-					: myScore < oppScore
-						? 'LOSS'
-						: 'DRAW'
-				: 'DRAW';
+	for (const [matchId, matchGames] of byMatch) {
+		const first = matchGames[0];
+		const myWins = matchGames.filter(
+			(g) =>
+				(g.result === 'HOME' && g.playerSide === 'home') ||
+				(g.result === 'AWAY' && g.playerSide === 'away')
+		).length;
+		const oppWins = matchGames.filter(
+			(g) =>
+				(g.result === 'HOME' && g.playerSide === 'away') ||
+				(g.result === 'AWAY' && g.playerSide === 'home')
+		).length;
+		const result = myWins > oppWins ? 'WIN' : myWins < oppWins ? 'LOSS' : 'DRAW';
 
 		events.push({
-			key: `${fav.id}-match-${game.matchId}`,
+			key: `${fav.id}-match-${matchId}`,
 			entityType: 'player',
 			entityName: fav.targetName,
-			entityHref: `/players/${fav.targetId}`,
+			entityHref: `/matches/${matchId}`,
 			item: {
 				kind: 'player_match',
 				result,
-				opponentTeam: isHome ? game.awayTeam : game.homeTeam,
-				matchScore: myScore != null && oppScore != null ? `${myScore}–${oppScore}` : '?–?',
-				playedAt: game.playedAt
+				opponentTeam: first.playerSide === 'home' ? first.awayTeam : first.homeTeam,
+				matchScore: `${myWins}–${oppWins}`,
+				playedAt: first.playedAt
 			},
-			sortKey: game.playedAt ?? ''
+			sortKey: first.playedAt ?? ''
 		});
 	}
 
@@ -99,7 +103,7 @@ async function fetchTeamEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]> 
 				key: `${fav.id}-match-${m.id}`,
 				entityType: 'team' as const,
 				entityName: fav.targetName,
-				entityHref: `/teams/${fav.targetId}`,
+				entityHref: `/matches/${m.id}`,
 				item: {
 					kind: 'team_match' as const,
 					result,
@@ -120,9 +124,9 @@ async function fetchGroupEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]>
 			key: `${fav.id}-match-${m.id}`,
 			entityType: 'division_group' as const,
 			entityName: fav.targetName,
-			entityHref: `/groups/${fav.targetId}`,
+			entityHref: `/matches/${m.id}`,
 			item: {
-				kind: 'group_latest' as const,
+				kind: 'group_match' as const,
 				homeTeam: m.homeTeam,
 				awayTeam: m.awayTeam,
 				score: `${m.homeScore}–${m.awayScore}`,

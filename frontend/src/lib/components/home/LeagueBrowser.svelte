@@ -1,9 +1,8 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import type { Group, Season, SeasonStats, Federation } from '$lib/api';
 	import { api } from '$lib/api';
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import {
 		CaretDown,
@@ -69,39 +68,34 @@
 	});
 </script>
 
-<div class="space-y-8 py-4">
-	<div class="flex flex-col gap-4">
-		<div class="flex items-end justify-between px-1">
-			<div>
-				<p class="text-xs font-bold tracking-widest text-muted-foreground uppercase">
-					League Browser
-				</p>
-				<h1 class="text-3xl font-extrabold tracking-tight">Leagues</h1>
-			</div>
-			<Select.Root
-				type="single"
-				value={selectedSeasonId}
-				onValueChange={(v) => {
-					if (v) selectedSeasonId = v;
-				}}
-			>
-				<Select.Trigger class="w-32">
-					{selectedSeason?.name ?? 'Season'}
-				</Select.Trigger>
-				<Select.Content>
-					{#each seasons as season (season.id)}
-						<Select.Item value={season.id}>{season.name}</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
+<div class="space-y-6">
+	<header class="flex items-end justify-between px-1">
+		<div>
+			<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+				League Browser
+			</p>
+			<h1 class="text-3xl font-black tracking-tight">Leagues</h1>
 		</div>
-	</div>
+		<Select.Root
+			type="single"
+			value={selectedSeasonId}
+			onValueChange={(v) => {
+				if (v) selectedSeasonId = v;
+			}}
+		>
+			<Select.Trigger class="w-32">
+				{selectedSeason?.name ?? 'Season'}
+			</Select.Trigger>
+			<Select.Content>
+				{#each seasons as season (season.id)}
+					<Select.Item value={season.id}>{season.name}</Select.Item>
+				{/each}
+			</Select.Content>
+		</Select.Root>
+	</header>
 
 	<section class="space-y-4">
-		<div class="flex items-center justify-between px-1">
-			<SectionLabel label="Regions" icon={Trophy} />
-			<Separator class="ml-4 flex-1 bg-border/60" />
-		</div>
+		<SectionLabel label="Regions" icon={Trophy} />
 
 		{#if loadingGroups}
 			<div class="space-y-2">
@@ -171,14 +165,13 @@
 		{/if}
 	</section>
 
-	<section class="grid grid-cols-2 gap-4 pt-4">
+	<section class="grid grid-cols-2 gap-4">
 		<StatCard
 			label="Players Registered"
 			value={loadingStats || !stats ? null : stats.registeredPlayers.toLocaleString()}
-			class="p-6"
 		>
 			{#snippet footer()}
-				<TrendUp class="h-4 w-4" />
+				<TrendUp size={16} />
 				<span class="text-[10px] font-bold">{selectedSeason?.name ?? ''}</span>
 			{/snippet}
 		</StatCard>
@@ -186,10 +179,9 @@
 		<StatCard
 			label="Matches Played"
 			value={loadingStats || !stats ? null : stats.matchesLast24h}
-			class="p-6"
 		>
 			{#snippet footer()}
-				<Clock class="h-4 w-4" />
+				<Clock size={16} />
 				<span class="text-[10px] font-bold">Last 24 hours</span>
 			{/snippet}
 		</StatCard>

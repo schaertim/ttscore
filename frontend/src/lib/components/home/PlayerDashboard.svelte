@@ -16,14 +16,11 @@
 	let { player, streamed }: Props = $props();
 </script>
 
-<div class="space-y-6 pb-4">
+<div class="space-y-6">
 	<!-- Hero: greeting + klass badge + ELO + sparkline -->
 	<HomeHero {player} recentMatches={streamed.recentMatches} />
 
-	<!-- Quicklinks: My Profile, My Matches, My League, My Team -->
-	<section class="space-y-3">
-		<HomeQuicklinks {player} leagueContext={streamed.leagueContext} />
-	</section>
+	<HomeQuicklinks {player} leagueContext={streamed.leagueContext} />
 
 	<!-- Favorites feed -->
 	<FavoritesFeed favorites={streamed.favorites} />

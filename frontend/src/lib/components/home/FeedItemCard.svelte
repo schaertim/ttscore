@@ -1,15 +1,17 @@
 <script lang="ts">
 	import type { FeedItem } from './feed-types';
-	import { timeAgo } from '$lib/utils';
+	import { cn, klassColors, timeAgo } from '$lib/utils';
 	import {
 		User,
 		UsersThree,
 		Trophy,
 		TrendUp,
 		TrendDown,
-		Minus,
-		ArrowUp,
-		ArrowDown
+		ThumbsUp,
+		ThumbsDown,
+		Handshake,
+		Medal,
+		PingPong
 	} from 'phosphor-svelte';
 
 	interface Props {
@@ -32,24 +34,37 @@
 	type BadgeSpec = { icon: typeof TrendUp; bg: string; text: string };
 
 	function getBadge(i: FeedItem): BadgeSpec {
-		if (i.kind === 'player_match' || i.kind === 'team_match') {
-			if (i.result === 'WIN') return { icon: TrendUp, bg: 'bg-win/15', text: 'text-win' };
-			if (i.result === 'LOSS') return { icon: TrendDown, bg: 'bg-loss/15', text: 'text-loss' };
-			return { icon: Minus, bg: 'bg-amber-500/15', text: 'text-amber-500' };
+		if (i.kind === 'player_match') {
+			const wins = parseInt(i.matchScore.split('–')[0]);
+			const up = !isNaN(wins) && wins >= 2;
+			return up
+				? { icon: TrendUp, bg: 'bg-win/15', text: 'text-win' }
+				: { icon: TrendDown, bg: 'bg-loss/15', text: 'text-loss' };
+		}
+		if (i.kind === 'team_match') {
+			if (i.result === 'WIN') return { icon: ThumbsUp, bg: 'bg-win/15', text: 'text-win' };
+			if (i.result === 'LOSS') return { icon: ThumbsDown, bg: 'bg-loss/15', text: 'text-loss' };
+			return { icon: Handshake, bg: 'bg-muted', text: 'text-muted-foreground' };
 		}
 		if (i.kind === 'class_change') {
-			return i.direction === 'UP'
-				? { icon: ArrowUp, bg: 'bg-win/15', text: 'text-win' }
-				: { icon: ArrowDown, bg: 'bg-loss/15', text: 'text-loss' };
+			const kc = klassColors(i.to).split(' ');
+			const bg = kc.find((c) => c.startsWith('bg-')) ?? 'bg-muted';
+			const text = kc.find((c) => c.startsWith('text-')) ?? 'text-muted-foreground';
+			return { icon: Medal, bg, text };
 		}
-		return { icon: Minus, bg: 'bg-muted', text: 'text-muted-foreground' };
+		return { icon: PingPong, bg: 'bg-muted', text: 'text-muted-foreground' };
 	}
 
 	function getDescription(i: FeedItem): string {
 		switch (i.kind) {
 			case 'player_match': {
-				const prefix = i.result === 'WIN' ? 'Won' : i.result === 'LOSS' ? 'Lost' : 'Drew';
-				return `${prefix} ${i.matchScore} vs. ${i.opponentTeam}`;
+				const [myStr, oppStr] = i.matchScore.split('–');
+				const myWins = parseInt(myStr);
+				const oppWins = parseInt(oppStr);
+				const won = !isNaN(myWins) && myWins >= 2;
+				const higher = !isNaN(myWins) && !isNaN(oppWins) ? Math.max(myWins, oppWins) : null;
+				const prefix = won ? 'Won' : 'Lost';
+				return `${prefix}${higher !== null ? ` ${higher}` : ''} vs. ${i.opponentTeam}`;
 			}
 			case 'class_change':
 				return i.direction === 'UP'
@@ -59,7 +74,7 @@
 				const prefix = i.result === 'WIN' ? 'Won' : i.result === 'LOSS' ? 'Lost' : 'Drew';
 				return `${prefix} ${i.score} vs. ${i.opponent}`;
 			}
-			case 'group_latest':
+			case 'group_match':
 				return `${i.homeTeam} ${i.score} ${i.awayTeam}`;
 		}
 	}
@@ -74,9 +89,8 @@
 	const timestamp = $derived(getTimestamp(item));
 </script>
 
-<a href={entityHref} class="flex items-center gap-3 px-4 py-3.5 hover:bg-accent">
-	<!-- Left: entity type icon -->
-	<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+<a href={entityHref} class="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-accent">
+	<div class="flex h-9 w-7 shrink-0 items-center justify-center rounded-lg">
 		<EntityIcon size={20} class="text-muted-foreground" />
 	</div>
 
@@ -92,7 +106,7 @@
 	</div>
 
 	<!-- Right: event type badge -->
-	<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl {badge.bg}">
+	<div class={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-sm ring-1 ring-transparent transition-all', badge.bg, badge.bg === 'bg-muted' && 'group-hover:ring-border')}>
 		<badge.icon size={16} class={badge.text} weight="bold" />
 	</div>
 </a>

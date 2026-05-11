@@ -1,8 +1,9 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import type { Player, LeagueContext } from '$lib/api';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import QuicklinkRow from '$lib/components/home/QuicklinkRow.svelte';
-	import { User, ListBullets, Trophy, UsersThree, ClockCounterClockwise } from 'phosphor-svelte';
+	import { User, ListBullets, Trophy, UsersThree, ClockCounterClockwise, Link } from 'phosphor-svelte';
+	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
 	interface Props {
 		player: Player;
@@ -12,26 +13,36 @@
 	let { player, leagueContext }: Props = $props();
 </script>
 
-<div class="space-y-2">
-	<!-- My Profile -->
+<section class="space-y-3">
+<SectionLabel label="Quick Links" icon={Link} />
+<div class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
 	<QuicklinkRow
 		href="/players/{player.id}"
 		icon={User}
 		label="My Profile"
 		sublabel="Stats, ELO history & more"
 	/>
-
-	<!-- My Games -->
 	<QuicklinkRow
 		href="/players/{player.id}/games"
 		icon={ClockCounterClockwise}
 		label="My Games"
 		sublabel="Your game history"
 	/>
-
-	<!-- My League (async) -->
 	{#await leagueContext}
-		<Skeleton class="h-[60px] w-full rounded-xl" />
+		<div class="flex items-center gap-3 px-4 py-3">
+			<Skeleton class="h-9 w-9 shrink-0 rounded-lg" />
+			<div class="flex-1 space-y-1.5">
+				<Skeleton class="h-3.5 w-24 rounded" />
+				<Skeleton class="h-3 w-36 rounded" />
+			</div>
+		</div>
+		<div class="flex items-center gap-3 px-4 py-3">
+			<Skeleton class="h-9 w-9 shrink-0 rounded-lg" />
+			<div class="flex-1 space-y-1.5">
+				<Skeleton class="h-3.5 w-24 rounded" />
+				<Skeleton class="h-3 w-36 rounded" />
+			</div>
+		</div>
 	{:then ctx}
 		{#if ctx}
 			<QuicklinkRow
@@ -40,14 +51,6 @@
 				label="My League"
 				sublabel={ctx.groupName}
 			/>
-		{/if}
-	{/await}
-
-	<!-- My Team (async) -->
-	{#await leagueContext}
-		<Skeleton class="h-[60px] w-full rounded-xl" />
-	{:then ctx}
-		{#if ctx}
 			<QuicklinkRow
 				href="/teams/{ctx.teamId}"
 				icon={UsersThree}
@@ -59,3 +62,4 @@
 		{/if}
 	{/await}
 </div>
+</section>

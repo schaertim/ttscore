@@ -31,7 +31,7 @@
 	const feedPromise = data.favorites.then(resolveFeed);
 </script>
 
-<div class="mx-auto max-w-2xl space-y-6 p-4 pb-20">
+<div class="space-y-6">
 	<header class="space-y-4">
 		<BackButton />
 		<h1 class="text-3xl leading-none font-black tracking-tighter">Feed</h1>

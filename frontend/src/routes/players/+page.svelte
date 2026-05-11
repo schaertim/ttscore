@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import type { PageData } from './$types';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -6,7 +6,7 @@
 	import { api } from '$lib/api';
 	import type { Player, PagedResponse } from '$lib/api';
 	import { CaretLeft, CaretRight, MagnifyingGlass, Star } from 'phosphor-svelte';
-	import KlassBadge from '$lib/components/KlassBadge.svelte';
+	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import FavoritePlayerCard from '$lib/components/FavoritePlayerCard.svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
@@ -57,13 +57,13 @@
 	const showFavorites = $derived(favoritePlayers.length > 0 && searchQuery.length < 3);
 </script>
 
-<div class="space-y-6 py-4 pb-20">
-	<div class="px-1">
+<div class="space-y-6">
+	<header>
 		<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">
 			Players & Clubs
 		</p>
 		<h1 class="text-3xl font-black tracking-tight">Search</h1>
-	</div>
+	</header>
 
 	<div class="relative">
 		<MagnifyingGlass
@@ -78,14 +78,13 @@
 
 	{#if showFavorites}
 		<section class="space-y-3">
-			<SectionLabel label="Favourites" icon={Star} class="px-1" />
+			<SectionLabel label="Favourites" icon={Star} />
 			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
 				{#each favoritePlayers as player (player.id)}
 					<FavoritePlayerCard
 						id={player.id}
 						fullName={player.fullName}
 						klass={player.klass}
-						currentElo={player.currentElo}
 						favoriteId={player.favoriteId}
 						onunfavorite={() => {
 							favoritePlayers = favoritePlayers.filter((p) => p.id !== player.id);
@@ -134,16 +133,11 @@
 							<div class="min-w-0 flex-1">
 								<p class="truncate text-sm font-semibold">{player.fullName}</p>
 								<p class="truncate text-[10px] tracking-wide text-muted-foreground uppercase">
-									{player.currentClubName ?? '—'}
+									{player.currentClubName ?? 'â€”'}
 								</p>
 							</div>
 
-							<div class="flex shrink-0 flex-col items-end gap-1">
-								<KlassBadge klass={player.klass} />
-								{#if player.currentElo}
-									<span class="text-sm font-black tabular-nums">{player.currentElo}</span>
-								{/if}
-							</div>
+							<ClassBadge klass={player.klass} />
 						</a>
 					{/each}
 				</div>

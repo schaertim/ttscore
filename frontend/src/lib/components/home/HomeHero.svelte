@@ -69,19 +69,19 @@
 	}
 </script>
 
-<a href="/players/{player.id}" class="block py-4">
+<a href="/players/{player.id}" class="block">
 	<div
 		class="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5"
 		style="background-image: radial-gradient(circle at calc(100% - 3.25rem) 3.25rem, color-mix(in srgb, {klassVar} 32%, transparent) 0%, color-mix(in srgb, {klassVar} 7%, transparent) 30%, transparent 56%);"
 	>
 		<!-- Top row: name/club + class badge -->
-		<div class="relative flex items-start justify-between gap-4">
+		<div class="relative mb-6 flex items-start justify-between gap-4">
 			<div class="min-w-0">
-				<h2 class="text-2xl leading-tight font-black tracking-tight">
+				<h1 class="mb-1 text-3xl leading-tight font-black tracking-tight">
 					{player.fullName}
-				</h2>
+				</h1>
 				{#if player.currentClubName}
-					<p class="mt-1 text-sm text-muted-foreground">{player.currentClubName}</p>
+					<p class="text-sm text-muted-foreground">{player.currentClubName}</p>
 				{/if}
 			</div>
 
@@ -96,11 +96,11 @@
 		</div>
 
 		<!-- ELO number + label -->
-		<div class="mt-4">
-			<p class="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+		<div>
+			<p class="mb-0.5 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
 				ELO Rating
 			</p>
-			<p class="mt-0.5 text-5xl leading-none font-black tabular-nums">
+			<p class="text-5xl leading-none font-black tabular-nums">
 				{player.currentElo ?? '—'}
 			</p>
 		</div>

@@ -1,17 +1,18 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { LineChart } from 'layerchart';
 	import { scaleUtc } from 'd3-scale';
 	import * as Chart from '$lib/components/ui/chart/index.js';
-	import KlassBadge from '$lib/components/KlassBadge.svelte';
+	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import GameCard from '$lib/components/GameCard.svelte';
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { Star, ChartLine, ClockCounterClockwise } from 'phosphor-svelte';
+	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	let { data }: { data: PageData } = $props();
 
 	let favorited = $state(data.favorited);
@@ -28,39 +29,29 @@
 	}
 </script>
 
-<div class="mx-auto max-w-2xl space-y-6 p-4 pb-20">
+<div class="space-y-6">
 	<header class="space-y-4">
-		<div class="mb-4 flex items-center justify-between">
-			<BackButton class="mb-0" />
+		<div class="flex items-center justify-between">
+			<BackButton class="" />
 			{#if data.user}
-				<div class="flex items-center gap-0.5">
-					<FavoriteButton
-						bind:favorited
-						bind:favoriteId
-						targetType="player"
-						targetId={data.player.id}
-					/>
-					<NotifyButton
-						bind:notifying
-						bind:notifyId
-						targetType="player"
-						targetId={data.player.id}
-					/>
+				<div class="flex items-center">
+					<FavoriteButton bind:favorited bind:favoriteId targetType="player" targetId={data.player.id} />
+					<NotifyButton bind:notifying bind:notifyId targetType="player" targetId={data.player.id} />
 				</div>
 			{/if}
 		</div>
 
 		<div class="flex items-start justify-between gap-4">
 			<div class="min-w-0">
-				<h1 class="text-3xl leading-none font-black tracking-tighter break-words">
+				<h1 class="text-3xl mb-1.5 leading-none font-black tracking-tighter wrap-break-word">
 					{data.player.fullName}
 				</h1>
-				<p class="mt-1.5 text-sm text-muted-foreground">
+				<p class="text-sm text-muted-foreground">
 					{data.player.currentClubName ?? 'No Club'}
 				</p>
 			</div>
 
-			<div class="flex shrink-0 flex-col items-end gap-2">
+			<div class="flex shrink-0 flex-col items-end gap-1.5">
 				{#if data.player.currentElo}
 					<span class="text-4xl leading-none font-black tabular-nums">{data.player.currentElo}</span
 					>
@@ -68,14 +59,14 @@
 						>ELO</span
 					>
 				{/if}
-				<KlassBadge klass={data.player.klass} />
+				<ClassBadge klass={data.player.klass} />
 			</div>
 		</div>
 	</header>
 
 	<section class="space-y-2">
-		<SectionLabel label="ELO History" icon={ChartLine} class="px-1" />
-		<Card.Root class="overflow-hidden border-border/50">
+		<SectionLabel label="ELO History" icon={ChartLine} />
+		<Card.Root class="py-4 border-border/50">
 			{#await data.streamed.elo}
 				<Skeleton class="h-52 rounded-none" />
 			{:then eloHistory}
@@ -146,24 +137,24 @@
 		{@const winPct = played.length > 0 ? Math.round((wins / played.length) * 100) : 0}
 
 		<div class="grid grid-cols-3 gap-3">
-			<Card.Root class="bg-card/50">
-				<Card.Content class="flex flex-col items-center p-4">
+			<Card.Root class="bg-card/50 py-0">
+				<Card.Content class="flex flex-col items-center py-4 px-4">
 					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
 						>Wins</span
 					>
 					<span class="text-2xl font-black text-win">{wins}</span>
 				</Card.Content>
 			</Card.Root>
-			<Card.Root class="bg-card/50">
-				<Card.Content class="flex flex-col items-center p-4">
+			<Card.Root class="bg-card/50 py-0">
+				<Card.Content class="flex flex-col items-center py-4 px-4">
 					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
 						>Losses</span
 					>
 					<span class="text-2xl font-black text-loss">{losses}</span>
 				</Card.Content>
 			</Card.Root>
-			<Card.Root class="bg-card/50">
-				<Card.Content class="flex flex-col items-center p-4">
+			<Card.Root class="bg-card/50 py-0">
+				<Card.Content class="flex flex-col items-center py-4 px-4">
 					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
 						>Win %</span
 					>
@@ -173,7 +164,7 @@
 		</div>
 
 		<section class="space-y-3">
-			<SectionLabel label="Game History" icon={ClockCounterClockwise} class="px-1" />
+			<SectionLabel label="Game History" icon={ClockCounterClockwise} />
 
 			{#if matches.length === 0}
 				<p class="py-8 text-center text-sm text-muted-foreground">No matches found.</p>
@@ -184,12 +175,7 @@
 					{/each}
 				</div>
 				{#if matches.length > 3}
-					<a
-						href="/players/{data.player.id}/games"
-						class="block pt-1 text-center text-xs font-medium tracking-widest text-muted-foreground uppercase hover:text-foreground"
-					>
-						Show Full History →
-					</a>
+					<ShowAllLink href="/players/{data.player.id}/games" label="Show Full History" />
 				{/if}
 			{/if}
 		</section>

@@ -15,11 +15,10 @@
 	];
 
 	function isActive(href: string): boolean {
-		if (href === '/') return page.url.pathname === '/';
-		return page.url.pathname.startsWith(href);
+		return page.url.pathname === href;
 	}
 
-	const accountActive = $derived(page.url.pathname.startsWith('/account'));
+	const accountActive = $derived(page.url.pathname === '/account');
 
 	onMount(() => {
 		theme.init();

@@ -1,10 +1,11 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import type { FavoriteResponse } from '$lib/api';
 	import { resolveFeed } from '$lib/feed';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import FeedItemCard from '$lib/components/home/FeedItemCard.svelte';
 	import { Rss, Star } from 'phosphor-svelte';
+	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 
 	interface Props {
 		favorites: Promise<FavoriteResponse[]>;
@@ -20,11 +21,11 @@
 {#await favorites then favs}
 	{#if favs.length > 0}
 		<section class="space-y-3">
-			<SectionLabel label="Favorite Feed" icon={Star} class="px-1" />
+			<SectionLabel label="Favorite Feed" icon={Star} />
 			{#await feedPromise}
-				<div class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+				<div class="space-y-2">
 					{#each [1, 2, 3] as i (i)}
-						<div class="flex items-center gap-3 px-4 py-3.5">
+						<div class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
 							<Skeleton class="h-10 w-10 shrink-0 rounded-xl" />
 							<div class="flex-1 space-y-1.5">
 								<Skeleton class="h-3.5 w-32 rounded" />
@@ -37,9 +38,7 @@
 			{:then events}
 				{@const preview = events.slice(0, PREVIEW_COUNT)}
 				{#if preview.length > 0}
-					<div
-						class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
-					>
+					<div class="space-y-2">
 						{#each preview as event (event.key)}
 							<FeedItemCard
 								entityType={event.entityType}
@@ -50,12 +49,7 @@
 						{/each}
 					</div>
 					{#if events.length > PREVIEW_COUNT}
-						<a
-							href="/feed"
-							class="block pt-1 text-center text-xs font-bold tracking-widest text-muted-foreground uppercase hover:text-foreground"
-						>
-							Show full feed →
-						</a>
+						<ShowAllLink href="/feed" label="Show full feed" />
 					{/if}
 				{:else}
 					<p class="px-1 text-sm text-muted-foreground">No recent activity in your feed.</p>

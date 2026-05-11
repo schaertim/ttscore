@@ -4,6 +4,6 @@
 </script>
 
 <BackButton />
-<div class="flex justify-center pt-4">
+<div class="flex justify-center">
 	<LoginForm />
 </div>

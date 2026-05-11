@@ -1,21 +1,20 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { enhance } from '$app/forms';
 	import { Star } from 'phosphor-svelte';
 	import PlayerAvatar from './PlayerAvatar.svelte';
-	import KlassBadge from './KlassBadge.svelte';
+	import ClassBadge from './ClassBadge.svelte';
 
 	interface Props {
 		id: string;
 		fullName: string;
 		klass?: string | null;
-		currentElo?: number | null;
 		favoriteId: string;
 		onunfavorite?: () => void;
 	}
 
-	let { id, fullName, klass, currentElo, favoriteId, onunfavorite }: Props = $props();
+	let { id, fullName, klass, favoriteId, onunfavorite }: Props = $props();
 
-	// "Firstname Lastname" → "F. Lastname"
+	// "Firstname Lastname" â†’ "F. Lastname"
 	const shortName = fullName.includes(' ')
 		? `${fullName.split(' ')[0][0]}. ${fullName.split(' ').slice(1).join(' ')}`
 		: fullName;
@@ -25,7 +24,7 @@
 	<a
 		href="/players/{id}"
 		class="flex w-full flex-col items-center gap-2 rounded-2xl border border-border bg-card
-		       p-3 pt-5 transition-colors hover:bg-accent"
+		       p-4 transition-colors hover:bg-accent"
 	>
 		<PlayerAvatar {fullName} size="lg" />
 
@@ -33,12 +32,7 @@
 			{shortName}
 		</p>
 
-		<div class="flex flex-col items-center gap-0.5">
-			<KlassBadge {klass} />
-			{#if currentElo}
-				<span class="text-xs font-black tabular-nums">{currentElo}</span>
-			{/if}
-		</div>
+		<ClassBadge {klass} />
 	</a>
 
 	<form
@@ -55,11 +49,11 @@
 		<button
 			type="submit"
 			onclick={(e) => e.stopPropagation()}
-			class="absolute top-1.5 right-1.5 rounded-full p-0.5 text-foreground/60
+			class="absolute top-2 right-2 rounded-full p-0.5 text-foreground/60
 			       transition-colors hover:text-foreground"
 			aria-label="Remove from favourites"
 		>
-			<Star weight="fill" class="size-4" />
+			<Star weight="fill" size={16} />
 		</button>
 	</form>
 </div>

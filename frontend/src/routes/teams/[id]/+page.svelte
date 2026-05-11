@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import type { PageData } from './$types';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
@@ -19,33 +19,35 @@
 	let notifyId = $state(data.notifyId);
 </script>
 
-<div class="space-y-8 py-4 pb-20">
-	<div class="mb-4 flex items-center justify-between px-1">
-		<BackButton class="mb-0" />
-		{#if data.user}
-			<div class="flex items-center gap-0.5">
-				<FavoriteButton bind:favorited bind:favoriteId targetType="team" targetId={data.team.id} />
-				<NotifyButton bind:notifying bind:notifyId targetType="team" targetId={data.team.id} />
-			</div>
-		{/if}
-	</div>
-
-	<div class="flex items-start justify-between gap-4 px-1">
-		<div class="min-w-0 space-y-1">
-			<h1 class="text-3xl font-black tracking-tight">{data.team.name}</h1>
-			<p class="text-sm text-muted-foreground">{data.team.groupName}</p>
+<div class="space-y-6">
+	<header class="space-y-4">
+		<div class="flex items-center justify-between">
+			<BackButton class="" />
+			{#if data.user}
+				<div class="flex items-center">
+					<FavoriteButton bind:favorited bind:favoriteId targetType="team" targetId={data.team.id} />
+					<NotifyButton bind:notifying bind:notifyId targetType="team" targetId={data.team.id} />
+				</div>
+			{/if}
 		</div>
-		{#if data.team.position > 0}
-			<span class="shrink-0 text-6xl leading-none font-black text-muted-foreground/15 tabular-nums">
-				#{data.team.position}
-			</span>
-		{/if}
-	</div>
+
+		<div class="flex items-start justify-between gap-4">
+			<div class="min-w-0">
+				<h1 class="mb-1 text-3xl font-black tracking-tight">{data.team.name}</h1>
+				<p class="text-sm text-muted-foreground">{data.team.groupName}</p>
+			</div>
+			{#if data.team.position > 0}
+				<span class="shrink-0 text-6xl leading-none font-black text-muted-foreground/15 tabular-nums">
+					#{data.team.position}
+				</span>
+			{/if}
+		</div>
+	</header>
 
 	<div class="grid grid-cols-2 gap-3">
-		<Card.Root class="p-4">
+		<Card.Root class="gap-3 p-4">
 			<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">Record</p>
-			<p class="mt-1 text-xl font-black">
+			<p class="text-xl leading-none font-black">
 				<span class="text-win">{won}</span>
 				<span class="mx-0.5 font-normal text-muted-foreground/40">–</span>
 				<span class="text-muted-foreground">{drawn}</span>
@@ -55,11 +57,11 @@
 		</Card.Root>
 
 		{#if data.team.lastResults.length > 0}
-			<Card.Root class="p-4">
+			<Card.Root class="gap-3 p-4">
 				<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
 					Last 5
 				</p>
-				<div class="mt-1.5 flex flex-wrap items-center gap-1">
+				<div class="flex flex-wrap">
 					{#each data.team.lastResults.toReversed() as result}
 						{#if result === 'W'}
 							<CheckCircle weight="fill" class="h-5 w-5 text-win" />
@@ -75,7 +77,7 @@
 	</div>
 
 	<section class="space-y-2">
-		<SectionLabel label="Team Roster" icon={UsersThree} class="px-1" />
+		<SectionLabel label="Team Roster" icon={UsersThree} />
 
 		<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 			{#await data.streamed.roster}
@@ -104,7 +106,7 @@
 	</section>
 
 	<section class="space-y-2">
-		<SectionLabel label="Match History" icon={PingPong} class="px-1" />
+		<SectionLabel label="Match History" icon={PingPong} />
 
 		{#await data.streamed.matches}
 			<Skeleton class="h-16 w-full rounded-xl" />

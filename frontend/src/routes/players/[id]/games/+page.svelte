@@ -63,14 +63,14 @@
 	});
 </script>
 
-<div class="mx-auto max-w-2xl space-y-6 p-4 pb-20">
+<div class="space-y-6">
 	<header class="space-y-4">
 		<BackButton />
 		<div>
-			<h1 class="text-3xl leading-none font-black tracking-tighter wrap-break-word">
+			<h1 class="mb-1.5 text-3xl leading-none font-black tracking-tighter wrap-break-word">
 				{data.player.fullName}
 			</h1>
-			<p class="mt-1.5 text-sm text-muted-foreground">Game History</p>
+			<p class="text-sm text-muted-foreground">Game History</p>
 		</div>
 	</header>
 

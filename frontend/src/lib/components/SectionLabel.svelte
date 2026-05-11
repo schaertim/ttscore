@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
+	import { cn } from '$lib/utils';
 
 	interface Props {
 		label: string;
@@ -11,7 +12,7 @@
 </script>
 
 <h2
-	class="flex items-center gap-1.5 text-xs font-bold tracking-widest text-muted-foreground uppercase {className}"
+	class={cn('flex items-center gap-1.5 px-1 text-xs font-medium tracking-widest text-muted-foreground uppercase', className)}
 >
 	{label}
 	{#if Icon}

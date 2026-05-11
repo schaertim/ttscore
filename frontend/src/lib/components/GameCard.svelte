@@ -1,7 +1,7 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import type { Game, PlayerGame } from '$lib/api';
 	import { cn } from '$lib/utils';
-	import KlassBadge from '$lib/components/KlassBadge.svelte';
+	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
 
 	let {
@@ -13,12 +13,12 @@
 	} = $props();
 
 	function lastName(name: string | null): string {
-		if (!name) return '—';
+		if (!name) return 'â€”';
 		return name.split(' ').at(-1) ?? name;
 	}
 
 	function formatDate(dateStr: string | null | undefined): string {
-		if (!dateStr) return '—';
+		if (!dateStr) return 'â€”';
 		return new Date(dateStr).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit' });
 	}
 
@@ -50,10 +50,10 @@
 	{@const notPlayed = pg.result === 'NOT_PLAYED'}
 	{@const scoreColor = won ? 'text-win' : notPlayed ? 'text-muted-foreground' : 'text-loss'}
 	<a href="/matches/{pg.matchId}" class="block">
-		<Card.Root class="transition-colors hover:bg-accent">
+		<Card.Root class="py-4 transition-colors hover:bg-accent">
 			<div class="space-y-2 px-6">
 				<p class="truncate text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-					{formatDate(pg.playedAt)} · {pg.homeTeam} vs {pg.awayTeam}
+					{formatDate(pg.playedAt)} Â· {pg.homeTeam} vs {pg.awayTeam}
 				</p>
 
 				<div class="flex items-baseline gap-4">
@@ -63,9 +63,9 @@
 							href={pg.opponentId ? `/players/${pg.opponentId}` : undefined}
 							class={cn('min-w-0 truncate text-lg font-normal', pg.opponentId && 'hover:underline')}
 							onclick={pg.opponentId ? (e: MouseEvent) => e.stopPropagation() : undefined}
-							>{pg.opponentName ?? '—'}</svelte:element
+							>{pg.opponentName ?? 'â€”'}</svelte:element
 						>
-						<KlassBadge klass={pg.opponentKlass} />
+						<ClassBadge klass={pg.opponentKlass} />
 					</div>
 
 					<div class="flex shrink-0 flex-col items-end gap-0.5">
@@ -107,10 +107,10 @@
 	{@const mg = game as Game}
 	{@const homeWon = mg.result === 'HOME'}
 	{@const awayWon = mg.result === 'AWAY'}
-	<Card.Root>
-		<div class="space-y-3 px-5">
+	<Card.Root class="py-4">
+		<div class="space-y-3 px-6">
 			<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-				Game #{mg.orderInMatch} · {mg.gameType}
+				Game #{mg.orderInMatch} Â· {mg.gameType}
 			</p>
 
 			<div class="flex items-center gap-4">
@@ -129,7 +129,7 @@
 										mg.homePlayerId && 'hover:underline'
 									)}>{lastName(mg.homePlayerName)}</svelte:element
 								>
-								<KlassBadge klass={mg.homePlayerKlass} />
+								<ClassBadge klass={mg.homePlayerKlass} />
 							</div>
 							<span class="shrink-0 text-muted-foreground/40">/</span>
 							<div class="flex min-w-0 shrink items-center gap-1">
@@ -144,7 +144,7 @@
 										mg.homePlayer2Id && 'hover:underline'
 									)}>{lastName(mg.homePlayer2Name)}</svelte:element
 								>
-								<KlassBadge klass={mg.homePlayer2Klass} />
+								<ClassBadge klass={mg.homePlayer2Klass} />
 							</div>
 						{:else}
 							<svelte:element
@@ -156,9 +156,9 @@
 										? 'text-lg font-semibold text-foreground'
 										: 'text-base font-normal text-muted-foreground',
 									mg.homePlayerId && 'hover:underline'
-								)}>{mg.homePlayerName ?? '—'}</svelte:element
+								)}>{mg.homePlayerName ?? 'â€”'}</svelte:element
 							>
-							<KlassBadge klass={mg.homePlayerKlass} />
+							<ClassBadge klass={mg.homePlayerKlass} />
 						{/if}
 					</div>
 					<div class="flex min-w-0 items-center gap-1.5">
@@ -175,7 +175,7 @@
 										mg.awayPlayerId && 'hover:underline'
 									)}>{lastName(mg.awayPlayerName)}</svelte:element
 								>
-								<KlassBadge klass={mg.awayPlayerKlass} />
+								<ClassBadge klass={mg.awayPlayerKlass} />
 							</div>
 							<span class="shrink-0 text-muted-foreground/40">/</span>
 							<div class="flex min-w-0 shrink items-center gap-1">
@@ -190,7 +190,7 @@
 										mg.awayPlayer2Id && 'hover:underline'
 									)}>{lastName(mg.awayPlayer2Name)}</svelte:element
 								>
-								<KlassBadge klass={mg.awayPlayer2Klass} />
+								<ClassBadge klass={mg.awayPlayer2Klass} />
 							</div>
 						{:else}
 							<svelte:element
@@ -202,9 +202,9 @@
 										? 'text-lg font-semibold text-foreground'
 										: 'text-base font-normal text-muted-foreground',
 									mg.awayPlayerId && 'hover:underline'
-								)}>{mg.awayPlayerName ?? '—'}</svelte:element
+								)}>{mg.awayPlayerName ?? 'â€”'}</svelte:element
 							>
-							<KlassBadge klass={mg.awayPlayerKlass} />
+							<ClassBadge klass={mg.awayPlayerKlass} />
 						{/if}
 					</div>
 				</div>

@@ -1,6 +1,6 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import PlayerAvatar from './PlayerAvatar.svelte';
-	import KlassBadge from './KlassBadge.svelte';
+	import ClassBadge from './ClassBadge.svelte';
 
 	interface Props {
 		id: string;
@@ -21,7 +21,7 @@
 
 	<div class="min-w-0 flex-1">
 		<p class="truncate text-sm font-semibold">{fullName}</p>
-		<KlassBadge {klass} />
+		<ClassBadge {klass} />
 	</div>
 
 	{#if wins !== undefined && losses !== undefined}

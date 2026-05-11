@@ -6,7 +6,7 @@
 		class?: string;
 	}
 
-	let { class: className = 'mb-6' }: Props = $props();
+	let { class: className = 'mb-4' }: Props = $props();
 </script>
 
 <button

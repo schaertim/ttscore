@@ -21,12 +21,12 @@ export type TeamMatchItem = {
 	playedAt: string | null;
 };
 
-export type GroupLatestItem = {
-	kind: 'group_latest';
+export type GroupMatchItem = {
+	kind: 'group_match';
 	homeTeam: string;
 	awayTeam: string;
 	score: string;
 	playedAt: string | null;
 };
 
-export type FeedItem = PlayerMatchItem | ClassChangeItem | TeamMatchItem | GroupLatestItem;
+export type FeedItem = PlayerMatchItem | ClassChangeItem | TeamMatchItem | GroupMatchItem;
