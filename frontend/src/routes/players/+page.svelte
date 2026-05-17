@@ -5,7 +5,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { api } from '$lib/api';
 	import type { Player, PagedResponse } from '$lib/api';
-	import { CaretLeft, CaretRight, MagnifyingGlass, Star } from 'phosphor-svelte';
+	import { CaretLeftIcon, CaretRightIcon, MagnifyingGlassIcon, StarIcon } from 'phosphor-svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import FavoritePlayerCard from '$lib/components/FavoritePlayerCard.svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
@@ -66,8 +66,9 @@
 	</header>
 
 	<div class="relative">
-		<MagnifyingGlass
-			class="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+		<MagnifyingGlassIcon
+			size="16"
+			class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
 		/>
 		<Input
 			bind:value={searchQuery}
@@ -78,7 +79,7 @@
 
 	{#if showFavorites}
 		<section class="space-y-3">
-			<SectionLabel label="Favourites" icon={Star} />
+			<SectionLabel label="Favourites" icon={StarIcon} />
 			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
 				{#each favoritePlayers as player (player.id)}
 					<FavoritePlayerCard
@@ -150,7 +151,7 @@
 							disabled={currentPage === 0}
 							onclick={() => search(currentPage - 1)}
 						>
-							<CaretLeft class="h-4 w-4" />
+							<CaretLeftIcon size="16" />
 						</Button>
 
 						<span class="px-2 text-sm text-muted-foreground tabular-nums">
@@ -163,7 +164,7 @@
 							disabled={currentPage >= totalPages - 1}
 							onclick={() => search(currentPage + 1)}
 						>
-							<CaretRight class="h-4 w-4" />
+							<CaretRightIcon size="16" />
 						</Button>
 					</div>
 				{/if}

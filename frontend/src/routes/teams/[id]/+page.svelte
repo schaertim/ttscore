@@ -4,7 +4,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import PlayerCard from '$lib/components/PlayerCard.svelte';
 	import MatchCard from '$lib/components/MatchCard.svelte';
-	import { CheckCircle, XCircle, MinusCircle, UsersThree, PingPong } from 'phosphor-svelte';
+	import { CheckCircleIcon, XCircleIcon, MinusCircleIcon, UsersThreeIcon, PingPongIcon } from 'phosphor-svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
@@ -64,11 +64,11 @@
 				<div class="flex flex-wrap">
 					{#each data.team.lastResults.toReversed() as result}
 						{#if result === 'W'}
-							<CheckCircle weight="fill" class="h-5 w-5 text-win" />
+							<CheckCircleIcon weight="fill" size="20" class="text-win" />
 						{:else if result === 'L'}
-							<XCircle weight="fill" class="h-5 w-5 text-loss" />
+							<XCircleIcon weight="fill" size="20" class="text-loss" />
 						{:else}
-							<MinusCircle weight="fill" class="h-5 w-5 text-muted-foreground/50" />
+							<MinusCircleIcon weight="fill" size="20" class="text-muted-foreground/50" />
 						{/if}
 					{/each}
 				</div>
@@ -77,7 +77,7 @@
 	</div>
 
 	<section class="space-y-2">
-		<SectionLabel label="Team Roster" icon={UsersThree} />
+		<SectionLabel label="Team Roster" icon={UsersThreeIcon} />
 
 		<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 			{#await data.streamed.roster}
@@ -106,7 +106,7 @@
 	</section>
 
 	<section class="space-y-2">
-		<SectionLabel label="Match History" icon={PingPong} />
+		<SectionLabel label="Match History" icon={PingPongIcon} />
 
 		{#await data.streamed.matches}
 			<Skeleton class="h-16 w-full rounded-xl" />

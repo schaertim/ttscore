@@ -2,7 +2,7 @@
 	import type { Player, LeagueContext } from '$lib/api';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import QuicklinkRow from '$lib/components/home/QuicklinkRow.svelte';
-	import { User, ListBullets, Trophy, UsersThree, ClockCounterClockwise, Link } from 'phosphor-svelte';
+	import { UserIcon, ListBulletsIcon, TrophyIcon, UsersThreeIcon, ClockCounterClockwiseIcon, LinkIcon } from 'phosphor-svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
 	interface Props {
@@ -14,17 +14,17 @@
 </script>
 
 <section class="space-y-3">
-<SectionLabel label="Quick Links" icon={Link} />
+<SectionLabel label="Quick Links" icon={LinkIcon} />
 <div class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
 	<QuicklinkRow
 		href="/players/{player.id}"
-		icon={User}
+		icon={UserIcon}
 		label="My Profile"
 		sublabel="Stats, ELO history & more"
 	/>
 	<QuicklinkRow
 		href="/players/{player.id}/games"
-		icon={ClockCounterClockwise}
+		icon={ClockCounterClockwiseIcon}
 		label="My Games"
 		sublabel="Your game history"
 	/>
@@ -47,13 +47,13 @@
 		{#if ctx}
 			<QuicklinkRow
 				href="/groups/{ctx.groupId}"
-				icon={Trophy}
+				icon={TrophyIcon}
 				label="My League"
 				sublabel={ctx.groupName}
 			/>
 			<QuicklinkRow
 				href="/teams/{ctx.teamId}"
-				icon={UsersThree}
+				icon={UsersThreeIcon}
 				label="My Team"
 				sublabel={ctx.scheduledMatchCount > 0
 					? `${ctx.teamName} · ${ctx.scheduledMatchCount} upcoming`

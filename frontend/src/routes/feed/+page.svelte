@@ -8,9 +8,8 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Group events by calendar date for the section headers
 	function groupByDate(events: ResolvedEvent[]): { label: string; events: ResolvedEvent[] }[] {
-		const groups = new Map<string, ResolvedEvent[]>();
+		const result: { label: string; events: ResolvedEvent[] }[] = [];
 		for (const event of events) {
 			const label =
 				event.sortKey === '9999'
@@ -22,13 +21,14 @@
 								year: 'numeric'
 							})
 						: 'Unknown date';
-			if (!groups.has(label)) groups.set(label, []);
-			groups.get(label)!.push(event);
+			const existing = result.find(g => g.label === label);
+			if (existing) existing.events.push(event);
+			else result.push({ label, events: [event] });
 		}
-		return Array.from(groups.entries()).map(([label, events]) => ({ label, events }));
+		return result;
 	}
 
-	const feedPromise = data.favorites.then(resolveFeed);
+	const feedPromise = $derived(data.favorites.then(resolveFeed));
 </script>
 
 <div class="space-y-6">

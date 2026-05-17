@@ -10,10 +10,17 @@
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 
 	let { data }: { data: PageData } = $props();
-	let favorited = $state(data.favorited);
-	let favoriteId = $state(data.favoriteId);
-	let notifying = $state(data.notifying);
-	let notifyId = $state(data.notifyId);
+	let isFavorite = $state(false);
+	let favoriteId = $state<string | null>(null);
+	let notifying = $state(false);
+	let notifyId = $state<string | null>(null);
+
+	$effect.pre(() => {
+		isFavorite = data.favorited;
+		favoriteId = data.favoriteId;
+		notifying = data.notifying;
+		notifyId = data.notifyId;
+	});
 
 	const sorted = $derived([...data.standings].sort((a, b) => a.position - b.position));
 
@@ -76,7 +83,7 @@
 			<BackButton class="" />
 			{#if data.user}
 				<div class="flex items-center">
-					<FavoriteButton bind:favorited bind:favoriteId targetType="division_group" targetId={data.group.id} />
+					<FavoriteButton bind:isFavorite bind:favoriteId targetType="division_group" targetId={data.group.id} />
 					<NotifyButton bind:notifying bind:notifyId targetType="division_group" targetId={data.group.id} />
 				</div>
 			{/if}
@@ -189,7 +196,7 @@
 						</span>
 						<div class="flex min-w-0 items-center gap-1.5 text-sm">
 							<span class="truncate font-medium">{match.homeTeam}</span>
-							<span class="flex-shrink-0 text-muted-foreground">vs</span>
+							<span class="shrink-0 text-muted-foreground">vs</span>
 							<span class="truncate font-medium">{match.awayTeam}</span>
 						</div>
 					</div>

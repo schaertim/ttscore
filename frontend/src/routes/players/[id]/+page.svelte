@@ -11,7 +11,7 @@
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
-	import { Star, ChartLine, ClockCounterClockwise } from 'phosphor-svelte';
+	import { StarIcon, ChartLineIcon, ClockCounterClockwiseIcon } from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	let { data }: { data: PageData } = $props();
 
@@ -65,7 +65,7 @@
 	</header>
 
 	<section class="space-y-2">
-		<SectionLabel label="ELO History" icon={ChartLine} />
+		<SectionLabel label="ELO History" icon={ChartLineIcon} />
 		<Card.Root class="py-4 border-border/50">
 			{#await data.streamed.elo}
 				<Skeleton class="h-52 rounded-none" />
@@ -164,7 +164,7 @@
 		</div>
 
 		<section class="space-y-3">
-			<SectionLabel label="Game History" icon={ClockCounterClockwise} />
+			<SectionLabel label="Game History" icon={ClockCounterClockwiseIcon} />
 
 			{#if matches.length === 0}
 				<p class="py-8 text-center text-sm text-muted-foreground">No matches found.</p>

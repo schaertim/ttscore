@@ -1,6 +1,6 @@
 ﻿<script lang="ts">
 	import { enhance } from '$app/forms';
-	import { Star } from 'phosphor-svelte';
+	import { StarIcon } from 'phosphor-svelte';
 	import PlayerAvatar from './PlayerAvatar.svelte';
 	import ClassBadge from './ClassBadge.svelte';
 
@@ -14,10 +14,7 @@
 
 	let { id, fullName, klass, favoriteId, onunfavorite }: Props = $props();
 
-	// "Firstname Lastname" â†’ "F. Lastname"
-	const shortName = fullName.includes(' ')
-		? `${fullName.split(' ')[0][0]}. ${fullName.split(' ').slice(1).join(' ')}`
-		: fullName;
+	const shortName = $derived(fullName.includes(' ') ? `${fullName.split(' ')[0][0]}. ${fullName.split(' ').slice(1).join(' ')}` : fullName);
 </script>
 
 <div class="relative w-32 shrink-0">
@@ -53,7 +50,7 @@
 			       transition-colors hover:text-foreground"
 			aria-label="Remove from favourites"
 		>
-			<Star weight="fill" size={16} />
+			<StarIcon weight="fill" size="16" />
 		</button>
 	</form>
 </div>

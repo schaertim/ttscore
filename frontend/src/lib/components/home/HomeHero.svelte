@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Player, PlayerGame } from '$lib/api';
-	import { ArrowUp, ArrowDown } from 'phosphor-svelte';
+	import { ArrowUpIcon, ArrowDownIcon } from 'phosphor-svelte';
 
 	interface Props {
 		player: Player;
@@ -116,9 +116,9 @@
 						: 'text-red-500'}"
 				>
 					{#if delta > 0}
-						<ArrowUp size={14} weight="bold" />+{rounded} this month
+						<ArrowUpIcon size="14" weight="bold" />+{rounded} this month
 					{:else}
-						<ArrowDown size={14} weight="bold" />{rounded} this month
+						<ArrowDownIcon size="14" weight="bold" />{rounded} this month
 					{/if}
 				</p>
 			{/if}

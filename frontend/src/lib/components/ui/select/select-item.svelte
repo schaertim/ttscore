@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from 'bits-ui';
 	import { cn, type WithoutChild } from '$lib/utils.js';
-	import CheckIcon from 'phosphor-svelte/lib/Check';
+	import CheckIcon from 'phosphor-svelte/lib/CheckIcon';
 
 	let {
 		ref = $bindable(null),
@@ -26,7 +26,7 @@
 	{#snippet children({ selected, highlighted })}
 		<span class="absolute end-2 flex size-3.5 items-center justify-center">
 			{#if selected}
-				<CheckIcon class="cn-select-item-indicator-icon" />
+				<CheckIcon size="14" class="cn-select-item-indicator-icon" />
 			{/if}
 		</span>
 		{#if childrenProp}

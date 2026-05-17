@@ -16,6 +16,6 @@
 >
 	{label}
 	{#if Icon}
-		<Icon class="h-4 w-4 shrink-0" />
+		<Icon size="16" class="shrink-0" />
 	{/if}
 </h2>

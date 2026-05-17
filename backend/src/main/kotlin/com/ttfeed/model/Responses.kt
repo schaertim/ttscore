@@ -208,6 +208,18 @@ data class FavoriteRequest(
 )
 
 @Serializable
+data class PushSubscriptionRequest(
+    val endpoint: String,
+    val p256dh: String,
+    val auth: String,
+)
+
+@Serializable
+data class PushUnsubscribeRequest(
+    val endpoint: String,
+)
+
+@Serializable
 data class NextMatchResponse(
     val matchId: String,
     val homeTeam: String,

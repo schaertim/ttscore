@@ -23,7 +23,7 @@
 	</header>
 
 	<div class="space-y-4">
-		{#each data.match.games as game}
+		{#each data.match.games as game, i (i)}
 			<GameCard mode="match" {game} />
 		{/each}
 	</div>

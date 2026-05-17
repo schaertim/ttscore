@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
-	import { CaretLeft } from 'phosphor-svelte';
+	import { CaretLeftIcon } from 'phosphor-svelte';
 
 	interface Props {
 		class?: string;
@@ -16,6 +16,6 @@
 		className
 	)}
 >
-	<CaretLeft class="h-4 w-4" />
+	<CaretLeftIcon size="16" />
 	<span class="text-xs font-medium tracking-widest uppercase">Back</span>
 </button>

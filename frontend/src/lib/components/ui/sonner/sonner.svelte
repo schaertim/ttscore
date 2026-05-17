@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { Toaster as Sonner, type ToasterProps as SonnerProps } from 'svelte-sonner';
 	import { mode } from 'mode-watcher';
-	import SpinnerIcon from 'phosphor-svelte/lib/Spinner';
-	import CheckCircleIcon from 'phosphor-svelte/lib/CheckCircle';
-	import XCircleIcon from 'phosphor-svelte/lib/XCircle';
-	import InfoIcon from 'phosphor-svelte/lib/Info';
-	import WarningIcon from 'phosphor-svelte/lib/Warning';
+	import SpinnerIcon from 'phosphor-svelte/lib/SpinnerIcon';
+	import CheckCircleIcon from 'phosphor-svelte/lib/CheckCircleIcon';
+	import XCircleIcon from 'phosphor-svelte/lib/XCircleIcon';
+	import InfoIcon from 'phosphor-svelte/lib/InfoIcon';
+	import WarningIcon from 'phosphor-svelte/lib/WarningIcon';
 
 	let { ...restProps }: SonnerProps = $props();
 </script>
@@ -17,18 +17,18 @@
 	{...restProps}
 >
 	{#snippet loadingIcon()}
-		<SpinnerIcon class="size-4 animate-spin" />
+		<SpinnerIcon size="16" class="animate-spin" />
 	{/snippet}
 	{#snippet successIcon()}
-		<CheckCircleIcon class="size-4" />
+		<CheckCircleIcon size="16" />
 	{/snippet}
 	{#snippet errorIcon()}
-		<XCircleIcon class="size-4" />
+		<XCircleIcon size="16" />
 	{/snippet}
 	{#snippet infoIcon()}
-		<InfoIcon class="size-4" />
+		<InfoIcon size="16" />
 	{/snippet}
 	{#snippet warningIcon()}
-		<WarningIcon class="size-4" />
+		<WarningIcon size="16" />
 	{/snippet}
 </Sonner>

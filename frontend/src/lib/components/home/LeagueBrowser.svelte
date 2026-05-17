@@ -5,13 +5,13 @@
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import {
-		CaretDown,
-		CaretRight,
-		Globe,
-		MapTrifold,
-		TrendUp,
-		Clock,
-		Trophy
+		CaretDownIcon,
+		CaretRightIcon,
+		GlobeIcon,
+		MapTrifoldIcon,
+		TrendUpIcon,
+		ClockIcon,
+		TrophyIcon
 	} from 'phosphor-svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
@@ -95,7 +95,7 @@
 	</header>
 
 	<section class="space-y-4">
-		<SectionLabel label="Regions" icon={Trophy} />
+		<SectionLabel label="Regions" icon={TrophyIcon} />
 
 		{#if loadingGroups}
 			<div class="space-y-2">
@@ -120,14 +120,15 @@
 						>
 							<div class="flex items-center gap-3">
 								{#if isNational}
-									<Globe class="h-5 w-5 text-muted-foreground" />
+									<GlobeIcon size="20" class="text-muted-foreground" />
 								{:else}
-									<MapTrifold class="h-5 w-5 text-muted-foreground" />
+									<MapTrifoldIcon size="20" class="text-muted-foreground" />
 								{/if}
 								<span class="font-bold">{fed.name}</span>
 							</div>
-							<CaretDown
-								class="h-5 w-5 text-muted-foreground transition-transform duration-200
+							<CaretDownIcon
+								size="20"
+								class="text-muted-foreground transition-transform duration-200
 								{isExpanded ? 'rotate-180' : ''}"
 							/>
 						</Accordion.Trigger>
@@ -152,8 +153,9 @@
 												</p>
 											{/if}
 										</div>
-										<CaretRight
-											class="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+										<CaretRightIcon
+											size="16"
+											class="shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
 										/>
 									</a>
 								{/each}
@@ -171,7 +173,7 @@
 			value={loadingStats || !stats ? null : stats.registeredPlayers.toLocaleString()}
 		>
 			{#snippet footer()}
-				<TrendUp size={16} />
+				<TrendUpIcon size="16" />
 				<span class="text-[10px] font-bold">{selectedSeason?.name ?? ''}</span>
 			{/snippet}
 		</StatCard>
@@ -181,7 +183,7 @@
 			value={loadingStats || !stats ? null : stats.matchesLast24h}
 		>
 			{#snippet footer()}
-				<Clock size={16} />
+				<ClockIcon size="16" />
 				<span class="text-[10px] font-bold">Last 24 hours</span>
 			{/snippet}
 		</StatCard>

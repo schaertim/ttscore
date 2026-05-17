@@ -4,7 +4,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import FeedItemCard from '$lib/components/home/FeedItemCard.svelte';
-	import { Rss, Star } from 'phosphor-svelte';
+	import { RssIcon, StarIcon } from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 
 	interface Props {
@@ -21,7 +21,7 @@
 {#await favorites then favs}
 	{#if favs.length > 0}
 		<section class="space-y-3">
-			<SectionLabel label="Favorite Feed" icon={Star} />
+			<SectionLabel label="Favorite Feed" icon={StarIcon} />
 			{#await feedPromise}
 				<div class="space-y-2">
 					{#each [1, 2, 3] as i (i)}

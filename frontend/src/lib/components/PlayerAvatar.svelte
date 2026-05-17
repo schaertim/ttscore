@@ -6,12 +6,7 @@
 
 	let { fullName, size = 'md' }: Props = $props();
 
-	const initials = fullName
-		.split(' ')
-		.filter(Boolean)
-		.slice(0, 2)
-		.map((w) => w[0].toUpperCase())
-		.join('');
+	const initials = $derived(fullName.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join(''));
 
 	const sizeClasses = {
 		sm: 'h-8 w-8 text-[10px]',

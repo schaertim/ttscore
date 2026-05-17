@@ -4,7 +4,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import GameCard from '$lib/components/GameCard.svelte';
 	import MatchCard from '$lib/components/MatchCard.svelte';
-	import { CaretRight } from 'phosphor-svelte';
+	import { CaretRightIcon } from 'phosphor-svelte';
 
 	interface Props {
 		follow: FollowResponse;
@@ -36,7 +36,7 @@
 <div class="space-y-3 rounded-xl border border-border bg-card p-4">
 	<a href={hrefBase} class="flex items-center justify-between">
 		<p class="text-sm font-bold hover:underline">{follow.targetName}</p>
-		<CaretRight class="h-4 w-4 shrink-0 text-muted-foreground" />
+		<CaretRightIcon size="16" class="shrink-0 text-muted-foreground" />
 	</a>
 
 	{#if isPlayer}

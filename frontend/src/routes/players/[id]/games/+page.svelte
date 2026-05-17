@@ -5,10 +5,10 @@
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import GameCard from '$lib/components/GameCard.svelte';
-	import CaretDownIcon from 'phosphor-svelte/lib/CaretDown';
-	import CaretUpIcon from 'phosphor-svelte/lib/CaretUp';
-	import TrendUpIcon from 'phosphor-svelte/lib/TrendUp';
-	import TrendDownIcon from 'phosphor-svelte/lib/TrendDown';
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
+	import CaretUpIcon from 'phosphor-svelte/lib/CaretUpIcon';
+	import TrendUpIcon from 'phosphor-svelte/lib/TrendUpIcon';
+	import TrendDownIcon from 'phosphor-svelte/lib/TrendDownIcon';
 
 	let { data }: { data: PageData } = $props();
 
@@ -111,16 +111,16 @@
 									>
 										{formatElo(group.totalElo)}
 										{#if group.totalElo > 0}
-											<TrendUpIcon class="size-3" weight="bold" />
+											<TrendUpIcon size="12" weight="bold" />
 										{:else}
-											<TrendDownIcon class="size-3" weight="bold" />
+											<TrendDownIcon size="12" weight="bold" />
 										{/if}
 									</span>
 								{/if}
 								{#if expanded}
-									<CaretUpIcon class="size-4 shrink-0 text-muted-foreground" />
+									<CaretUpIcon size="16" class="shrink-0 text-muted-foreground" />
 								{:else}
-									<CaretDownIcon class="size-4 shrink-0 text-muted-foreground" />
+									<CaretDownIcon size="16" class="shrink-0 text-muted-foreground" />
 								{/if}
 							</div>
 						</Accordion.Trigger>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from 'bits-ui';
 	import { cn, type WithoutChildrenOrChild } from '$lib/utils.js';
-	import CaretDownIcon from 'phosphor-svelte/lib/CaretDown';
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
 
 	let {
 		ref = $bindable(null),
@@ -19,5 +19,5 @@
 	)}
 	{...restProps}
 >
-	<CaretDownIcon />
+	<CaretDownIcon size="16" />
 </SelectPrimitive.ScrollDownButton>

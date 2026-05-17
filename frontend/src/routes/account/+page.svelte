@@ -5,11 +5,12 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import BackButton from '$lib/components/BackButton.svelte';
-	import { api, type Player } from '$lib/api';
-	import { Star, BellRinging, Sun, Moon, Trash, User, UsersThree, Trophy, PaintBrushHousehold } from 'phosphor-svelte';
+	import { api, type Player, type FavoriteResponse, type FollowResponse } from '$lib/api';
+	import { StarIcon, BellRingingIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon } from 'phosphor-svelte';
 	import { theme } from '$lib/theme.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { page } from '$app/state';
+	import { subscribe, unsubscribe, getSubscription } from '$lib/push';
 
 	let { data }: { data: PageData } = $props();
 
@@ -18,17 +19,16 @@
 	let searching = $state(false);
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
-	const sortOrder: Record<string, number> = { division_group: 0, team: 1, player: 2 };
 	const favoriteGroups = $derived([
-		{ label: 'Leagues', icon: Trophy, items: data.favorites.filter(f => f.targetType === 'division_group') },
-		{ label: 'Teams', icon: UsersThree, items: data.favorites.filter(f => f.targetType === 'team') },
-		{ label: 'Players', icon: User, items: data.favorites.filter(f => f.targetType === 'player') },
+		{ label: 'Leagues', icon: TrophyIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'division_group') },
+		{ label: 'Teams', icon: UsersThreeIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'team') },
+		{ label: 'Players', icon: UserIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'player') },
 	].filter(g => g.items.length > 0));
 
 	const notificationGroups = $derived([
-		{ label: 'Leagues', icon: Trophy, items: data.notifications.filter(n => n.targetType === 'division_group') },
-		{ label: 'Teams', icon: UsersThree, items: data.notifications.filter(n => n.targetType === 'team') },
-		{ label: 'Players', icon: User, items: data.notifications.filter(n => n.targetType === 'player') },
+		{ label: 'Leagues', icon: TrophyIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'division_group') },
+		{ label: 'Teams', icon: UsersThreeIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'team') },
+		{ label: 'Players', icon: UserIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'player') },
 	].filter(g => g.items.length > 0));
 
 	function onInput() {
@@ -48,12 +48,37 @@
 
 	async function signOut() {
 		await data.supabase.auth.signOut();
-		invalidate('supabase:auth');
-		goto('/');
+		await invalidate('supabase:auth');
+		await goto('/');
 	}
 
-	function entityIcon(targetType: string) {
-		return targetType === 'player' ? User : targetType === 'team' ? UsersThree : Trophy;
+	let pushSubscribed = $state<boolean | null>(null);
+	let pushLoading = $state(false);
+	let pushUnsupported = $state(false);
+
+	$effect(() => {
+		if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+			pushUnsupported = true;
+			return;
+		}
+		getSubscription().then((sub) => { pushSubscribed = sub !== null; });
+	});
+
+	async function togglePush() {
+		pushLoading = true;
+		try {
+			const { data: sessionData } = await data.supabase.auth.getSession();
+			const token = sessionData.session?.access_token ?? '';
+			if (pushSubscribed) {
+				await unsubscribe(token);
+				pushSubscribed = false;
+			} else {
+				const ok = await subscribe(token);
+				if (ok) pushSubscribed = true;
+			}
+		} finally {
+			pushLoading = false;
+		}
 	}
 
 	function entityHref(targetType: string, targetId: string) {
@@ -72,7 +97,7 @@
 	</header>
 
 	<section class="space-y-3">
-		<SectionLabel label="My Player" icon={User} />
+		<SectionLabel label="My Player" icon={UserIcon} />
 
 		{#if data.profile.homePlayerId}
 			<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
@@ -81,13 +106,14 @@
 					class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-accent"
 				>
 					<span class="font-semibold">{data.profile.homePlayerName ?? 'Unknown player'}</span>
-					<form method="POST" action="?/removeHomePlayer" use:enhance onclick={(e) => e.stopPropagation()}>
+					<form method="POST" action="?/removeHomePlayer" use:enhance>
 						<button
 							type="submit"
+							onclick={(e) => e.stopPropagation()}
 							class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 							aria-label="Remove home player"
 						>
-							<Trash size={18} />
+							<TrashIcon size="18" />
 						</button>
 					</form>
 				</a>
@@ -141,7 +167,7 @@
 
 	{#if favoriteGroups.length > 0}
 		<section class="space-y-3">
-			<SectionLabel label="Favorites" icon={Star} />
+			<SectionLabel label="Favorites" icon={StarIcon} />
 			{#each favoriteGroups as group (group.label)}
 				<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 					{#each group.items as item (item.id)}
@@ -150,17 +176,18 @@
 							class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-accent"
 						>
 							<div class="flex min-w-0 items-center gap-3">
-								<group.icon size={18} class="shrink-0 text-muted-foreground" />
+								<group.icon size="18" class="shrink-0 text-muted-foreground" />
 								<span class="truncate font-semibold">{item.targetName}</span>
 							</div>
-							<form method="POST" action="?/removeFavorite" use:enhance onclick={(e) => e.stopPropagation()}>
+							<form method="POST" action="?/removeFavorite" use:enhance>
 								<input type="hidden" name="favoriteId" value={item.id} />
 								<button
 									type="submit"
+									onclick={(e) => e.stopPropagation()}
 									class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 									aria-label="Remove favorite"
 								>
-									<Star size={18} weight="fill" />
+									<StarIcon size="18" weight="fill" />
 								</button>
 							</form>
 						</a>
@@ -172,7 +199,7 @@
 
 	{#if notificationGroups.length > 0}
 		<section class="space-y-3">
-			<SectionLabel label="Notifications" icon={BellRinging} />
+			<SectionLabel label="Notifications" icon={BellRingingIcon} />
 			{#each notificationGroups as group (group.label)}
 				<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 					{#each group.items as item (item.id)}
@@ -181,17 +208,18 @@
 							class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-accent"
 						>
 							<div class="flex min-w-0 items-center gap-3">
-								<group.icon size={18} class="shrink-0 text-muted-foreground" />
+								<group.icon size="18" class="shrink-0 text-muted-foreground" />
 								<span class="truncate font-semibold">{item.targetName}</span>
 							</div>
-							<form method="POST" action="?/removeNotification" use:enhance onclick={(e) => e.stopPropagation()}>
+							<form method="POST" action="?/removeNotification" use:enhance>
 								<input type="hidden" name="notifyId" value={item.id} />
 								<button
 									type="submit"
+									onclick={(e) => e.stopPropagation()}
 									class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 									aria-label="Remove notification"
 								>
-									<BellRinging size={18} weight="fill" />
+									<BellRingingIcon size="18" weight="fill" />
 								</button>
 							</form>
 						</a>
@@ -202,19 +230,46 @@
 	{/if}
 
 	<section class="space-y-3">
-		<SectionLabel label="Appearance" icon={PaintBrushHousehold} />
+		<SectionLabel label="Appearance" icon={PaintBrushHouseholdIcon} />
 		<button
 			onclick={() => theme.toggle()}
 			class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 		>
 			<span class="font-semibold">{theme.dark ? 'Dark mode' : 'Light mode'}</span>
 			{#if theme.dark}
-				<Moon class="h-5 w-5 text-muted-foreground" />
+				<MoonIcon size="20" class="text-muted-foreground" />
 			{:else}
-				<Sun class="h-5 w-5 text-muted-foreground" />
+				<SunIcon size="20" class="text-muted-foreground" />
 			{/if}
 		</button>
 	</section>
+
+	{#if !pushUnsupported}
+		<section class="space-y-3">
+			<SectionLabel label="Push Notifications" icon={BellRingingIcon} />
+			<button
+				onclick={togglePush}
+				disabled={pushLoading || pushSubscribed === null}
+				class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent disabled:opacity-50"
+			>
+				<div class="flex flex-col items-start gap-0.5">
+					<span class="font-semibold">
+						{pushSubscribed ? 'Notifications enabled' : 'Enable notifications'}
+					</span>
+					<span class="text-xs text-muted-foreground">
+						{pushSubscribed
+							? 'You\'ll be notified when followed players, teams, or leagues have new results.'
+							: 'Get notified when followed players, teams, or leagues have new results.'}
+					</span>
+				</div>
+				<BellRingingIcon
+					size="20"
+					weight={pushSubscribed ? 'fill' : 'regular'}
+					class="ml-3 shrink-0 text-muted-foreground"
+				/>
+			</button>
+		</section>
+	{/if}
 
 	<Button variant="destructive" onclick={signOut} class="w-full">Sign out</Button>
 </div>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from 'bits-ui';
 	import { cn, type WithoutChild } from '$lib/utils.js';
-	import CaretDownIcon from 'phosphor-svelte/lib/CaretDown';
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
 
 	let {
 		ref = $bindable(null),
@@ -25,5 +25,5 @@
 	{...restProps}
 >
 	{@render children?.()}
-	<CaretDownIcon class="pointer-events-none size-4 text-muted-foreground" />
+	<CaretDownIcon size="16" class="pointer-events-none text-muted-foreground" />
 </SelectPrimitive.Trigger>

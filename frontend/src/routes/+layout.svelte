@@ -4,14 +4,14 @@
 	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { theme } from '$lib/theme.svelte';
-	import { House, Trophy, MagnifyingGlass, UserCircle, SignIn } from 'phosphor-svelte';
+	import { HouseIcon, TrophyIcon, MagnifyingGlassIcon, UserCircleIcon, SignInIcon } from 'phosphor-svelte';
 
 	let { children, data } = $props();
 
 	const navItems = [
-		{ href: '/', label: 'Home', icon: House },
-		{ href: '/divisions', label: 'Leagues', icon: Trophy },
-		{ href: '/players', label: 'Search', icon: MagnifyingGlass }
+		{ href: '/', label: 'Home', icon: HouseIcon },
+		{ href: '/divisions', label: 'Leagues', icon: TrophyIcon },
+		{ href: '/players', label: 'Search', icon: MagnifyingGlassIcon }
 	];
 
 	function isActive(href: string): boolean {
@@ -59,7 +59,7 @@
 				class="flex w-16 flex-col items-center justify-center gap-0.5 transition-colors
 				       {active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
 			>
-				<item.icon size={22} weight={active ? 'fill' : 'regular'} />
+				<item.icon size="22" weight={active ? 'fill' : 'regular'} />
 				{#if active}
 					<span class="text-[10px] font-medium tracking-wide">{item.label}</span>
 				{/if}
@@ -73,9 +73,9 @@
 			aria-label={data.user ? 'Account' : 'Sign in'}
 		>
 			{#if data.user}
-				<UserCircle size={22} weight={accountActive ? 'fill' : 'regular'} />
+				<UserCircleIcon size="22" weight={accountActive ? 'fill' : 'regular'} />
 			{:else}
-				<SignIn size={22} weight="regular" />
+				<SignInIcon size="22" weight="regular" />
 			{/if}
 			{#if accountActive}
 				<span class="text-[10px] font-medium tracking-wide">

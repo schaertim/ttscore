@@ -174,3 +174,14 @@ object UserProfiles : Table("user_profile") {
     val createdAt = timestampWithTimeZone("created_at")
     override val primaryKey = PrimaryKey(userId)
 }
+
+/** Web Push subscriptions for push notifications. */
+object PushSubscriptions : Table("push_subscription") {
+    val id = uuid("id").autoGenerate()
+    val userId = text("user_id")
+    val endpoint = text("endpoint").uniqueIndex()
+    val p256dh = text("p256dh")
+    val auth = text("auth")
+    val createdAt = timestampWithTimeZone("created_at")
+    override val primaryKey = PrimaryKey(id)
+}

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Accordion as AccordionPrimitive } from 'bits-ui';
 	import { cn, type WithoutChild } from '$lib/utils.js';
-	import CaretDownIcon from 'phosphor-svelte/lib/CaretDown';
-	import CaretUpIcon from 'phosphor-svelte/lib/CaretUp';
+	import CaretDownIcon from 'phosphor-svelte/lib/CaretDownIcon';
+	import CaretUpIcon from 'phosphor-svelte/lib/CaretUpIcon';
 
 	let {
 		ref = $bindable(null),
@@ -27,10 +27,12 @@
 	>
 		{@render children?.()}
 		<CaretDownIcon
+			size="16"
 			data-slot="accordion-trigger-icon"
 			class="cn-accordion-trigger-icon pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden"
 		/>
 		<CaretUpIcon
+			size="16"
 			data-slot="accordion-trigger-icon"
 			class="cn-accordion-trigger-icon pointer-events-none hidden shrink-0 group-aria-expanded/accordion-trigger:inline"
 		/>

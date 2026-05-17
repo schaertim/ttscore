@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Match } from '$lib/api';
 	import { cn } from '$lib/utils';
-	import { HouseLine, Train } from 'phosphor-svelte';
+	import { HouseLineIcon, TrainIcon } from 'phosphor-svelte';
 
 	interface Props {
 		match: Match;
@@ -11,11 +11,11 @@
 
 	let { match, perspectiveTeam }: Props = $props();
 
-	const hasScore = match.homeScore != null && match.awayScore != null;
-
 	type Result = 'win' | 'loss' | 'completed' | null;
 
-	const result: Result = (() => {
+	const hasScore = $derived(match.homeScore != null && match.awayScore != null);
+
+	const result = $derived.by<Result>(() => {
 		if (!hasScore || match.status !== 'COMPLETED') return null;
 		const h = match.homeScore!;
 		const a = match.awayScore!;
@@ -24,19 +24,20 @@
 			(perspectiveTeam === match.homeTeam && h > a) ||
 			(perspectiveTeam === match.awayTeam && a > h);
 		return perspectiveWins ? 'win' : 'loss';
-	})();
+	});
 
-	const scoreClass =
+	const scoreClass = $derived(
 		result === 'win'
 			? 'text-win bg-win/15'
 			: result === 'loss'
 				? 'text-loss bg-loss/15'
 				: result != null
 					? 'text-muted-foreground bg-muted'
-					: 'text-muted-foreground';
+					: 'text-muted-foreground'
+	);
 
-	const isHome = perspectiveTeam === match.homeTeam;
-	const opponent = perspectiveTeam ? (isHome ? match.awayTeam : match.homeTeam) : null;
+	const isHome = $derived(perspectiveTeam === match.homeTeam);
+	const opponent = $derived(perspectiveTeam ? (isHome ? match.awayTeam : match.homeTeam) : null);
 
 	function formatDate(dateStr: string | null): string {
 		if (!dateStr) return 'TBD';
@@ -62,9 +63,9 @@
 		{#if perspectiveTeam}
 			<div class="flex min-w-0 items-center gap-1.5">
 				{#if isHome}
-					<HouseLine weight="fill" size={16} class="text-muted-foreground/60" />
+					<HouseLineIcon weight="fill" size="16" class="text-muted-foreground/60" />
 				{:else}
-					<Train weight="fill" size={16} class="text-muted-foreground/60" />
+					<TrainIcon weight="fill" size="16" class="text-muted-foreground/60" />
 				{/if}
 				<span class="truncate text-sm font-semibold">{opponent}</span>
 			</div>
