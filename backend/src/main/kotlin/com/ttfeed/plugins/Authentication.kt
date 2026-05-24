@@ -32,7 +32,7 @@ fun Application.configureAuthentication() {
                 JWT.require(algorithm)
                     .withIssuer(issuer)
                     .withClaimPresence("sub")
-                    .build()
+                    .build(),
             )
             validate { credential ->
                 val subject = credential.payload.subject
@@ -49,14 +49,18 @@ fun Application.configureAuthentication() {
  * Reconstructs a P-256 ECPublicKey from the base64url-encoded x and y
  * coordinates found in a JWK (as shown in Supabase's Key Details dialog).
  */
-private fun buildECPublicKey(xBase64: String, yBase64: String): ECPublicKey {
+private fun buildECPublicKey(
+    xBase64: String,
+    yBase64: String,
+): ECPublicKey {
     val decoder = Base64.getUrlDecoder()
     val x = BigInteger(1, decoder.decode(xBase64))
     val y = BigInteger(1, decoder.decode(yBase64))
 
-    val params = java.security.AlgorithmParameters.getInstance("EC").also {
-        it.init(ECGenParameterSpec("secp256r1")) // P-256
-    }
+    val params =
+        java.security.AlgorithmParameters.getInstance("EC").also {
+            it.init(ECGenParameterSpec("secp256r1")) // P-256
+        }
     val ecParams = params.getParameterSpec(java.security.spec.ECParameterSpec::class.java)
     val keySpec = ECPublicKeySpec(ECPoint(x, y), ecParams)
 

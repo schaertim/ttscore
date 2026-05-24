@@ -162,6 +162,9 @@ object ClickTTSyncService {
                     leagueUpdates++
                     continue
                 }
+            } else if (GameService.leagueGameExists(playerId, opponentId, playedAt)) {
+                // League game exists but hasn't been rated yet — don't insert a spurious tournament record
+                continue
             }
 
             // No league game found — insert as tournament game if not already stored

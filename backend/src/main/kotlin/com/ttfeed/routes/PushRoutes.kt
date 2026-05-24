@@ -12,14 +12,12 @@ import io.ktor.server.routing.*
 
 fun Route.pushRoutes() {
     route("/push") {
-
         /** Returns the VAPID public key so the browser can create a push subscription. */
         get("/vapid-public-key") {
             call.respond(mapOf("publicKey" to PushService.getPublicKey()))
         }
 
         authenticate("auth-jwt") {
-
             /** Saves a browser push subscription for the current user. */
             post("/subscriptions") {
                 val body = call.receive<PushSubscriptionRequest>()

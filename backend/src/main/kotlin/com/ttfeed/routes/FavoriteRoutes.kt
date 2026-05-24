@@ -14,7 +14,6 @@ import io.ktor.server.routing.*
 fun Route.favoriteRoutes() {
     authenticate("auth-jwt") {
         route("/favorites") {
-
             /** Returns all starred bookmarks for the current user. */
             get {
                 call.respond(FavoriteService.getFavorites(call.userId()))
@@ -34,26 +33,31 @@ fun Route.favoriteRoutes() {
              */
             post {
                 val body = call.receive<FavoriteRequest>()
-                val targetType = parseTargetType(body.targetType)
-                    ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid targetType")
-                val targetId = body.targetId.toUuidOrNull()
-                    ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid targetId")
+                val targetType =
+                    parseTargetType(body.targetType)
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid targetType")
+                val targetId =
+                    body.targetId.toUuidOrNull()
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid targetId")
 
-                val favorite = FavoriteService.favorite(call.userId(), targetType, targetId)
-                    ?: return@post call.respond(HttpStatusCode.NotFound, "Target not found")
+                val favorite =
+                    FavoriteService.favorite(call.userId(), targetType, targetId)
+                        ?: return@post call.respond(HttpStatusCode.NotFound, "Target not found")
 
                 call.respond(HttpStatusCode.Created, favorite)
             }
 
             /** Removes a star. DELETE /favorites/{id} */
             delete("/{id}") {
-                val favoriteId = call.parameters["id"]?.toUuidOrNull()
-                    ?: return@delete call.respond(HttpStatusCode.BadRequest, "Invalid favorite ID")
+                val favoriteId =
+                    call.parameters["id"]?.toUuidOrNull()
+                        ?: return@delete call.respond(HttpStatusCode.BadRequest, "Invalid favorite ID")
 
-                if (FavoriteService.unfavorite(call.userId(), favoriteId))
+                if (FavoriteService.unfavorite(call.userId(), favoriteId)) {
                     call.respond(HttpStatusCode.NoContent)
-                else
+                } else {
                     call.respond(HttpStatusCode.NotFound, "Favorite not found")
+                }
             }
 
             /**
@@ -62,11 +66,13 @@ fun Route.favoriteRoutes() {
              * GET /favorites/check?targetType=player&targetId=<uuid>
              */
             get("/check") {
-                val targetType = call.request.queryParameters["targetType"]
-                    ?.let { parseTargetType(it) }
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing or invalid targetType")
-                val targetId = call.request.queryParameters["targetId"]?.toUuidOrNull()
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing or invalid targetId")
+                val targetType =
+                    call.request.queryParameters["targetType"]
+                        ?.let { parseTargetType(it) }
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing or invalid targetType")
+                val targetId =
+                    call.request.queryParameters["targetId"]?.toUuidOrNull()
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing or invalid targetId")
 
                 call.respond(FavoriteService.check(call.userId(), targetType, targetId))
             }

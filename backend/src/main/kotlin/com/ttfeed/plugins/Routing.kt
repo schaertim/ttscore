@@ -10,7 +10,7 @@ fun Application.configureRouting() {
     PushService.init(
         publicKey = vapidConfig.property("publicKey").getString(),
         privateKey = vapidConfig.property("privateKey").getString(),
-        subject    = vapidConfig.property("subject").getString(),
+        subject = vapidConfig.property("subject").getString(),
     )
 
     routing {

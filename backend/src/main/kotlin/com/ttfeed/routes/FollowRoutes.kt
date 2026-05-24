@@ -14,7 +14,6 @@ import io.ktor.server.routing.*
 fun Route.followRoutes() {
     authenticate("auth-jwt") {
         route("/follows") {
-
             /** Returns all notification subscriptions for the current user. */
             get {
                 call.respond(FollowService.getFollows(call.userId()))
@@ -26,26 +25,31 @@ fun Route.followRoutes() {
              */
             post {
                 val body = call.receive<FollowRequest>()
-                val targetType = parseTargetType(body.targetType)
-                    ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid targetType")
-                val targetId = body.targetId.toUuidOrNull()
-                    ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid targetId")
+                val targetType =
+                    parseTargetType(body.targetType)
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid targetType")
+                val targetId =
+                    body.targetId.toUuidOrNull()
+                        ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid targetId")
 
-                val follow = FollowService.follow(call.userId(), targetType, targetId)
-                    ?: return@post call.respond(HttpStatusCode.NotFound, "Target not found")
+                val follow =
+                    FollowService.follow(call.userId(), targetType, targetId)
+                        ?: return@post call.respond(HttpStatusCode.NotFound, "Target not found")
 
                 call.respond(HttpStatusCode.Created, follow)
             }
 
             /** Unsubscribes. DELETE /follows/{id} */
             delete("/{id}") {
-                val followId = call.parameters["id"]?.toUuidOrNull()
-                    ?: return@delete call.respond(HttpStatusCode.BadRequest, "Invalid follow ID")
+                val followId =
+                    call.parameters["id"]?.toUuidOrNull()
+                        ?: return@delete call.respond(HttpStatusCode.BadRequest, "Invalid follow ID")
 
-                if (FollowService.unfollow(call.userId(), followId))
+                if (FollowService.unfollow(call.userId(), followId)) {
                     call.respond(HttpStatusCode.NoContent)
-                else
+                } else {
                     call.respond(HttpStatusCode.NotFound, "Follow not found")
+                }
             }
 
             /**
@@ -54,11 +58,13 @@ fun Route.followRoutes() {
              * GET /follows/check?targetType=player&targetId=<uuid>
              */
             get("/check") {
-                val targetType = call.request.queryParameters["targetType"]
-                    ?.let { parseTargetType(it) }
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing or invalid targetType")
-                val targetId = call.request.queryParameters["targetId"]?.toUuidOrNull()
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing or invalid targetId")
+                val targetType =
+                    call.request.queryParameters["targetType"]
+                        ?.let { parseTargetType(it) }
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing or invalid targetType")
+                val targetId =
+                    call.request.queryParameters["targetId"]?.toUuidOrNull()
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing or invalid targetId")
 
                 call.respond(FollowService.check(call.userId(), targetType, targetId))
             }

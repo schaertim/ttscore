@@ -22,8 +22,9 @@ fun Route.userProfileRoutes() {
             /** Sets the home player. Body: { "playerId": "<uuid>" } */
             put("/home-player") {
                 val body = call.receive<SetHomePlayerRequest>()
-                val playerId = body.playerId.toUuidOrNull()
-                    ?: return@put call.respond(HttpStatusCode.BadRequest, "Invalid player ID")
+                val playerId =
+                    body.playerId.toUuidOrNull()
+                        ?: return@put call.respond(HttpStatusCode.BadRequest, "Invalid player ID")
                 UserProfileService.setHomePlayer(call.userId(), playerId)
                 call.respond(HttpStatusCode.NoContent)
             }

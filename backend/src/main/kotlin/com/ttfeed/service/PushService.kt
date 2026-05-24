@@ -20,12 +20,15 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 object PushService {
-
     private val logger = LoggerFactory.getLogger(PushService::class.java)
     private lateinit var vapidPublicKey: String
     private lateinit var webPushService: nl.martijndwars.webpush.PushService
 
-    fun init(publicKey: String, privateKey: String, subject: String) {
+    fun init(
+        publicKey: String,
+        privateKey: String,
+        subject: String,
+    ) {
         vapidPublicKey = publicKey
         webPushService = nl.martijndwars.webpush.PushService(publicKey, privateKey, subject)
     }
@@ -33,10 +36,16 @@ object PushService {
     fun getPublicKey(): String = vapidPublicKey
 
     /** Upsert a browser push subscription for the user (idempotent on endpoint). */
-    suspend fun saveSubscription(userId: String, endpoint: String, p256dh: String, auth: String) = dbQuery {
-        val existing = PushSubscriptions.selectAll()
-            .where { PushSubscriptions.endpoint eq endpoint }
-            .firstOrNull()
+    suspend fun saveSubscription(
+        userId: String,
+        endpoint: String,
+        p256dh: String,
+        auth: String,
+    ) = dbQuery {
+        val existing =
+            PushSubscriptions.selectAll()
+                .where { PushSubscriptions.endpoint eq endpoint }
+                .firstOrNull()
 
         if (existing == null) {
             PushSubscriptions.insert {
@@ -50,7 +59,10 @@ object PushService {
     }
 
     /** Remove a push subscription by endpoint (browser unsubscribe or token expiry). */
-    suspend fun removeSubscription(userId: String, endpoint: String) = dbQuery {
+    suspend fun removeSubscription(
+        userId: String,
+        endpoint: String,
+    ) = dbQuery {
         PushSubscriptions.deleteWhere {
             (PushSubscriptions.userId eq userId) and (PushSubscriptions.endpoint eq endpoint)
         }
@@ -68,24 +80,26 @@ object PushService {
         body: String,
         url: String,
     ) {
-        val userIds = dbQuery {
-            Follows.selectAll()
-                .where { (Follows.targetType eq targetType) and (Follows.targetId eq targetId) }
-                .map { it[Follows.userId] }
-        }
+        val userIds =
+            dbQuery {
+                Follows.selectAll()
+                    .where { (Follows.targetType eq targetType) and (Follows.targetId eq targetId) }
+                    .map { it[Follows.userId] }
+            }
         if (userIds.isEmpty()) return
 
-        val subscriptions = dbQuery {
-            PushSubscriptions.selectAll()
-                .where { PushSubscriptions.userId inList userIds }
-                .map {
-                    Triple(
-                        it[PushSubscriptions.endpoint],
-                        it[PushSubscriptions.p256dh],
-                        it[PushSubscriptions.auth],
-                    )
-                }
-        }
+        val subscriptions =
+            dbQuery {
+                PushSubscriptions.selectAll()
+                    .where { PushSubscriptions.userId inList userIds }
+                    .map {
+                        Triple(
+                            it[PushSubscriptions.endpoint],
+                            it[PushSubscriptions.p256dh],
+                            it[PushSubscriptions.auth],
+                        )
+                    }
+            }
         if (subscriptions.isEmpty()) return
 
         val payload = Json.encodeToString(mapOf("title" to title, "body" to body, "url" to url))
@@ -93,7 +107,7 @@ object PushService {
         withContext(Dispatchers.IO) {
             for ((endpoint, p256dh, auth) in subscriptions) {
                 try {
-                    val sub = Subscription(endpoint, p256dh, auth)
+                    val sub = Subscription(endpoint, Subscription.Keys(p256dh, auth))
                     val notification = Notification(sub, payload)
                     webPushService.send(notification)
                 } catch (e: Exception) {

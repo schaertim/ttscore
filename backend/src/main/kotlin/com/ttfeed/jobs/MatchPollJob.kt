@@ -20,6 +20,7 @@ import com.ttfeed.service.SeasonService
 import kotlinx.coroutines.delay
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
@@ -98,33 +99,39 @@ class MatchPollJob(
             val groupId: UUID,
         )
 
-        val matchInfos = transaction {
-            Matches.selectAll()
-                .where { Matches.id inList matchIds }
-                .map {
-                    MatchInfo(
-                        id = it[Matches.id],
-                        homeScore = it[Matches.homeScore],
-                        awayScore = it[Matches.awayScore],
-                        homeTeamId = it[Matches.homeTeamId],
-                        awayTeamId = it[Matches.awayTeamId],
-                        groupId = it[Matches.groupId],
-                    )
-                }
-        }
+        val matchInfos =
+            transaction {
+                Matches.selectAll()
+                    .where { Matches.id inList matchIds }
+                    .map {
+                        MatchInfo(
+                            id = it[Matches.id],
+                            homeScore = it[Matches.homeScore],
+                            awayScore = it[Matches.awayScore],
+                            homeTeamId = it[Matches.homeTeamId],
+                            awayTeamId = it[Matches.awayTeamId],
+                            groupId = it[Matches.groupId],
+                        )
+                    }
+            }
 
         val teamIds = matchInfos.flatMap { listOf(it.homeTeamId, it.awayTeamId) }.toSet()
-        val teamNames: Map<UUID, String> = transaction {
-            Teams.select(Teams.id, Teams.name)
-                .where { Teams.id inList teamIds }
-                .associate { it[Teams.id] to it[Teams.name] }
-        }
+        val teamNames: Map<UUID, String> =
+            transaction {
+                Teams.select(Teams.id, Teams.name)
+                    .where { Teams.id inList teamIds }
+                    .associate { it[Teams.id] to it[Teams.name] }
+            }
 
         for (m in matchInfos) {
             val homeTeam = teamNames[m.homeTeamId] ?: continue
             val awayTeam = teamNames[m.awayTeamId] ?: continue
-            val score = if (m.homeScore != null && m.awayScore != null)
-                "${m.homeScore}:${m.awayScore}" else "—:—"
+            val score =
+                if (m.homeScore != null && m.awayScore != null) {
+                    "${m.homeScore}:${m.awayScore}"
+                } else {
+                    "—:—"
+                }
             val title = "$homeTeam vs $awayTeam"
             val body = "Result: $score"
             val url = "/matches/${m.id}"
@@ -138,12 +145,13 @@ class MatchPollJob(
         }
     }
 
-    private suspend fun sendPlayerPushNotifications(playerIds: List<UUID>) {
-        val playerNames = transaction {
-            Players.select(Players.id, Players.fullName)
-                .where { Players.id inList playerIds }
-                .associate { it[Players.id] to it[Players.fullName] }
-        }
+    private suspend fun sendPlayerPushNotifications(playerIds: Collection<UUID>) {
+        val playerNames =
+            transaction {
+                Players.select(Players.id, Players.fullName)
+                    .where { Players.id inList playerIds }
+                    .associate { it[Players.id] to it[Players.fullName] }
+            }
 
         for ((playerId, playerName) in playerNames) {
             try {

@@ -36,7 +36,7 @@ dependencies {
     implementation("io.ktor:ktor-server-cors")
     implementation(libs.ktor.server.auth)
     implementation(libs.ktor.server.auth.jwt)
-    implementation("nl.martijndwars:web-push:5.1.3")
+    implementation("nl.martijndwars:web-push:5.1.1")
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)

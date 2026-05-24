@@ -12,6 +12,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.update
 import java.time.OffsetDateTime
 import java.util.*
@@ -25,10 +26,36 @@ object GameService {
         dbQuery {
             Games.select(Games.id)
                 .where {
-                    (Games.homePlayer1Id eq playerId) and
+                    ((Games.homePlayer1Id eq playerId) or (Games.awayPlayer1Id eq playerId)) and
                         (Games.playedAt eq playedAt) and
                         (Games.competitionName eq competition)
                 }.count() > 0
+        }
+
+    /**
+     * Returns true if a league game (matchId IS NOT NULL) already exists for the player on the
+     * given Swiss day — used to avoid inserting a duplicate tournament game entry when the
+     * Elo-Protokoll lists a league game that has not been rated yet (eloDelta == null).
+     */
+    suspend fun leagueGameExists(
+        playerId: UUID,
+        opponentId: UUID?,
+        dayStart: OffsetDateTime,
+    ): Boolean =
+        dbQuery {
+            val dayEnd = dayStart.plusDays(1)
+            val base =
+                (Games.matchId.isNotNull()) and
+                    (Games.playedAt greaterEq dayStart) and
+                    (Games.playedAt less dayEnd) and
+                    ((Games.homePlayer1Id eq playerId) or (Games.awayPlayer1Id eq playerId))
+            val condition =
+                if (opponentId != null) {
+                    base and ((Games.homePlayer1Id eq opponentId) or (Games.awayPlayer1Id eq opponentId))
+                } else {
+                    base
+                }
+            Games.select(Games.id).where(condition).count() > 0
         }
 
     /**

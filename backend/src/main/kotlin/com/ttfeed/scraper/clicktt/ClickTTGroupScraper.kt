@@ -10,7 +10,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
-import java.time.ZoneOffset
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -349,7 +349,7 @@ class ClickTTGroupScraper(
                 } else {
                     DateTimeFormatter.ofPattern("dd.MM.yyyy")
                 }
-            LocalDateTime.parse(raw, fmt).atOffset(ZoneOffset.UTC)
+            LocalDateTime.parse(raw, fmt).atZone(ZoneId.of("Europe/Zurich")).toOffsetDateTime()
         } catch (e: Exception) {
             null
         }

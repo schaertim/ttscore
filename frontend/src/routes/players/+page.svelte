@@ -133,8 +133,8 @@
 
 							<div class="min-w-0 flex-1">
 								<p class="truncate text-sm font-semibold">{player.fullName}</p>
-								<p class="truncate text-[10px] tracking-wide text-muted-foreground uppercase">
-									{player.currentClubName ?? 'â€”'}
+								<p class="truncate text-[10px] tracking-wide text-muted-foreground">
+									{player.currentClubName ?? '-'}
 								</p>
 							</div>
 
