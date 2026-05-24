@@ -4,7 +4,6 @@ import com.ttfeed.model.GameResult
 import com.ttfeed.model.GameType
 import com.ttfeed.model.MatchStatus
 import com.ttfeed.scraper.clicktt.model.*
-import com.ttfeed.util.normalizeClickTtName
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -40,10 +39,17 @@ class ClickTTParser {
     }
 
     /**
-     * Parses a club members page, returning the club name and all members with their
-     * click-tt person ID, STT licence number, and display name.
+     * Parses a club members page for one gender tab.
+     *
+     * Table columns: [Klassierung | Name | Lizenz-Nr. | Serie | Nationalität]
+     *
+     * Names are returned in raw click-tt format ("Lastname, Firstname") so the
+     * storage layer can apply [clickTtNameToDb] uniformly.
      */
-    fun parseClubPage(html: String): ClickTTClubPage {
+    fun parseClubPage(
+        html: String,
+        gender: String = "MALE",
+    ): ClickTTClubPage {
         val doc = Jsoup.parse(html)
         val members = mutableListOf<ClickTTClubMember>()
 
@@ -53,18 +59,34 @@ class ClickTTParser {
 
             val link = cells[1].select("a[href*='person=']").firstOrNull() ?: continue
             val personId = link.attr("href").let { extractParam(it, "person") }?.toIntOrNull() ?: continue
-            val fullName = normalizeClickTtName(link.text()).takeIf { it.isNotBlank() } ?: continue
+            // Raw "Lastname, Firstname" — no normalisation here; storage layer converts format
+            val fullName = link.text().trim().takeIf { it.isNotBlank() } ?: continue
             val licence = cells[2].text().trim().takeIf { it.isNotBlank() } ?: continue
+            val serie = cells.getOrNull(3)?.text()?.trim()?.takeIf { it.isNotBlank() }
+            val nationality = cells.getOrNull(4)?.text()?.trim()?.takeIf { it.isNotBlank() }
 
-            members.add(ClickTTClubMember(licence = licence, personId = personId, fullName = fullName))
+            members.add(
+                ClickTTClubMember(
+                    licence = licence,
+                    personId = personId,
+                    fullName = fullName,
+                    sex = gender,
+                    serie = serie,
+                    nationality = nationality,
+                ),
+            )
         }
 
         return ClickTTClubPage(clubName = parseClubName(doc), members = members)
     }
 
     private fun parseClubName(doc: Document): String? =
+        // The h1 contains "ClubName\nLizenzierte Spieler des Vereins" — strip the subtitle regardless
+        // of whether a <br> is present between them.
         doc.selectFirst("div.content-section h1, h1.page-title, h1")
-            ?.text()?.trim()?.takeIf { it.isNotBlank() }
+            ?.text()?.trim()
+            ?.substringBefore("Lizenzierte Spieler")?.trim()
+            ?.takeIf { it.isNotBlank() }
 
     private fun parseCurrentElo(doc: Document): Int? {
         // eloFilter page: info table has <td><b>Elo-Wert</b></td><td class="right">1016</td>

@@ -57,4 +57,5 @@ data class ParsedStandingsPage(
 data class ParsedLicensedPlayer(
     val fullName: String,
     val licenceNr: String,
+    val newClub: String? = null,
 )

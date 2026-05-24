@@ -2,7 +2,9 @@ package com.ttfeed.service
 
 import com.ttfeed.database.*
 import com.ttfeed.model.*
-import com.ttfeed.util.normalizeClickTtName
+import com.ttfeed.scraper.clicktt.model.ClickTTClubMember
+import com.ttfeed.util.accentFold
+import com.ttfeed.util.clickTtNameToDb
 import com.ttfeed.util.toUuidOrNull
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.JoinType
@@ -378,13 +380,22 @@ object PlayerService {
     }
 
     suspend fun findPlayerIdByName(clickTtName: String): UUID? {
-        val fullName = normalizeClickTtName(clickTtName).lowercase()
+        val dbName = clickTtNameToDb(clickTtName) // "Lastname Firstname"
 
         return dbQuery {
+            // Fast path: exact case-insensitive SQL match
             Players.select(Players.id)
-                .where { Players.fullName.lowerCase() eq fullName }
+                .where { Players.fullName.lowerCase() eq dbName.lowercase() }
                 .map { it[Players.id] }
                 .firstOrNull()
+                // Accent-fold fallback: "Grégory" finds "Gregory"
+                ?: run {
+                    val folded = accentFold(dbName)
+                    Players.select(Players.id, Players.fullName)
+                        .toList()
+                        .firstOrNull { accentFold(it[Players.fullName]) == folded }
+                        ?.get(Players.id)
+                }
         }
     }
 
@@ -416,17 +427,113 @@ object PlayerService {
         }
     }
 
-    /** Updates both the click-tt person ID and the display name for a batch of players by licence. */
-    suspend fun updateClickTtDataBatch(updates: Map<String, Pair<Int, String>>) {
-        if (updates.isEmpty()) return
+    /**
+     * Phase A of the backfill: for each club member whose licence already exists in the DB,
+     * writes the click-tt person ID, canonical name, and registration metadata.
+     */
+    suspend fun updateClickTtDataBatch(members: List<ClickTTClubMember>) {
+        if (members.isEmpty()) return
         dbQuery {
-            for ((licence, data) in updates) {
-                val (personId, fullName) = data
-                Players.update({ Players.licenceNr eq licence }) {
-                    it[Players.clickttId] = personId
-                    it[Players.fullName] = fullName
+            for (member in members) {
+                Players.update({ Players.licenceNr eq member.licence }) {
+                    it[Players.clickttId] = member.personId
+                    // Convert "Lastname, Firstname" → "Lastname Firstname" to match knob storage format
+                    it[Players.fullName] = clickTtNameToDb(member.fullName)
+                    it[Players.sex] = member.sex
+                    it[Players.serie] = member.serie
+                    it[Players.nationality] = member.nationality
                 }
             }
+        }
+    }
+
+    /**
+     * Returns the subset of the given licence numbers that already exist in the DB.
+     * Used to identify which club members couldn't be matched by licence so name+club
+     * fallback matching can be attempted for the remainder.
+     */
+    suspend fun findLicencesInDb(licences: Collection<String>): Set<String> =
+        dbQuery {
+            Players.select(Players.licenceNr)
+                .where { Players.licenceNr inList licences.toList() }
+                .mapNotNull { it[Players.licenceNr] }
+                .toSet()
+        }
+
+    /**
+     * Phase C of the backfill: inserts player rows for members that couldn't be matched by
+     * licence or name+club. Uses INSERT IGNORE so members already linked by Phase B
+     * (whose clicktt_id now lives on an existing row) are silently skipped.
+     */
+    suspend fun insertUnmatchedClickTtMembers(members: List<ClickTTClubMember>) {
+        if (members.isEmpty()) return
+        dbQuery {
+            for (member in members) {
+                Players.insertIgnore {
+                    it[Players.clickttId] = member.personId
+                    it[Players.licenceNr] = member.licence
+                    it[Players.fullName] = clickTtNameToDb(member.fullName)
+                    it[Players.sex] = member.sex
+                    it[Players.serie] = member.serie
+                    it[Players.nationality] = member.nationality
+                }
+            }
+        }
+    }
+
+    /**
+     * Phase B of the backfill: for club members that couldn't be matched by licence,
+     * attempts a name + club fallback — accent-folds both sides and checks that the player
+     * has a player_season record at a club whose name fuzzy-matches [clickTtClubName].
+     * On a unique match the player gains the licence, click-tt ID, canonical name, and metadata.
+     */
+    suspend fun matchAndLinkByNameAndClub(
+        members: List<ClickTTClubMember>,
+        clickTtClubName: String,
+    ) = dbQuery {
+        val foldedClub = accentFold(clickTtClubName)
+
+        // Find DB clubs whose folded name overlaps with the click-tt club name
+        val matchingClubIds =
+            Clubs.select(Clubs.id, Clubs.name)
+                .toList()
+                .filter { row ->
+                    val fc = accentFold(row[Clubs.name])
+                    fc.contains(foldedClub) || foldedClub.contains(fc)
+                }
+                .map { it[Clubs.id] }
+
+        if (matchingClubIds.isEmpty()) return@dbQuery
+
+        // Load players at those clubs that still have no licence and no click-tt ID
+        val playersAtClub =
+            (Players innerJoin PlayerSeasons innerJoin Teams innerJoin Clubs)
+                .select(Players.id, Players.fullName)
+                .where {
+                    (Clubs.id inList matchingClubIds) and
+                        Players.licenceNr.isNull() and
+                        Players.clickttId.isNull()
+                }
+                .distinctBy { it[Players.id] }
+
+        // Index by folded name for O(1) lookup
+        val byFolded = playersAtClub.groupBy { accentFold(it[Players.fullName]) }
+
+        for (member in members) {
+            val dbName = clickTtNameToDb(member.fullName)
+            val candidates = byFolded[accentFold(dbName)] ?: continue
+
+            if (candidates.size == 1) {
+                Players.update({ Players.id eq candidates[0][Players.id] }) {
+                    it[Players.licenceNr] = member.licence
+                    it[Players.clickttId] = member.personId
+                    it[Players.fullName] = dbName
+                    it[Players.sex] = member.sex
+                    it[Players.serie] = member.serie
+                    it[Players.nationality] = member.nationality
+                }
+            }
+            // Multiple candidates with same folded name at same club → ambiguous, skip
         }
     }
 

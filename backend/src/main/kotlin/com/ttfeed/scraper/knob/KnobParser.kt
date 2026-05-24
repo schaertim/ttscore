@@ -4,10 +4,10 @@ import com.ttfeed.model.GameResult
 import com.ttfeed.model.GameType
 import com.ttfeed.model.MatchStatus
 import com.ttfeed.scraper.knob.model.*
-import com.ttfeed.util.normalizeKnobName
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import java.text.Normalizer
 
 class KnobParser {
     // -------------------------------------------------------------------------
@@ -187,18 +187,44 @@ class KnobParser {
     }
 
     private fun parseTeams(doc: Document): List<ParsedTeam> {
+        // Primary: extract teams from the match schedule. Every match row carries home and
+        // away team links with teamid/clubid in the href, so this works for regular groups,
+        // playoffs, and cups — anything that has matches.
+        val matchTable =
+            doc.select("tr:has(td:containsOwn(Runde))")
+                .firstOrNull()?.parent()?.parent()
+
+        if (matchTable != null) {
+            val teams =
+                matchTable.select("tr.psodd, tr.playerStats, tr.pshl")
+                    .flatMap { row ->
+                        val cells = row.select("td")
+                        if (cells.size < 4) return@flatMap emptyList()
+                        listOfNotNull(
+                            cells.getOrNull(2)?.selectFirst("a")?.let { teamFromLink(it) },
+                            cells.getOrNull(3)?.selectFirst("a")?.let { teamFromLink(it) },
+                        )
+                    }
+                    .distinctBy { it.knobTeamId }
+            if (teams.isNotEmpty()) return teams
+        }
+
+        // Fallback: standings table for groups that exist but have no matches yet.
         return doc.select("table.a02Bar").first()
             ?.nextElementSibling()
             ?.select("tr.psauf, tr.psab, tr.psodd, tr.playerStats, tr.pshl")
             ?.mapNotNull { row ->
-                val link = row.select("td.playerName a").firstOrNull() ?: return@mapNotNull null
-                val href = link.attr("href")
-                val clubId = extractParam(href, "clubid")?.toIntOrNull() ?: return@mapNotNull null
-                val teamId = extractParam(href, "teamid")?.toIntOrNull() ?: return@mapNotNull null
-                ParsedTeam(name = link.text().trim(), knobClubId = clubId, knobTeamId = teamId)
+                row.select("td.playerName a").firstOrNull()?.let { teamFromLink(it) }
             }
             ?.distinctBy { it.knobTeamId }
             ?: emptyList()
+    }
+
+    private fun teamFromLink(link: Element): ParsedTeam? {
+        val href = link.attr("href")
+        val clubId = extractParam(href, "clubid")?.toIntOrNull() ?: return null
+        val teamId = extractParam(href, "teamid")?.toIntOrNull() ?: return null
+        return ParsedTeam(name = nfc(link.text().trim()), knobClubId = clubId, knobTeamId = teamId)
     }
 
     private fun parsePlayers(doc: Document): List<ParsedPlayer> {
@@ -229,9 +255,9 @@ class KnobParser {
                         ?: return@mapNotNull null
 
                 ParsedPlayer(
-                    fullName = normalizeKnobName(playerLink.text()),
+                    fullName = nfc(playerLink.text().trim()),
                     knobId = knobId,
-                    klass = cells[3].text().trim(),
+                    klass = expandKlass(cells[3].text().trim()) ?: "",
                     knobClubId = clubId,
                     knobTeamId = teamId,
                 )
@@ -275,7 +301,10 @@ class KnobParser {
                         "teamid",
                     )?.toIntOrNull() ?: return@mapNotNull null
 
-                val scoreText = cells[4].selectFirst("a")?.text()?.trim()
+                // Completed matches have a linked score ("4:6"); forfeits have plain text ("0:0 w.o.")
+                val scoreText =
+                    cells[4].selectFirst("a")?.text()?.trim()
+                        ?: cells[4].text().trim().takeIf { it.isNotBlank() }
                 val (homeScore, awayScore, status) = parseScore(scoreText)
 
                 ParsedMatch(
@@ -296,8 +325,9 @@ class KnobParser {
             return Triple(null, null, MatchStatus.SCHEDULED)
         }
         val parts = scoreText.split(":")
-        val home = parts[0].toIntOrNull()
-        val away = parts[1].toIntOrNull()
+        val home = parts[0].trim().toIntOrNull()
+        // Strip trailing annotations like " w.o." before parsing the away score
+        val away = parts[1].trim().substringBefore(" ").toIntOrNull()
         return if (home != null && away != null) {
             Triple(home, away, MatchStatus.COMPLETED)
         } else {
@@ -351,8 +381,9 @@ class KnobParser {
             val awayGid1 = extractParam(awayLinks[0].attr("href"), "gid")?.toIntOrNull()
 
             // Klass is encoded as "[ X ]" at the end of the link text.
-            val homeKlass = extractKlass(homeRaw)
-            val awayKlass = extractKlass(awayRaw)
+            // expandKlass converts raw numbers (e.g. "2") to Swiss TT format (e.g. "D2").
+            val homeKlass = expandKlass(extractKlass(homeRaw))
+            val awayKlass = expandKlass(extractKlass(awayRaw))
             val homeClean = stripKlass(homeRaw)
             val awayClean = stripKlass(awayRaw)
 
@@ -366,11 +397,11 @@ class KnobParser {
             val awayPlayer1Klass: String?
 
             if (!isDoubles) {
-                homeName1 = homeClean.takeIf { it.isNotBlank() }
+                homeName1 = homeClean.takeIf { it.isNotBlank() }?.let { nfc(it) }
                 homeName2 = null
                 homeGid2 = null
                 homePlayer1Klass = homeKlass
-                awayName1 = awayClean.takeIf { it.isNotBlank() }
+                awayName1 = awayClean.takeIf { it.isNotBlank() }?.let { nfc(it) }
                 awayName2 = null
                 awayGid2 = null
                 awayPlayer1Klass = awayKlass
@@ -379,12 +410,12 @@ class KnobParser {
                 if (awayGid1 != null && awayName1 != null) nameToKnobId[awayName1] = awayGid1
             } else {
                 // "Player A / Player B" — split on the slash to get each name
-                homeName1 = homeClean.substringBefore("/").trim().takeIf { it.isNotBlank() }
-                homeName2 = homeClean.substringAfter("/").trim().takeIf { it.isNotBlank() }
+                homeName1 = homeClean.substringBefore("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
+                homeName2 = homeClean.substringAfter("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
                 homeGid2 = homeName2?.let { nameToKnobId[it] }
                 homePlayer1Klass = null // doubles klass is an aggregate, not per-player
-                awayName1 = awayClean.substringBefore("/").trim().takeIf { it.isNotBlank() }
-                awayName2 = awayClean.substringAfter("/").trim().takeIf { it.isNotBlank() }
+                awayName1 = awayClean.substringBefore("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
+                awayName2 = awayClean.substringAfter("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
                 awayGid2 = awayName2?.let { nameToKnobId[it] }
                 awayPlayer1Klass = null
             }
@@ -473,13 +504,42 @@ class KnobParser {
                 if (licence.isBlank() || licence == "-" || licence == "0" || licence.contains("nicht")) {
                     return@mapNotNull null
                 }
-                ParsedLicensedPlayer(fullName = normalizeKnobName(rawName), licenceNr = licence)
+                val newClub = cells.getOrNull(4)?.text()?.trim()?.takeIf { it.isNotBlank() }
+                ParsedLicensedPlayer(fullName = nfc(rawName), licenceNr = licence, newClub = newClub)
             }
     }
 
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    /**
+     * Converts a raw knob.ch Klassierung number (1–22) to the Swiss TT letter-prefix format.
+     * knob.ch stores just the ladder position; the standard format used by click-tt and the DB
+     * prefixes the position with the division letter:
+     *   D = 1–5 | C = 6–10 | B = 11–15 | A = 16–22
+     * Values that are already formatted (e.g. "D2") or empty are returned unchanged.
+     */
+    /**
+     * Converts a raw knob.ch Klassierung number (1–22) to the Swiss TT letter-prefix format.
+     * knob.ch stores just the ladder position; the standard format used by click-tt and the DB
+     * prefixes the position with the division letter:
+     *   D = 1–5 | C = 6–10 | B = 11–15 | A = 16–22
+     * Values that are already formatted (e.g. "D2"), empty, or null are returned unchanged.
+     */
+    private fun expandKlass(raw: String?): String? {
+        val s = raw ?: return null
+        val num = s.toIntOrNull() ?: return s
+        val prefix =
+            when (num) {
+                in 1..5 -> "D"
+                in 6..10 -> "C"
+                in 11..15 -> "B"
+                in 16..22 -> "A"
+                else -> return s
+            }
+        return "$prefix$num"
+    }
 
     private fun extractKlass(text: String): String? =
         Regex("""\[([^\]]+)\]$""").find(text.trim())?.groupValues?.get(1)?.trim()
@@ -503,4 +563,7 @@ class KnobParser {
             .firstOrNull { it.trim().startsWith("$key=") }
             ?.substringAfter("=")
             ?.trim()
+
+    /** Normalises to Unicode NFC so accented characters compare equal regardless of source encoding. */
+    private fun nfc(s: String) = Normalizer.normalize(s, Normalizer.Form.NFC)
 }

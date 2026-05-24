@@ -3,6 +3,7 @@ package com.ttfeed.scraper.clicktt
 import com.ttfeed.database.*
 import com.ttfeed.model.MatchStatus
 import com.ttfeed.scraper.clicktt.ClickTTGroupScraper.Companion.toChampionship
+import com.ttfeed.util.clickTtNameToDb
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -149,10 +150,10 @@ class ClickTTMatchScraper(
     }
 
     /**
-     * Looks up a player by their click-tt person ID (primary) or name (fallback).
-     * Creates the player and player_season record if they don't exist yet.
-     * Names from click-tt are in "Lastname, Firstname" format — stored as-is since the
-     * backfill job uses the same format when it links click-tt data to existing players.
+     * Looks up a player by their click-tt person ID and creates a player_season record.
+     * The backfill job should have already created rows for all registered club members,
+     * but if a player slips through (club ID outside the scanned range, mid-season join)
+     * a minimal fallback row is inserted so the game result is not lost.
      */
     private fun upsertPlayer(
         personId: Int?,
@@ -161,11 +162,13 @@ class ClickTTMatchScraper(
         teamId: UUID,
         seasonId: UUID,
     ): UUID? {
+        val dbName = name?.let { clickTtNameToDb(it) }
+
         if (personId == null) {
             // Doubles player with no personId — try name lookup as a best-effort fallback
-            name ?: return null
+            dbName ?: return null
             return Players.select(Players.id)
-                .where { Players.fullName eq name }
+                .where { Players.fullName eq dbName }
                 .firstOrNull()?.get(Players.id)
                 ?.also { playerId ->
                     PlayerSeasons.insertIgnore {
@@ -177,23 +180,24 @@ class ClickTTMatchScraper(
                 }
         }
 
-        val existing =
+        val playerId =
             Players.select(Players.id)
                 .where { Players.clickttId eq personId }
                 .firstOrNull()
-
-        val playerId =
-            if (existing != null) {
-                existing[Players.id]
-            } else {
-                Players.insertIgnore {
-                    it[Players.clickttId] = personId
-                    it[Players.fullName] = name ?: "Unknown"
+                ?.get(Players.id)
+                ?: run {
+                    // Fallback: player wasn't created by the backfill job (club ID outside
+                    // the scanned range, mid-season join, etc.). Insert a minimal row so
+                    // the game result is not lost.
+                    logger.warn("upsertPlayer: no row for clickttId=$personId (name=$dbName) — inserting fallback row")
+                    Players.insertIgnore {
+                        it[Players.clickttId] = personId
+                        it[Players.fullName] = dbName ?: "Unknown"
+                    }
+                    Players.select(Players.id)
+                        .where { Players.clickttId eq personId }
+                        .first()[Players.id]
                 }
-                Players.select(Players.id)
-                    .where { Players.clickttId eq personId }
-                    .first()[Players.id]
-            }
 
         PlayerSeasons.insertIgnore {
             it[PlayerSeasons.playerId] = playerId

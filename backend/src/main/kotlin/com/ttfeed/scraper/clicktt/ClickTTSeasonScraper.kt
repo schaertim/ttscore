@@ -5,12 +5,12 @@ import com.ttfeed.jobs.ClickTtIdBackfillJob
 /**
  * Orchestrates the full click-tt season scrape for a given season.
  *
- * Phase 1 — ClickTTGroupScraper: league structure, teams, standings, and match schedule
- * Phase 2 — ClickTtIdBackfillJob: links click-tt person/club IDs to existing knob-scraped records
- * Phase 3 — ClickTTMatchScraper: individual game results, set scores, and player upserts
+ * Phase 1 — ClickTtIdBackfillJob: links click-tt person/club IDs to existing knob-scraped records,
+ *            and inserts fresh rows for any registered players not yet in the DB.
+ * Phase 2 — ClickTTGroupScraper: league structure, teams, standings, and match schedule
+ * Phase 3 — ClickTTMatchScraper: individual game results, set scores, and player season records
  *
- * The backfill job must run between phases 1 and 3 so that players encountered in match details
- * are already linked to their knob records, avoiding duplicate player rows.
+ * The backfill job runs first so all registered players exist before match scraping begins.
  */
 class ClickTTSeasonScraper(
     private val groupScraper: ClickTTGroupScraper,
@@ -21,8 +21,8 @@ class ClickTTSeasonScraper(
         season: String = "2025/2026",
         federations: Collection<String>? = null,
     ) {
-        if (federations != null) groupScraper.run(season, federations) else groupScraper.run(season)
         backfillJob.run()
+        if (federations != null) groupScraper.run(season, federations) else groupScraper.run(season)
         matchScraper.run()
     }
 

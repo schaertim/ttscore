@@ -72,6 +72,15 @@ object Players : Table("player") {
     val knobId = integer("knob_id").nullable().uniqueIndex()
     val clickttId = integer("clicktt_id").nullable().uniqueIndex()
     val fullName = varchar("full_name", 100)
+
+    /** "MALE" or "FEMALE" — populated from the click-tt club members page */
+    val sex = varchar("sex", 6).nullable()
+
+    /** STT age-category ("Aktive", "O40", "U19", …) — from click-tt club page */
+    val serie = varchar("serie", 20).nullable()
+
+    /** ISO 3-letter country code ("SUI", "GER", …) — from click-tt club page */
+    val nationality = varchar("nationality", 3).nullable()
     override val primaryKey = PrimaryKey(id)
 }
 
@@ -141,12 +150,18 @@ object GameSets : Table("game_set") {
 }
 
 /** Shared helper — maps the native PG follow_target_type enum to/from our Kotlin enum. */
-private fun targetTypeColumn(table: Table) = table.customEnumeration(
-    name = "target_type",
-    sql = "follow_target_type",
-    fromDb = { value -> FollowTargetType.valueOf(value.toString().uppercase()) },
-    toDb = { value -> PGobject().apply { type = "follow_target_type"; this.value = value.name.lowercase() } },
-)
+private fun targetTypeColumn(table: Table) =
+    table.customEnumeration(
+        name = "target_type",
+        sql = "follow_target_type",
+        fromDb = { value -> FollowTargetType.valueOf(value.toString().uppercase()) },
+        toDb = { value ->
+            PGobject().apply {
+                type = "follow_target_type"
+                this.value = value.name.lowercase()
+            }
+        },
+    )
 
 /** Notification subscriptions (bell). */
 object Follows : Table("follow") {

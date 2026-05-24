@@ -49,8 +49,11 @@ class ClickTTClient {
         return fetchWithRetry(fullUrl)
     }
 
-    suspend fun fetchClubMembersPage(clubId: Int): String {
-        val url = "$baseUrl/clubLicenceMembersPage?club=$clubId"
+    suspend fun fetchClubMembersPage(
+        clubId: Int,
+        gender: String = "MALE",
+    ): String {
+        val url = "$baseUrl/clubLicenceMembersPage?gender=$gender&club=$clubId"
         return fetchWithRetry(url)
     }
 
