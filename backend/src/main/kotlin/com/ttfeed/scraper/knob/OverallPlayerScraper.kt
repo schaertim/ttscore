@@ -8,7 +8,6 @@ import com.ttfeed.database.Teams
 import com.ttfeed.util.accentFold
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.slf4j.LoggerFactory
@@ -64,38 +63,35 @@ class OverallPlayerScraper(
                 .mapValues { (_, entries) -> entries.flatMap { it.value } }
 
         var totalUpdated = 0
-        var totalInserted = 0
 
         for (seasonName in seasons) {
             try {
-                val (updated, inserted) = scrapeSeason(seasonName, existingPlayers, existingByFolded)
+                val updated = scrapeSeason(seasonName, existingPlayers, existingByFolded)
                 totalUpdated += updated
-                totalInserted += inserted
             } catch (e: Exception) {
                 logger.error("Failed season=$seasonName: ${e.message}")
             }
         }
 
-        logger.info("OverallPlayerScraper complete — $totalUpdated updated, $totalInserted new inserts")
+        logger.info("OverallPlayerScraper complete — $totalUpdated licences linked")
     }
 
     private suspend fun scrapeSeason(
         seasonName: String,
         existingPlayers: Map<String, List<Pair<String?, UUID>>>,
         existingByFolded: Map<String, List<Pair<String?, UUID>>>,
-    ): Pair<Int, Int> {
+    ): Int {
         val html = client.fetchOverallPlayers(seasonName)
         val players = parser.parseOverallPlayers(html)
 
         if (players.isEmpty()) {
             logger.info("  $seasonName — no players found (licence registry predates online records)")
-            return 0 to 0
+            return 0
         }
 
         logger.info("  $seasonName — ${players.size} licensed players scraped")
 
         var updated = 0
-        var inserted = 0
 
         transaction {
             for (player in players) {
@@ -106,11 +102,12 @@ class OverallPlayerScraper(
 
                 when {
                     candidates == null -> {
-                        Players.insertIgnore {
-                            it[Players.licenceNr] = player.licenceNr
-                            it[Players.fullName] = player.fullName
-                        }
-                        inserted++
+                        // No existing player row found — skip. The licence scraper only links
+                        // licences to players already in the DB from match scraping. Players who
+                        // appear in the licence registry but not in any scraped match detail are
+                        // not useful records (no games, no club, no class). In a full historical
+                        // backfill the match scraper runs first and creates the row; in a
+                        // single-season run the player simply didn't play that season.
                     }
                     candidates.size == 1 -> {
                         val (currentLicence, playerId) = candidates[0]
@@ -161,11 +158,11 @@ class OverallPlayerScraper(
             }
         }
 
-        if (updated > 0 || inserted > 0) {
-            logger.info("    → $updated updated, $inserted new inserts")
+        if (updated > 0) {
+            logger.info("    → $updated licences linked")
         }
 
-        return updated to inserted
+        return updated
     }
 
     private fun findPlayerAtClub(
