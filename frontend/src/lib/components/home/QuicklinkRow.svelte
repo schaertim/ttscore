@@ -17,7 +17,7 @@
 	class="group flex items-center gap-3 px-4 py-3 hover:bg-accent"
 >
 	<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted ring-1 ring-transparent transition-all group-hover:ring-border">
-		<Icon size="18" class="text-muted-foreground" />
+		<Icon size={18} class="text-muted-foreground" />
 	</div>
 	<div class="min-w-0 flex-1">
 		<p class="text-sm leading-snug font-semibold">{label}</p>

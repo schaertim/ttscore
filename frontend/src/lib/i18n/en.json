@@ -1,0 +1,148 @@
+{
+  "nav": {
+    "home": "Home",
+    "leagues": "Leagues",
+    "search": "Search",
+    "account": "Account",
+    "sign_in": "Sign in"
+  },
+  "onboarding": {
+    "slide1_headline": "All your leagues, one place",
+    "slide1_body": "Browse every division, standing, and result across all federations — always up to date, all in one app.",
+    "slide2_headline": "Your ELO, your season",
+    "slide2_body": "Set your player to track your rating and see your progress charted across every match of the season.",
+    "slide3_headline": "Never miss a result",
+    "slide3_body": "Follow your club, your rivals, your teammates. Get notified the moment results come in.",
+    "next": "Next",
+    "create_account": "Create free account",
+    "skip": "Skip for now"
+  },
+  "set_player": {
+    "banner_title": "Make it yours",
+    "banner_desc": "Set your player to see your ELO, next match, and recent results right here.",
+    "banner_cta": "Set your player →",
+    "is_this_you": "Is this you?",
+    "sign_in_prompt": "Sign in to track your ELO and season results.",
+    "sign_in_cta": "Sign in →",
+    "your_player": "Your player",
+    "set_title": "Set as your player",
+    "set_desc": "See your ELO and results on your home screen.",
+    "set_cta": "Set →",
+    "setting": "Setting…"
+  },
+  "home": {
+    "elo_rating": "ELO Rating",
+    "this_month": "this month",
+    "quick_links": "Quick Links",
+    "my_profile": "My Profile",
+    "profile_sublabel": "Stats, ELO history & more",
+    "my_games": "My Games",
+    "games_sublabel": "Your game history",
+    "my_league": "My League",
+    "my_team": "My Team",
+    "upcoming": "{count, number} upcoming",
+    "favorite_feed": "Favorite Feed",
+    "no_recent_activity": "No recent activity in your feed.",
+    "show_full_feed": "Show full feed"
+  },
+  "leagues": {
+    "browser_label": "League Browser",
+    "title": "Leagues",
+    "season": "Season",
+    "regions": "Regions",
+    "no_groups": "No groups found for this season",
+    "teams": "{count, number} {count, plural, one {Team} other {Teams}}",
+    "round": "RD {played}/{total}",
+    "players_registered": "Players Registered",
+    "matches_played": "Matches Played",
+    "last_24h": "Last 24 hours"
+  },
+  "player": {
+    "elo_history": "ELO History",
+    "no_elo_data": "Not enough ELO data yet.",
+    "game_history": "Game History",
+    "no_matches": "No matches found.",
+    "wins": "Wins",
+    "losses": "Losses",
+    "win_pct": "Win %",
+    "show_full_history": "Show Full History"
+  },
+  "feed": {
+    "won": "Won",
+    "lost": "Lost",
+    "drew": "Drew",
+    "promoted": "Promoted",
+    "relegated": "Relegated",
+    "vs": "vs."
+  },
+  "group": {
+    "standings": "Standings",
+    "results": "Results",
+    "schedule": "Schedule",
+    "pos": "Pos",
+    "team": "Team",
+    "played": "Pld",
+    "points": "Pts",
+    "diff": "+/-",
+    "home_advantage": "Home Advantage",
+    "draw_rate": "Draw Rate",
+    "no_results": "No results yet",
+    "no_schedule": "No upcoming matches",
+    "round_label": "Rd {round}",
+    "tbd": "TBD"
+  },
+  "team": {
+    "record": "Record",
+    "last_5": "Last 5",
+    "roster": "Team Roster",
+    "match_history": "Match History"
+  },
+  "account": {
+    "title": "Account",
+    "my_player": "My Player",
+    "search_placeholder": "Search for your player…",
+    "searching": "Searching…",
+    "favorites": "Favorites",
+    "notifications": "Notifications",
+    "appearance": "Appearance",
+    "dark_mode": "Dark mode",
+    "light_mode": "Light mode",
+    "push_notifications": "Push Notifications",
+    "push_enabled": "Notifications enabled",
+    "push_disabled": "Enable notifications",
+    "push_enabled_desc": "You'll be notified when followed players, teams, or leagues have new results.",
+    "push_disabled_desc": "Get notified when followed players, teams, or leagues have new results.",
+    "sign_out": "Sign out",
+    "language": "Language"
+  },
+  "auth": {
+    "welcome_back": "Welcome back",
+    "create_account": "Create an account",
+    "no_account": "No account yet?",
+    "sign_up": "Sign up",
+    "have_account": "Already have an account?",
+    "sign_in": "Sign in",
+    "continue_google": "Continue with Google",
+    "or": "Or",
+    "email": "Email",
+    "password": "Password",
+    "loading": "Loading…",
+    "check_email": "Check your email to confirm your account."
+  },
+  "search": {
+    "subtitle": "Players & Clubs",
+    "title": "Search",
+    "placeholder": "Search players…",
+    "favourites": "Favourites",
+    "results_for": "Results for \"{query}\"",
+    "found": "({count} found)",
+    "no_results": "No players found."
+  },
+  "common": {
+    "remove": "Remove",
+    "unknown_player": "Unknown player",
+    "leagues_label": "Leagues",
+    "teams_label": "Teams",
+    "players_label": "Players"
+  }
+}

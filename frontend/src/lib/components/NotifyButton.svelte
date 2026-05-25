@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import type { ActionResult } from '@sveltejs/kit';
 	import { BellIcon, BellRingingIcon } from 'phosphor-svelte';
 
@@ -8,9 +10,20 @@
 		notifyId: string | null;
 		targetType: string;
 		targetId: string;
+		authenticated?: boolean;
 	}
 
-	let { notifying = $bindable(), notifyId = $bindable(), targetType, targetId }: Props = $props();
+	let {
+		notifying = $bindable(),
+		notifyId = $bindable(),
+		targetType,
+		targetId,
+		authenticated = true
+	}: Props = $props();
+
+	function redirectToSignIn() {
+		goto(`/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`);
+	}
 
 	let loading = $state(false);
 
@@ -41,7 +54,16 @@
 	}
 </script>
 
-{#if notifying}
+{#if !authenticated}
+	<button
+		type="button"
+		onclick={redirectToSignIn}
+		title="Sign in to turn on notifications"
+		class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+	>
+		<BellIcon size="20" />
+	</button>
+{:else if notifying}
 	<form method="POST" action="?/unfollow" use:enhance={unfollowEnhance}>
 		<input type="hidden" name="notifyId" value={notifyId} />
 		<button

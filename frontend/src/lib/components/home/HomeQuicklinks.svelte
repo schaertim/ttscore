@@ -4,6 +4,7 @@
 	import QuicklinkRow from '$lib/components/home/QuicklinkRow.svelte';
 	import { UserIcon, ListBulletsIcon, TrophyIcon, UsersThreeIcon, ClockCounterClockwiseIcon, LinkIcon } from 'phosphor-svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import { _ } from 'svelte-i18n';
 
 	interface Props {
 		player: Player;
@@ -14,19 +15,19 @@
 </script>
 
 <section class="space-y-3">
-<SectionLabel label="Quick Links" icon={LinkIcon} />
+<SectionLabel label={$_('home.quick_links')} icon={LinkIcon} />
 <div class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
 	<QuicklinkRow
 		href="/players/{player.id}"
 		icon={UserIcon}
-		label="My Profile"
-		sublabel="Stats, ELO history & more"
+		label={$_('home.my_profile')}
+		sublabel={$_('home.profile_sublabel')}
 	/>
 	<QuicklinkRow
 		href="/players/{player.id}/games"
 		icon={ClockCounterClockwiseIcon}
-		label="My Games"
-		sublabel="Your game history"
+		label={$_('home.my_games')}
+		sublabel={$_('home.games_sublabel')}
 	/>
 	{#await leagueContext}
 		<div class="flex items-center gap-3 px-4 py-3">
@@ -48,15 +49,15 @@
 			<QuicklinkRow
 				href="/groups/{ctx.groupId}"
 				icon={TrophyIcon}
-				label="My League"
+				label={$_('home.my_league')}
 				sublabel={ctx.groupName}
 			/>
 			<QuicklinkRow
 				href="/teams/{ctx.teamId}"
 				icon={UsersThreeIcon}
-				label="My Team"
+				label={$_('home.my_team')}
 				sublabel={ctx.scheduledMatchCount > 0
-					? `${ctx.teamName} · ${ctx.scheduledMatchCount} upcoming`
+					? $_('home.upcoming', { values: { count: ctx.scheduledMatchCount } }) + ` · ${ctx.teamName}`
 					: ctx.teamName}
 			/>
 		{/if}

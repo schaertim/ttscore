@@ -1,4 +1,4 @@
-import type { FavoriteResponse, Match } from '$lib/api';
+import type { FavoriteResponse, Match, PlayerGame } from '$lib/api';
 import type { FeedItem } from '$lib/components/home/feed-types';
 import { api } from '$lib/api';
 
@@ -43,7 +43,7 @@ async function fetchPlayerEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]
 	}
 
 	// Group completed games by matchId, then count personal wins per team match
-	const byMatch = new Map<string, typeof games>();
+	const byMatch = new Map<string, PlayerGame[]>();
 	for (const game of games) {
 		if (game.status === 'SCHEDULED') continue;
 		if (!byMatch.has(game.matchId)) byMatch.set(game.matchId, []);

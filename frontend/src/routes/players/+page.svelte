@@ -10,6 +10,7 @@
 	import FavoritePlayerCard from '$lib/components/FavoritePlayerCard.svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import { _ } from 'svelte-i18n';
 
 	let { data }: { data: PageData } = $props();
 
@@ -60,9 +61,9 @@
 <div class="space-y-6">
 	<header>
 		<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-			Players & Clubs
+			{$_('search.subtitle')}
 		</p>
-		<h1 class="text-3xl font-black tracking-tight">Search</h1>
+		<h1 class="text-3xl font-black tracking-tight">{$_('search.title')}</h1>
 	</header>
 
 	<div class="relative">
@@ -73,13 +74,13 @@
 		<Input
 			bind:value={searchQuery}
 			class="w-full py-5 pl-9 text-base"
-			placeholder="Search players..."
+			placeholder={$_('search.placeholder')}
 		/>
 	</div>
 
 	{#if showFavorites}
 		<section class="space-y-3">
-			<SectionLabel label="Favourites" icon={StarIcon} />
+			<SectionLabel label={$_('search.favourites')} icon={StarIcon} />
 			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
 				{#each favoritePlayers as player (player.id)}
 					<FavoritePlayerCard
@@ -99,10 +100,10 @@
 	{#if searchQuery.length >= 3}
 		<section class="space-y-4">
 			<h2 class="px-1 text-xs font-medium tracking-widest text-muted-foreground uppercase">
-				Results for "{searchQuery}"
+				{$_('search.results_for', { values: { query: searchQuery } })}
 				{#if response}
 					<span class="ml-1 font-normal tracking-normal text-muted-foreground/60 normal-case">
-						({response.total} found)
+						{$_('search.found', { values: { count: response.total } })}
 					</span>
 				{/if}
 			</h2>
@@ -121,7 +122,7 @@
 					{/each}
 				</div>
 			{:else if !response || response.items.length === 0}
-				<p class="py-12 text-center text-sm text-muted-foreground">No players found.</p>
+				<p class="py-12 text-center text-sm text-muted-foreground">{$_('search.no_results')}</p>
 			{:else}
 				<div class="space-y-2">
 					{#each response.items as player (player.id)}

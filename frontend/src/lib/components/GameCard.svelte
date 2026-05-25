@@ -3,6 +3,7 @@
 	import { cn } from '$lib/utils';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import { locale } from 'svelte-i18n';
 
 	let {
 		mode = 'match',
@@ -22,7 +23,7 @@
 
 	function formatDate(dateStr: string | null | undefined): string {
 		if (!dateStr) return '—';
-		return new Date(dateStr).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit' });
+		return new Date(dateStr).toLocaleDateString($locale ?? 'de', { day: '2-digit', month: '2-digit' });
 	}
 
 	function formatDelta(delta: number | null): string {

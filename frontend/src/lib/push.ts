@@ -32,7 +32,7 @@ export async function subscribe(authToken: string): Promise<boolean> {
 
 	const subscription = await reg.pushManager.subscribe({
 		userVisibleOnly: true,
-		applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+		applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as unknown as ArrayBuffer
 	});
 
 	const { endpoint, keys } = subscription.toJSON() as {

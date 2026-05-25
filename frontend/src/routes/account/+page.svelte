@@ -8,8 +8,10 @@
 	import { api, type Player, type FavoriteResponse, type FollowResponse } from '$lib/api';
 	import { StarIcon, BellRingingIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon } from 'phosphor-svelte';
 	import { theme } from '$lib/theme.svelte';
+	import { _ } from 'svelte-i18n';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { page } from '$app/state';
+	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import { subscribe, unsubscribe, getSubscription } from '$lib/push';
 
 	let { data }: { data: PageData } = $props();
@@ -20,15 +22,15 @@
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
 	const favoriteGroups = $derived([
-		{ label: 'Leagues', icon: TrophyIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'division_group') },
-		{ label: 'Teams', icon: UsersThreeIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'team') },
-		{ label: 'Players', icon: UserIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'player') },
+		{ label: $_('common.leagues_label'), icon: TrophyIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'division_group') },
+		{ label: $_('common.teams_label'), icon: UsersThreeIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'team') },
+		{ label: $_('common.players_label'), icon: UserIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'player') },
 	].filter(g => g.items.length > 0));
 
 	const notificationGroups = $derived([
 		{ label: 'Leagues', icon: TrophyIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'division_group') },
-		{ label: 'Teams', icon: UsersThreeIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'team') },
-		{ label: 'Players', icon: UserIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'player') },
+		{ label: $_('common.teams_label'), icon: UsersThreeIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'team') },
+		{ label: $_('common.players_label'), icon: UserIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'player') },
 	].filter(g => g.items.length > 0));
 
 	function onInput() {
@@ -91,13 +93,13 @@
 	<header class="space-y-4">
 		<BackButton class="" />
 		<div>
-			<h1 class="mb-1.5 text-3xl leading-none font-black tracking-tighter">Account</h1>
+			<h1 class="mb-1.5 text-3xl leading-none font-black tracking-tighter">{$_("account.title")}</h1>
 			<p class="text-sm text-muted-foreground">{data.user?.email}</p>
 		</div>
 	</header>
 
 	<section class="space-y-3">
-		<SectionLabel label="My Player" icon={UserIcon} />
+		<SectionLabel label={$_("account.my_player")} icon={UserIcon} />
 
 		{#if data.profile.homePlayerId}
 			<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
@@ -126,13 +128,13 @@
 			<div class="space-y-2">
 				<Input
 					type="search"
-					placeholder="Search for your player…"
+					placeholder={$_("account.search_placeholder")}
 					bind:value={query}
 					oninput={onInput}
 				/>
 
 				{#if searching}
-					<p class="px-1 text-xs text-muted-foreground">Searching…</p>
+					<p class="px-1 text-xs text-muted-foreground">{$_("account.searching")}</p>
 				{/if}
 
 				{#if results.length > 0}
@@ -167,7 +169,7 @@
 
 	{#if favoriteGroups.length > 0}
 		<section class="space-y-3">
-			<SectionLabel label="Favorites" icon={StarIcon} />
+			<SectionLabel label={$_("account.favorites")} icon={StarIcon} />
 			{#each favoriteGroups as group (group.label)}
 				<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 					{#each group.items as item (item.id)}
@@ -199,7 +201,7 @@
 
 	{#if notificationGroups.length > 0}
 		<section class="space-y-3">
-			<SectionLabel label="Notifications" icon={BellRingingIcon} />
+			<SectionLabel label={$_("account.notifications")} icon={BellRingingIcon} />
 			{#each notificationGroups as group (group.label)}
 				<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 					{#each group.items as item (item.id)}
@@ -230,12 +232,12 @@
 	{/if}
 
 	<section class="space-y-3">
-		<SectionLabel label="Appearance" icon={PaintBrushHouseholdIcon} />
+		<SectionLabel label={$_("account.appearance")} icon={PaintBrushHouseholdIcon} />
 		<button
 			onclick={() => theme.toggle()}
 			class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 		>
-			<span class="font-semibold">{theme.dark ? 'Dark mode' : 'Light mode'}</span>
+			<span class="font-semibold">{$_(theme.dark ? 'account.dark_mode' : 'account.light_mode')}</span>
 			{#if theme.dark}
 				<MoonIcon size="20" class="text-muted-foreground" />
 			{:else}
@@ -246,7 +248,7 @@
 
 	{#if !pushUnsupported}
 		<section class="space-y-3">
-			<SectionLabel label="Push Notifications" icon={BellRingingIcon} />
+			<SectionLabel label={$_("account.push_notifications")} icon={BellRingingIcon} />
 			<button
 				onclick={togglePush}
 				disabled={pushLoading || pushSubscribed === null}
@@ -254,12 +256,12 @@
 			>
 				<div class="flex flex-col items-start gap-0.5">
 					<span class="font-semibold">
-						{pushSubscribed ? 'Notifications enabled' : 'Enable notifications'}
+						{$_(pushSubscribed ? 'account.push_enabled' : 'account.push_disabled')}
 					</span>
 					<span class="text-xs text-muted-foreground">
 						{pushSubscribed
-							? 'You\'ll be notified when followed players, teams, or leagues have new results.'
-							: 'Get notified when followed players, teams, or leagues have new results.'}
+							? $_('account.push_enabled_desc')
+							: $_('account.push_disabled_desc')}
 					</span>
 				</div>
 				<BellRingingIcon
@@ -271,5 +273,7 @@
 		</section>
 	{/if}
 
-	<Button variant="destructive" onclick={signOut} class="w-full">Sign out</Button>
+	<LanguageSwitcher />
+
+	<Button variant="destructive" onclick={signOut} class="w-full">{$_("account.sign_out")}</Button>
 </div>

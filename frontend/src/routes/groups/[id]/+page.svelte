@@ -8,6 +8,7 @@
 	import StatCard from '$lib/components/StatCard.svelte';
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
+	import { _, locale } from 'svelte-i18n';
 
 	let { data }: { data: PageData } = $props();
 	let isFavorite = $state(false);
@@ -68,8 +69,8 @@
 	});
 
 	function formatDate(dateStr: string | null): string {
-		if (!dateStr) return 'TBD';
-		return new Date(dateStr).toLocaleDateString('de-CH', {
+		if (!dateStr) return $_('group.tbd');
+		return new Date(dateStr).toLocaleDateString($locale ?? 'de', {
 			day: '2-digit',
 			month: '2-digit',
 			year: '2-digit'
@@ -81,19 +82,17 @@
 	<header class="space-y-4">
 		<div class="flex items-center justify-between">
 			<BackButton class="" />
-			{#if data.user}
-				<div class="flex items-center">
-					<FavoriteButton bind:isFavorite bind:favoriteId targetType="division_group" targetId={data.group.id} />
-					<NotifyButton bind:notifying bind:notifyId targetType="division_group" targetId={data.group.id} />
-				</div>
-			{/if}
+			<div class="flex items-center">
+				<FavoriteButton bind:isFavorite bind:favoriteId targetType="division_group" targetId={data.group.id} authenticated={!!data.user} />
+				<NotifyButton bind:notifying bind:notifyId targetType="division_group" targetId={data.group.id} authenticated={!!data.user} />
+			</div>
 		</div>
 		<div class="min-w-0">
 			<h1 class="mb-1 text-3xl font-black tracking-tight">{data.group.name}</h1>
 			<p class="text-sm text-muted-foreground">
 				{data.group.season}
 				{#if data.group.totalRounds > 0}
-					· <span class="font-medium">Rd {data.group.roundsPlayed}/{data.group.totalRounds}</span>
+					· <span class="font-medium">{$_('leagues.round', { values: { played: data.group.roundsPlayed, total: data.group.totalRounds } })}</span>
 				{/if}
 			</p>
 		</div>
@@ -101,9 +100,9 @@
 
 <Tabs.Root value="standings">
 	<Tabs.List class="w-full">
-		<Tabs.Trigger value="standings" class="flex-1">Standings</Tabs.Trigger>
-		<Tabs.Trigger value="results" class="flex-1">Results</Tabs.Trigger>
-		<Tabs.Trigger value="schedule" class="flex-1">Schedule</Tabs.Trigger>
+		<Tabs.Trigger value="standings" class="flex-1">{$_("group.standings")}</Tabs.Trigger>
+		<Tabs.Trigger value="results" class="flex-1">{$_("group.results")}</Tabs.Trigger>
+		<Tabs.Trigger value="schedule" class="flex-1">{$_("group.schedule")}</Tabs.Trigger>
 	</Tabs.List>
 
 	<Tabs.Content value="standings" class="mt-4 space-y-3">
@@ -111,11 +110,11 @@
 			<Table.Root>
 				<Table.Header>
 					<Table.Row class="border-border hover:bg-transparent">
-						<Table.Head class="w-8 pl-5 text-xs">Pos</Table.Head>
-						<Table.Head class="text-xs">Team</Table.Head>
-						<Table.Head class="w-10 text-center text-xs">Pld</Table.Head>
-						<Table.Head class="w-10 text-center text-xs">Pts</Table.Head>
-						<Table.Head class="w-12 pr-4 text-right text-xs">+/-</Table.Head>
+						<Table.Head class="w-8 pl-5 text-xs">{$_("group.pos")}</Table.Head>
+						<Table.Head class="text-xs">{$_("group.team")}</Table.Head>
+						<Table.Head class="w-10 text-center text-xs">{$_("group.played")}</Table.Head>
+						<Table.Head class="w-10 text-center text-xs">{$_("group.points")}</Table.Head>
+						<Table.Head class="w-12 pr-4 text-right text-xs">{$_("group.diff")}</Table.Head>
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
@@ -165,15 +164,15 @@
 
 		{#if completedMatches.length > 0}
 			<div class="grid grid-cols-2 gap-3 pt-1">
-				<StatCard label="Home Advantage" value={homeWinPct} />
-				<StatCard label="Draw Rate" value={drawPct} />
+				<StatCard label={$_("group.home_advantage")} value={homeWinPct} />
+				<StatCard label={$_("group.draw_rate")} value={drawPct} />
 			</div>
 		{/if}
 	</Tabs.Content>
 
 	<Tabs.Content value="results" class="mt-4 space-y-2">
 		{#if completedMatches.length === 0}
-			<p class="py-12 text-center text-sm text-muted-foreground">No results yet</p>
+			<p class="py-12 text-center text-sm text-muted-foreground">{$_("group.no_results")}</p>
 		{:else}
 			{#each completedMatches as match (match.id)}
 				<MatchCard {match} />
@@ -183,7 +182,7 @@
 
 	<Tabs.Content value="schedule" class="mt-4 space-y-2">
 		{#if scheduledMatches.length === 0}
-			<p class="py-12 text-center text-sm text-muted-foreground">No upcoming matches</p>
+			<p class="py-12 text-center text-sm text-muted-foreground">{$_("group.no_schedule")}</p>
 		{:else}
 			{#each scheduledMatches as match (match.id)}
 				<div
@@ -192,7 +191,7 @@
 				>
 					<div class="flex min-w-0 flex-col gap-0.5">
 						<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-							Rd {match.round} · {formatDate(match.playedAt)}
+							{$_('group.round_label', { values: { round: match.round } })} · {formatDate(match.playedAt)}
 						</span>
 						<div class="flex min-w-0 items-center gap-1.5 text-sm">
 							<span class="truncate font-medium">{match.homeTeam}</span>

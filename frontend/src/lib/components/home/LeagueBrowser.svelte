@@ -15,6 +15,7 @@
 	} from 'phosphor-svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import { _ } from 'svelte-i18n';
 
 	interface Props {
 		seasons: Season[];
@@ -72,9 +73,9 @@
 	<header class="flex items-end justify-between px-1">
 		<div>
 			<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-				League Browser
+				{$_('leagues.browser_label')}
 			</p>
-			<h1 class="text-3xl font-black tracking-tight">Leagues</h1>
+			<h1 class="text-3xl font-black tracking-tight">{$_('leagues.title')}</h1>
 		</div>
 		<Select.Root
 			type="single"
@@ -84,7 +85,7 @@
 			}}
 		>
 			<Select.Trigger class="w-32">
-				{selectedSeason?.name ?? 'Season'}
+				{selectedSeason?.name ?? $_('leagues.season')}
 			</Select.Trigger>
 			<Select.Content>
 				{#each seasons as season (season.id)}
@@ -95,7 +96,7 @@
 	</header>
 
 	<section class="space-y-4">
-		<SectionLabel label="Regions" icon={TrophyIcon} />
+		<SectionLabel label={$_('leagues.regions')} icon={TrophyIcon} />
 
 		{#if loadingGroups}
 			<div class="space-y-2">
@@ -104,7 +105,7 @@
 				{/each}
 			</div>
 		{:else if groupsByFederation.length === 0}
-			<p class="py-12 text-center text-sm text-muted-foreground">No groups found for this season</p>
+			<p class="py-12 text-center text-sm text-muted-foreground">{$_('leagues.no_groups')}</p>
 		{:else}
 			<Accordion.Root type="multiple" bind:value={expandedFederations} class="space-y-2">
 				{#each groupsByFederation as fed (fed.id)}
@@ -145,11 +146,11 @@
 												<p
 													class="mt-0.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase"
 												>
-													{#if group.teamCount > 0}{group.teamCount} Teams{/if}
+													{#if group.teamCount > 0}{$_('leagues.teams', { values: { count: group.teamCount } })}{/if}
 													{#if group.teamCount > 0 && group.totalRounds > 0}
 														&nbsp;·&nbsp;
 													{/if}
-													{#if group.totalRounds > 0}RD {group.roundsPlayed}/{group.totalRounds}{/if}
+													{#if group.totalRounds > 0}{$_('leagues.round', { values: { played: group.roundsPlayed, total: group.totalRounds } })}{/if}
 												</p>
 											{/if}
 										</div>
@@ -169,7 +170,7 @@
 
 	<section class="grid grid-cols-2 gap-4">
 		<StatCard
-			label="Players Registered"
+			label={$_('leagues.players_registered')}
 			value={loadingStats || !stats ? null : stats.registeredPlayers.toLocaleString()}
 		>
 			{#snippet footer()}
@@ -179,12 +180,12 @@
 		</StatCard>
 
 		<StatCard
-			label="Matches Played"
+			label={$_('leagues.matches_played')}
 			value={loadingStats || !stats ? null : stats.matchesLast24h}
 		>
 			{#snippet footer()}
 				<ClockIcon size="16" />
-				<span class="text-[10px] font-bold">Last 24 hours</span>
+				<span class="text-[10px] font-bold">{$_('leagues.last_24h')}</span>
 			{/snippet}
 		</StatCard>
 	</section>

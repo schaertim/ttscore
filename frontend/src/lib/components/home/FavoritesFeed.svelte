@@ -6,6 +6,7 @@
 	import FeedItemCard from '$lib/components/home/FeedItemCard.svelte';
 	import { RssIcon, StarIcon } from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
+	import { _ } from 'svelte-i18n';
 
 	interface Props {
 		favorites: Promise<FavoriteResponse[]>;
@@ -21,7 +22,7 @@
 {#await favorites then favs}
 	{#if favs.length > 0}
 		<section class="space-y-3">
-			<SectionLabel label="Favorite Feed" icon={StarIcon} />
+			<SectionLabel label={$_('home.favorite_feed')} icon={StarIcon} />
 			{#await feedPromise}
 				<div class="space-y-2">
 					{#each [1, 2, 3] as i (i)}
@@ -49,10 +50,10 @@
 						{/each}
 					</div>
 					{#if events.length > PREVIEW_COUNT}
-						<ShowAllLink href="/feed" label="Show full feed" />
+						<ShowAllLink href="/feed" label={$_('home.show_full_feed')} />
 					{/if}
 				{:else}
-					<p class="px-1 text-sm text-muted-foreground">No recent activity in your feed.</p>
+					<p class="px-1 text-sm text-muted-foreground">{$_('home.no_recent_activity')}</p>
 				{/if}
 			{/await}
 		</section>

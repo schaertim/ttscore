@@ -5,14 +5,22 @@
 	import { page } from '$app/state';
 	import { theme } from '$lib/theme.svelte';
 	import { HouseIcon, TrophyIcon, MagnifyingGlassIcon, UserCircleIcon, SignInIcon } from 'phosphor-svelte';
+	import { _ } from 'svelte-i18n';
 
 	let { children, data } = $props();
 
-	const navItems = [
-		{ href: '/', label: 'Home', icon: HouseIcon },
-		{ href: '/divisions', label: 'Leagues', icon: TrophyIcon },
-		{ href: '/players', label: 'Search', icon: MagnifyingGlassIcon }
-	];
+	const navItems = $derived(
+		data.hasHomePlayer
+			? [
+					{ href: '/', label: $_('nav.home'), icon: HouseIcon },
+					{ href: '/divisions', label: $_('nav.leagues'), icon: TrophyIcon },
+					{ href: '/players', label: $_('nav.search'), icon: MagnifyingGlassIcon }
+				]
+			: [
+					{ href: '/divisions', label: $_('nav.leagues'), icon: TrophyIcon },
+					{ href: '/players', label: $_('nav.search'), icon: MagnifyingGlassIcon }
+				]
+	);
 
 	function isActive(href: string): boolean {
 		return page.url.pathname === href;
@@ -70,7 +78,7 @@
 			onclick={handleAccountClick}
 			class="flex w-16 flex-col items-center justify-center gap-0.5 transition-colors
 			       {accountActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
-			aria-label={data.user ? 'Account' : 'Sign in'}
+			aria-label={data.user ? $_('nav.account') : $_('nav.sign_in')}
 		>
 			{#if data.user}
 				<UserCircleIcon size="22" weight={accountActive ? 'fill' : 'regular'} />

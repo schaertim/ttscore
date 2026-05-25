@@ -1,20 +1,13 @@
 import type { PageServerLoad } from './$types';
+import { redirect } from '@sveltejs/kit';
 import { api } from '$lib/api';
 import { authedKtor } from '$lib/server/ktor';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { session } = await locals.safeGetSession();
 
-	const [seasons, federations] = await Promise.all([api.seasons.list(), api.federations.list()]);
-
 	if (!session) {
-		return {
-			state: 'unauthenticated' as const,
-			seasons,
-			federations,
-			player: null,
-			streamed: null
-		};
+		redirect(303, '/divisions');
 	}
 
 	const ktor = authedKtor(session.access_token);
@@ -22,7 +15,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const profile = profileRes.ok ? await profileRes.json() : { homePlayerId: null };
 
 	if (!profile.homePlayerId) {
-		return { state: 'no-home-player' as const, seasons, federations, player: null, streamed: null };
+		redirect(303, '/divisions');
 	}
 
 	const homePlayerId: string = profile.homePlayerId;
@@ -30,8 +23,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		state: 'dashboard' as const,
-		seasons,
-		federations,
 		player,
 		streamed: {
 			recentMatches: api.players.matches(homePlayerId),

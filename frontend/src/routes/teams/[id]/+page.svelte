@@ -9,11 +9,12 @@
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import { _ } from 'svelte-i18n';
 
 	let { data }: { data: PageData } = $props();
 
 	const [won, drawn, lost] = data.team.record.split('-').map(Number);
-	let favorited = $state(data.favorited);
+	let isFavorite = $state(data.favorited);
 	let favoriteId = $state(data.favoriteId);
 	let notifying = $state(data.notifying);
 	let notifyId = $state(data.notifyId);
@@ -23,12 +24,10 @@
 	<header class="space-y-4">
 		<div class="flex items-center justify-between">
 			<BackButton class="" />
-			{#if data.user}
-				<div class="flex items-center">
-					<FavoriteButton bind:favorited bind:favoriteId targetType="team" targetId={data.team.id} />
-					<NotifyButton bind:notifying bind:notifyId targetType="team" targetId={data.team.id} />
-				</div>
-			{/if}
+			<div class="flex items-center">
+				<FavoriteButton bind:isFavorite bind:favoriteId targetType="team" targetId={data.team.id} authenticated={!!data.user} />
+				<NotifyButton bind:notifying bind:notifyId targetType="team" targetId={data.team.id} authenticated={!!data.user} />
+			</div>
 		</div>
 
 		<div class="flex items-start justify-between gap-4">
@@ -46,7 +45,7 @@
 
 	<div class="grid grid-cols-2 gap-3">
 		<Card.Root class="gap-3 p-4">
-			<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">Record</p>
+			<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">{$_("team.record")}</p>
 			<p class="text-xl leading-none font-black">
 				<span class="text-win">{won}</span>
 				<span class="mx-0.5 font-normal text-muted-foreground/40">–</span>
@@ -59,7 +58,7 @@
 		{#if data.team.lastResults.length > 0}
 			<Card.Root class="gap-3 p-4">
 				<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-					Last 5
+					{$_('team.last_5')}
 				</p>
 				<div class="flex flex-wrap">
 					{#each data.team.lastResults.toReversed() as result}
@@ -77,7 +76,7 @@
 	</div>
 
 	<section class="space-y-2">
-		<SectionLabel label="Team Roster" icon={UsersThreeIcon} />
+		<SectionLabel label={$_("team.roster")} icon={UsersThreeIcon} />
 
 		<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 			{#await data.streamed.roster}
@@ -106,7 +105,7 @@
 	</section>
 
 	<section class="space-y-2">
-		<SectionLabel label="Match History" icon={PingPongIcon} />
+		<SectionLabel label={$_("team.match_history")} icon={PingPongIcon} />
 
 		{#await data.streamed.matches}
 			<Skeleton class="h-16 w-full rounded-xl" />

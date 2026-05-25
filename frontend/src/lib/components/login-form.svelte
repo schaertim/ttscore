@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
+	import { _ } from 'svelte-i18n';
 
 	// The Supabase client is passed down through the layout's page data.
 	// Using $page.data gives us access to the supabase instance created in +layout.ts.
@@ -70,28 +71,28 @@
 				<span class="text-sm leading-none font-bold">tt</span>
 			</div>
 			<h1 class="text-xl font-bold">
-				{mode === 'signin' ? 'Welcome back' : 'Create an account'}
+				{$_(mode === 'signin' ? 'auth.welcome_back' : 'auth.create_account')}
 			</h1>
 			<p class="text-sm text-muted-foreground">
 				{#if mode === 'signin'}
-					No account yet?
+					{$_('auth.no_account')}
 					<button
 						type="button"
 						class="underline underline-offset-4 hover:text-foreground"
 						onclick={() => {
 							mode = 'signup';
 							error = '';
-						}}>Sign up</button
+						}}>{$_('auth.sign_up')}</button
 					>
 				{:else}
-					Already have an account?
+					{$_('auth.have_account')}
 					<button
 						type="button"
 						class="underline underline-offset-4 hover:text-foreground"
 						onclick={() => {
 							mode = 'signin';
 							error = '';
-						}}>Sign in</button
+						}}>{$_('auth.sign_in')}</button
 					>
 				{/if}
 			</p>
@@ -109,13 +110,13 @@
 
 		<div class="flex items-center gap-3">
 			<div class="h-px flex-1 bg-border"></div>
-			<span class="text-xs text-muted-foreground">Or</span>
+			<span class="text-xs text-muted-foreground">{$_('auth.or')}</span>
 			<div class="h-px flex-1 bg-border"></div>
 		</div>
 
 		<div class="flex flex-col gap-4">
 			<div class="flex flex-col gap-2">
-				<label class="text-sm font-medium" for="email">Email</label>
+				<label class="text-sm font-medium" for="email">{$_('auth.email')}</label>
 				<Input
 					id="email"
 					type="email"
@@ -127,7 +128,7 @@
 			</div>
 
 			<div class="flex flex-col gap-2">
-				<label class="text-sm font-medium" for="password">Password</label>
+				<label class="text-sm font-medium" for="password">{$_('auth.password')}</label>
 				<Input
 					id="password"
 					type="password"
@@ -143,7 +144,7 @@
 		{/if}
 
 		<Button type="submit" class="w-full" disabled={loading}>
-			{loading ? 'Loading…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+			{$_(loading ? 'auth.loading' : mode === 'signin' ? 'auth.sign_in' : 'auth.create_account')}
 		</Button>
 	</form>
 </div>

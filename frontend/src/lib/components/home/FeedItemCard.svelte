@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { FeedItem } from './feed-types';
 	import { cn, klassColors, timeAgo } from '$lib/utils';
+	import { _ } from 'svelte-i18n';
 	import {
 		UserIcon,
 		UsersThreeIcon,
@@ -63,16 +64,16 @@
 				const oppWins = parseInt(oppStr);
 				const won = !isNaN(myWins) && myWins >= 2;
 				const higher = !isNaN(myWins) && !isNaN(oppWins) ? Math.max(myWins, oppWins) : null;
-				const prefix = won ? 'Won' : 'Lost';
-				return `${prefix}${higher !== null ? ` ${higher}` : ''} vs. ${i.opponentTeam}`;
+				const prefix = won ? $_('feed.won') : $_('feed.lost');
+				return `${prefix}${higher !== null ? ` ${higher}` : ''} ${$_('feed.vs')} ${i.opponentTeam}`;
 			}
 			case 'class_change':
 				return i.direction === 'UP'
-					? `Promoted ${i.from} → ${i.to}`
-					: `Relegated ${i.from} → ${i.to}`;
+					? `${$_('feed.promoted')} ${i.from} → ${i.to}`
+					: `${$_('feed.relegated')} ${i.from} → ${i.to}`;
 			case 'team_match': {
-				const prefix = i.result === 'WIN' ? 'Won' : i.result === 'LOSS' ? 'Lost' : 'Drew';
-				return `${prefix} ${i.score} vs. ${i.opponent}`;
+				const prefix = i.result === 'WIN' ? $_('feed.won') : i.result === 'LOSS' ? $_('feed.lost') : $_('feed.drew');
+				return `${prefix} ${i.score} ${$_('feed.vs')} ${i.opponent}`;
 			}
 			case 'group_match':
 				return `${i.homeTeam} ${i.score} ${i.awayTeam}`;

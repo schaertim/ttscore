@@ -9,6 +9,7 @@
 	import CaretUpIcon from 'phosphor-svelte/lib/CaretUpIcon';
 	import TrendUpIcon from 'phosphor-svelte/lib/TrendUpIcon';
 	import TrendDownIcon from 'phosphor-svelte/lib/TrendDownIcon';
+	import { locale } from 'svelte-i18n';
 
 	let { data }: { data: PageData } = $props();
 
@@ -32,7 +33,7 @@
 		}
 		return Array.from(map.entries()).map(([key, monthGames]) => {
 			const [year, month] = key.split('-');
-			const label = new Date(Number(year), Number(month) - 1).toLocaleDateString('de-CH', {
+			const label = new Date(Number(year), Number(month) - 1).toLocaleDateString($locale ?? 'de', {
 				month: 'long',
 				year: 'numeric'
 			});

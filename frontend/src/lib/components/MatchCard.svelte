@@ -2,6 +2,7 @@
 	import type { Match } from '$lib/api';
 	import { cn } from '$lib/utils';
 	import { HouseLineIcon, TrainIcon } from 'phosphor-svelte';
+	import { locale } from 'svelte-i18n';
 
 	interface Props {
 		match: Match;
@@ -41,7 +42,7 @@
 
 	function formatDate(dateStr: string | null): string {
 		if (!dateStr) return 'TBD';
-		return new Date(dateStr).toLocaleDateString('de-CH', {
+		return new Date(dateStr).toLocaleDateString($locale ?? 'de', {
 			day: '2-digit',
 			month: '2-digit',
 			year: '2-digit'

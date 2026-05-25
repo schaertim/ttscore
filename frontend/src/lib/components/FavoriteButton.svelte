@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import type { ActionResult } from '@sveltejs/kit';
 	import { StarIcon } from 'phosphor-svelte';
 
@@ -8,9 +10,20 @@
 		favoriteId: string | null;
 		targetType: string;
 		targetId: string;
+		authenticated?: boolean;
 	}
 
-	let { isFavorite = $bindable(), favoriteId = $bindable(), targetType, targetId }: Props = $props();
+	let {
+		isFavorite = $bindable(),
+		favoriteId = $bindable(),
+		targetType,
+		targetId,
+		authenticated = true
+	}: Props = $props();
+
+	function redirectToSignIn() {
+		goto(`/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`);
+	}
 
 	let loading = $state(false);
 
@@ -41,7 +54,16 @@
 	}
 </script>
 
-{#if isFavorite}
+{#if !authenticated}
+	<button
+		type="button"
+		onclick={redirectToSignIn}
+		title="Sign in to add to favorites"
+		class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+	>
+		<StarIcon size="20" />
+	</button>
+{:else if isFavorite}
 	<form method="POST" action="?/unfavorite" use:enhance={unfavoriteEnhance}>
 		<input type="hidden" name="favoriteId" value={favoriteId} />
 		<button

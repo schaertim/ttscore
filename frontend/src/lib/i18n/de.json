@@ -1,0 +1,148 @@
+{
+  "nav": {
+    "home": "Startseite",
+    "leagues": "Ligen",
+    "search": "Suche",
+    "account": "Konto",
+    "sign_in": "Anmelden"
+  },
+  "onboarding": {
+    "slide1_headline": "Alle Ligen, ein Ort",
+    "slide1_body": "Durchsuche jede Liga, Tabelle und jedes Ergebnis aller Verbände — immer aktuell, alles in einer App.",
+    "slide2_headline": "Deine ELO, deine Saison",
+    "slide2_body": "Wähle deinen Spieler, um deine Wertung zu verfolgen und deinen Fortschritt über jedes Spiel der Saison zu sehen.",
+    "slide3_headline": "Kein Ergebnis verpassen",
+    "slide3_body": "Folge deinem Verein, deinen Rivalen und Teamkollegen. Werde sofort benachrichtigt, wenn Ergebnisse eingehen.",
+    "next": "Weiter",
+    "create_account": "Kostenloses Konto erstellen",
+    "skip": "Überspringen"
+  },
+  "set_player": {
+    "banner_title": "Personalisieren",
+    "banner_desc": "Wähle deinen Spieler, um deine ELO, das nächste Spiel und aktuelle Ergebnisse hier zu sehen.",
+    "banner_cta": "Spieler wählen →",
+    "is_this_you": "Bist du das?",
+    "sign_in_prompt": "Melde dich an, um deine ELO und Saisondergebnisse zu verfolgen.",
+    "sign_in_cta": "Anmelden →",
+    "your_player": "Dein Spieler",
+    "set_title": "Als deinen Spieler festlegen",
+    "set_desc": "Sieh deine ELO und Ergebnisse auf deiner Startseite.",
+    "set_cta": "Festlegen →",
+    "setting": "Wird gespeichert…"
+  },
+  "home": {
+    "elo_rating": "ELO-Wertung",
+    "this_month": "diesen Monat",
+    "quick_links": "Schnellzugriff",
+    "my_profile": "Mein Profil",
+    "profile_sublabel": "Statistiken, ELO-Verlauf & mehr",
+    "my_games": "Meine Spiele",
+    "games_sublabel": "Deine Spielhistorie",
+    "my_league": "Meine Liga",
+    "my_team": "Mein Team",
+    "upcoming": "{count, number} bevorstehende",
+    "favorite_feed": "Favoriten-Feed",
+    "no_recent_activity": "Keine aktuellen Aktivitäten in deinem Feed.",
+    "show_full_feed": "Vollständigen Feed anzeigen"
+  },
+  "leagues": {
+    "browser_label": "Liga-Browser",
+    "title": "Ligen",
+    "season": "Saison",
+    "regions": "Regionen",
+    "no_groups": "Keine Gruppen für diese Saison gefunden",
+    "teams": "{count, number} {count, plural, one {Team} other {Teams}}",
+    "round": "RD {played}/{total}",
+    "players_registered": "Registrierte Spieler",
+    "matches_played": "Gespielte Matches",
+    "last_24h": "Letzte 24 Stunden"
+  },
+  "player": {
+    "elo_history": "ELO-Verlauf",
+    "no_elo_data": "Noch nicht genug ELO-Daten.",
+    "game_history": "Spielhistorie",
+    "no_matches": "Keine Spiele gefunden.",
+    "wins": "Siege",
+    "losses": "Niederlagen",
+    "win_pct": "Siegquote",
+    "show_full_history": "Vollständige Historie"
+  },
+  "feed": {
+    "won": "Gewonnen",
+    "lost": "Verloren",
+    "drew": "Unentschieden",
+    "promoted": "Aufgestiegen",
+    "relegated": "Abgestiegen",
+    "vs": "vs."
+  },
+  "group": {
+    "standings": "Tabelle",
+    "results": "Ergebnisse",
+    "schedule": "Spielplan",
+    "pos": "Pl.",
+    "team": "Team",
+    "played": "Sp.",
+    "points": "Pkt.",
+    "diff": "+/-",
+    "home_advantage": "Heimvorteil",
+    "draw_rate": "Unentschieden-Rate",
+    "no_results": "Noch keine Ergebnisse",
+    "no_schedule": "Keine anstehenden Spiele",
+    "round_label": "Rd. {round}",
+    "tbd": "Offen"
+  },
+  "team": {
+    "record": "Bilanz",
+    "last_5": "Letzte 5",
+    "roster": "Teamkader",
+    "match_history": "Spielhistorie"
+  },
+  "account": {
+    "title": "Konto",
+    "my_player": "Mein Spieler",
+    "search_placeholder": "Spieler suchen…",
+    "searching": "Suche läuft…",
+    "favorites": "Favoriten",
+    "notifications": "Benachrichtigungen",
+    "appearance": "Erscheinungsbild",
+    "dark_mode": "Dunkelmodus",
+    "light_mode": "Hellmodus",
+    "push_notifications": "Push-Benachrichtigungen",
+    "push_enabled": "Benachrichtigungen aktiviert",
+    "push_disabled": "Benachrichtigungen aktivieren",
+    "push_enabled_desc": "Du wirst benachrichtigt, wenn Spieler, Teams oder Ligen, denen du folgst, neue Ergebnisse haben.",
+    "push_disabled_desc": "Werde benachrichtigt, wenn Spieler, Teams oder Ligen, denen du folgst, neue Ergebnisse haben.",
+    "sign_out": "Abmelden",
+    "language": "Sprache"
+  },
+  "auth": {
+    "welcome_back": "Willkommen zurück",
+    "create_account": "Konto erstellen",
+    "no_account": "Noch kein Konto?",
+    "sign_up": "Registrieren",
+    "have_account": "Bereits ein Konto?",
+    "sign_in": "Anmelden",
+    "continue_google": "Mit Google fortfahren",
+    "or": "Oder",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "loading": "Wird geladen…",
+    "check_email": "Überprüfe deine E-Mails, um dein Konto zu bestätigen."
+  },
+  "search": {
+    "subtitle": "Spieler & Vereine",
+    "title": "Suche",
+    "placeholder": "Spieler suchen…",
+    "favourites": "Favoriten",
+    "results_for": "Ergebnisse für \"{query}\"",
+    "found": "({count} gefunden)",
+    "no_results": "Keine Spieler gefunden."
+  },
+  "common": {
+    "remove": "Entfernen",
+    "unknown_player": "Unbekannter Spieler",
+    "leagues_label": "Ligen",
+    "teams_label": "Teams",
+    "players_label": "Spieler"
+  }
+}

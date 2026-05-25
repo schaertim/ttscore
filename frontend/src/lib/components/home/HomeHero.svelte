@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Player, PlayerGame } from '$lib/api';
 	import { ArrowUpIcon, ArrowDownIcon } from 'phosphor-svelte';
+	import { _ } from 'svelte-i18n';
 
 	interface Props {
 		player: Player;
@@ -98,7 +99,7 @@
 		<!-- ELO number + label -->
 		<div>
 			<p class="mb-0.5 text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-				ELO Rating
+				{$_('home.elo_rating')}
 			</p>
 			<p class="text-5xl leading-none font-black tabular-nums">
 				{player.currentElo ?? '—'}
@@ -116,9 +117,9 @@
 						: 'text-red-500'}"
 				>
 					{#if delta > 0}
-						<ArrowUpIcon size="14" weight="bold" />+{rounded} this month
+						<ArrowUpIcon size="14" weight="bold" />+{rounded} {$_('home.this_month')}
 					{:else}
-						<ArrowDownIcon size="14" weight="bold" />{rounded} this month
+						<ArrowDownIcon size="14" weight="bold" />{rounded} {$_('home.this_month')}
 					{/if}
 				</p>
 			{/if}
