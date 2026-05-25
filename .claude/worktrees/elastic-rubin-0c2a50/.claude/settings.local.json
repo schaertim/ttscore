@@ -1,12 +1,12 @@
-{
+﻿{
   "permissions": {
     "allow": [
-      "Bash(grep -n \"klass\" /c/Users/Tim/Desktop/SideProjects/ttfeed/frontend/src/app.css | head -40)",
-      "Bash(grep -n \"FavoriteResponse\\\\|FollowTargetType\\\\|favorite\\\\|PLAYER\\\\|TEAM\\\\|GROUP\" /c/Users/Tim/Desktop/SideProjects/ttfeed/backend/src/main/kotlin/com/ttfeed/model/Models.kt 2>/dev/null | head -20; grep -rn \"FollowTargetType\\\\|targetType\" /c/Users/Tim/Desktop/SideProjects/ttfeed/backend/src/main/kotlin/com/ttfeed/model/ | head -20)",
-      "Read(//c/Users/Tim/Desktop/SideProjects/ttfeed/frontend/**)",
+      "Bash(grep -n \"klass\" /c/Users/Tim/Desktop/SideProjects/ttscore/frontend/src/app.css | head -40)",
+      "Bash(grep -n \"FavoriteResponse\\\\|FollowTargetType\\\\|favorite\\\\|PLAYER\\\\|TEAM\\\\|GROUP\" /c/Users/Tim/Desktop/SideProjects/ttscore/backend/src/main/kotlin/com/ttscore/model/Models.kt 2>/dev/null | head -20; grep -rn \"FollowTargetType\\\\|targetType\" /c/Users/Tim/Desktop/SideProjects/ttscore/backend/src/main/kotlin/com/ttscore/model/ | head -20)",
+      "Read(//c/Users/Tim/Desktop/SideProjects/ttscore/frontend/**)",
       "Bash(node_modules/.bin/svelte-check --tsconfig ./tsconfig.json)",
-      "Bash(ls /c/Users/Tim/Desktop/SideProjects/ttfeed/context/)",
-      "Bash(dir \"C:\\\\Users\\\\Tim\\\\Desktop\\\\SideProjects\\\\ttfeed\\\\context\")"
+      "Bash(ls /c/Users/Tim/Desktop/SideProjects/ttscore/context/)",
+      "Bash(dir \"C:\\\\Users\\\\Tim\\\\Desktop\\\\SideProjects\\\\ttscore\\\\context\")"
     ]
   }
 }

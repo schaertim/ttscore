@@ -1,11 +1,11 @@
-/// <reference types="@sveltejs/kit/types/service-worker" />
+﻿/// <reference types="@sveltejs/kit/types/service-worker" />
 /// <reference lib="webworker" />
 
 import { build, files, version } from '$service-worker';
 
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE = `ttfeed-${version}`;
+const CACHE = `ttscore-${version}`;
 const ASSETS = [...build, ...files];
 
 // Cache static assets on install

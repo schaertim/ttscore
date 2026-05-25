@@ -1,11 +1,11 @@
-import type { LayoutServerLoad } from './$types';
+﻿import type { LayoutServerLoad } from './$types';
 import { authedKtor } from '$lib/server/ktor';
 import { resolveLocale } from '$lib/i18n';
 
 export const load: LayoutServerLoad = async ({ locals: { safeGetSession }, cookies, request }) => {
 	const { session, user } = await safeGetSession();
 	const locale = resolveLocale(
-		cookies.get('ttfeed_locale') ?? request.headers.get('accept-language')
+		cookies.get('ttscore_locale') ?? request.headers.get('accept-language')
 	);
 
 	let hasHomePlayer = false;

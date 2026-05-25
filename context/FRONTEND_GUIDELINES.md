@@ -1,6 +1,6 @@
-# Frontend Coding Guidelines
+﻿# Frontend Coding Guidelines
 
-This document is the authoritative reference for how the ttfeed frontend is written. It covers technical patterns, styling conventions, and code quality rules. Follow it for all new work and treat deviations from it as technical debt.
+This document is the authoritative reference for how the ttscore frontend is written. It covers technical patterns, styling conventions, and code quality rules. Follow it for all new work and treat deviations from it as technical debt.
 
 ---
 
@@ -9,7 +9,7 @@ This document is the authoritative reference for how the ttfeed frontend is writ
 | Layer | Tool | Notes |
 |---|---|---|
 | Framework | SvelteKit 2 + Svelte 5 (runes mode) | No legacy Svelte 4 syntax |
-| Language | TypeScript — strict mode | `"strict": true` in tsconfig |
+| Language | TypeScript â€” strict mode | `"strict": true` in tsconfig |
 | Styling | Tailwind CSS v4 | Inline `@theme` in `app.css`, no config file |
 | UI primitives | shadcn-svelte v1 + bits-ui v2 | Headless, accessible |
 | Variant system | `tailwind-variants` | Used for multi-variant components |
@@ -78,7 +78,7 @@ $effect(() => {
 
 ### Children / snippets
 
-Use `{@render children?.()}` — never `<slot>`.
+Use `{@render children?.()}` â€” never `<slot>`.
 
 ```svelte
 <script lang="ts">
@@ -97,7 +97,7 @@ Use `{@render children?.()}` — never `<slot>`.
 - **Strict mode** is always on. No implicit `any`, no unchecked indexing.
 - Use `interface` for object shapes, `type` for unions, aliases, and utility types.
 - No `any`. Use `unknown` at system boundaries and narrow before use.
-- API response types are defined in `$lib/api.ts` — never redeclare them locally.
+- API response types are defined in `$lib/api.ts` â€” never redeclare them locally.
 - SvelteKit type augmentations live in `src/app.d.ts` (`App.Locals`, `App.PageData`).
 
 ```ts
@@ -116,15 +116,15 @@ const data: any = await res.json();
 
 ```
 src/lib/components/
-  ├── ui/                  shadcn-svelte primitives (don't edit directly)
-  ├── home/                home page specific components
-  ├── PlayerCard.svelte    shared domain components at root
-  ├── GameCard.svelte
-  └── ...
+  â”œâ”€â”€ ui/                  shadcn-svelte primitives (don't edit directly)
+  â”œâ”€â”€ home/                home page specific components
+  â”œâ”€â”€ PlayerCard.svelte    shared domain components at root
+  â”œâ”€â”€ GameCard.svelte
+  â””â”€â”€ ...
 ```
 
 - Domain components live in `$lib/components/` (root or a subfolder if page-specific).
-- shadcn primitives live in `$lib/components/ui/` — treat them as a vendor folder.
+- shadcn primitives live in `$lib/components/ui/` â€” treat them as a vendor folder.
 - One component per file. File name matches the exported component in PascalCase.
 - Split when a `.svelte` file exceeds ~150 lines of template+script combined.
 
@@ -174,7 +174,7 @@ const [player, groups] = await Promise.all([
 ]);
 ```
 
-Use `Promise.allSettled` when some requests are optional — but always handle the `rejected` case explicitly, never silently ignore it.
+Use `Promise.allSettled` when some requests are optional â€” but always handle the `rejected` case explicitly, never silently ignore it.
 
 ### Streamed data
 
@@ -208,7 +208,7 @@ const player = await api.players.get(params.id).catch(() => null);
 if (!player) throw error(404, 'Player not found');
 ```
 
-Never return `null` page data and let the template handle it — throw the error so SvelteKit renders the error page.
+Never return `null` page data and let the template handle it â€” throw the error so SvelteKit renders the error page.
 
 ---
 
@@ -238,22 +238,22 @@ Never return `null` page data and let the template handle it — throw the error
 
 | Context | Pattern |
 |---|---|
-| Load functions | `.catch(() => null)` → `if (!data) throw error(404, ...)` |
-| Server actions | `if (!session) return fail(401, ...)` — explicit fail codes |
+| Load functions | `.catch(() => null)` â†’ `if (!data) throw error(404, ...)` |
+| Server actions | `if (!session) return fail(401, ...)` â€” explicit fail codes |
 | API client | Check `res.ok` before `res.json()` |
-| AllSettled | Always handle the `rejected` branch — no silent drops |
+| AllSettled | Always handle the `rejected` branch â€” no silent drops |
 
 ```ts
-// Good — explicit, typed fail
+// Good â€” explicit, typed fail
 if (!res.ok) return fail(500, { error: 'Failed to save' });
 
-// Bad — silent swallow
+// Bad â€” silent swallow
 await api.doThing().catch(() => {});
 ```
 
 ---
 
-## 8. Design Tokens — Color
+## 8. Design Tokens â€” Color
 
 **Rule: never use raw color values in components.** Always use design tokens (CSS variables) via Tailwind's token classes.
 
@@ -284,13 +284,13 @@ await api.doThing().catch(() => {});
   {klass}
 </span>
 
-<!-- Bad — hardcoded color, breaks dark mode -->
+<!-- Bad â€” hardcoded color, breaks dark mode -->
 <span class="bg-violet-400/15 text-violet-400">A</span>
 ```
 
 ### Dark mode
 
-Dark mode is handled by `.dark` on `<html>` + CSS variable overrides in `app.css`. Components that only use semantic token classes automatically support dark mode — **no `dark:` prefix needed** for those. Only reach for `dark:` when you must style something that doesn't have a token.
+Dark mode is handled by `.dark` on `<html>` + CSS variable overrides in `app.css`. Components that only use semantic token classes automatically support dark mode â€” **no `dark:` prefix needed** for those. Only reach for `dark:` when you must style something that doesn't have a token.
 
 ---
 
@@ -308,7 +308,7 @@ Use this scale consistently. No mixing of weights at the same size level.
 | Micro label | `text-[10px] font-medium uppercase tracking-wide text-muted-foreground` |
 
 Rules:
-- `font-black` and `font-extrabold` are not interchangeable — use `font-black` for numerics/stats, `font-bold` for headings.
+- `font-black` and `font-extrabold` are not interchangeable â€” use `font-black` for numerics/stats, `font-bold` for headings.
 - Don't introduce arbitrary font sizes. `text-[10px]` is the only exception already in use.
 - Pair `tracking-tight` with large headings (`text-2xl`+), not body text.
 - Use `leading-none` for stat numbers to prevent awkward spacing.
@@ -355,7 +355,7 @@ Don't mix asymmetric padding (`px-4 py-3`) unless it's an intentional list-row t
 
 Rules:
 - Import only the icons you use: `import { House, Star } from 'phosphor-svelte'`
-- Don't mix `size={n}` and `class="size-n"` on the same element — pick one.
+- Don't mix `size={n}` and `class="size-n"` on the same element â€” pick one.
 - Active/selected state uses `weight="fill"`, default is `weight="regular"`.
 
 ---
@@ -374,7 +374,7 @@ import { Button } from '$lib/components/ui/button/index.js';
 
 ### Rules
 
-- **Never edit files in `$lib/components/ui/`** for one-off adjustments — pass `class` prop + `cn()` instead.
+- **Never edit files in `$lib/components/ui/`** for one-off adjustments â€” pass `class` prop + `cn()` instead.
 - To extend a component with new variants, create a wrapper component in `$lib/components/` that uses `tailwind-variants`. Don't patch the source.
 - Use shadcn's `Button` for all interactive elements, not plain `<button>`. This ensures consistent focus styles, disabled states, and accessibility.
 - Exhaust `size="sm" | "lg"` props before reaching for custom padding overrides.
@@ -408,9 +408,9 @@ const chip = tv({
 
 ## 13. Loading States
 
-- Always render `<Skeleton>` for async content — never leave a blank area.
+- Always render `<Skeleton>` for async content â€” never leave a blank area.
 - Size skeletons to match the rendered element dimensions.
-- Use consistent sizing — don't invent skeleton heights per page:
+- Use consistent sizing â€” don't invent skeleton heights per page:
 
 | Element being loaded | Skeleton class |
 |---|---|
@@ -420,7 +420,7 @@ const chip = tv({
 | Card / list item | `h-16 rounded-lg` |
 | Avatar | `size-10 rounded-full` |
 
-- Rely on shadcn Skeleton's built-in pulse animation — don't add custom `animate-` classes.
+- Rely on shadcn Skeleton's built-in pulse animation â€” don't add custom `animate-` classes.
 
 ---
 
@@ -444,7 +444,7 @@ const chip = tv({
 - **Abstractions**: extract a shared helper only when the same pattern appears 3+ times. Two identical blocks are fine.
 - **No dead code**: don't leave `_unused` variables, commented-out blocks, or backwards-compat shims.
 - **No `console.log`** in committed code.
-- **Line limit**: aim for ≤150 lines in a `.svelte` file. If the template alone is approaching that, extract sub-components.
+- **Line limit**: aim for â‰¤150 lines in a `.svelte` file. If the template alone is approaching that, extract sub-components.
 - **No error silencing**: `.catch(() => {})` with an empty body is a bug waiting to happen.
 - **Linting**: `npm run lint` (Prettier + ESLint) and `npm run check` (svelte-check) must pass before committing.
 
@@ -452,9 +452,9 @@ const chip = tv({
 
 ## 16. File & Import Hygiene
 
-- Use `$lib/` path aliases everywhere — no relative `../` imports that traverse more than one level.
-- Group imports: Svelte/SvelteKit → third-party → `$lib` utilities → `$lib` components.
-- Don't import types at runtime — use `import type { ... }` for type-only imports.
+- Use `$lib/` path aliases everywhere â€” no relative `../` imports that traverse more than one level.
+- Group imports: Svelte/SvelteKit â†’ third-party â†’ `$lib` utilities â†’ `$lib` components.
+- Don't import types at runtime â€” use `import type { ... }` for type-only imports.
 
 ```ts
 // Good
@@ -474,10 +474,10 @@ import type { Player } from '../../api'; // relative traversal
 
 | File | Purpose |
 |---|---|
-| `src/app.css` | All design tokens — colors, radius, font — defined here |
+| `src/app.css` | All design tokens â€” colors, radius, font â€” defined here |
 | `src/lib/utils.ts` | `cn()`, `klassColors()`, `timeAgo()`, `ordinal()` |
 | `src/lib/api.ts` | Public API client + all response types |
 | `src/lib/server/ktor.ts` | Authenticated server-side HTTP client |
 | `src/lib/theme.svelte.ts` | Dark mode store (`theme.toggle()`, `theme.dark`) |
-| `src/lib/components/ui/` | shadcn-svelte primitives — treat as vendor |
+| `src/lib/components/ui/` | shadcn-svelte primitives â€” treat as vendor |
 | `src/app.d.ts` | SvelteKit type augmentations (`App.Locals`, `App.PageData`) |

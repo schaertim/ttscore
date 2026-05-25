@@ -1,4 +1,4 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { fade, fly } from 'svelte/transition';
@@ -6,7 +6,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { _ } from 'svelte-i18n';
 
-	const STORAGE_KEY = 'ttfeed_onboarded';
+	const STORAGE_KEY = 'ttscore_onboarded';
 
 	const slideIcons = [TrophyIcon, ChartLineUpIcon, BellRingingIcon];
 	const slideKeys = [
@@ -46,7 +46,7 @@
 		class="fixed inset-0 z-50 flex items-end"
 		role="dialog"
 		aria-modal="true"
-		aria-label="Welcome to ttfeed"
+		aria-label="Welcome to ttscore"
 		transition:fade={{ duration: 200 }}
 	>
 		<!-- backdrop -->

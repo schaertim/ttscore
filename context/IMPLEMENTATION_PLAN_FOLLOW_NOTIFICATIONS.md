@@ -1,8 +1,8 @@
-# Implementation Plan — Follow & Notifications
+﻿# Implementation Plan â€” Follow & Notifications
 
 ## Overview
 
-This phase adds user accounts, personalisation, follows, and push notifications to ttfeed. It is the first phase that requires persistent user identity.
+This phase adds user accounts, personalisation, follows, and push notifications to ttscore. It is the first phase that requires persistent user identity.
 
 All development happens locally (Docker PostgreSQL). Railway deployment is the final step after everything is working end-to-end.
 
@@ -14,9 +14,9 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 **Sign-in options:**
 - Google OAuth
-- Email + password (no email verification initially — add Resend-based verification later as a follow-up)
-- Apple OAuth — deferred until an Apple Developer account is available ($99/year)
-- Other providers (GitHub etc.) — easy to add later, Better Auth supports them all with minimal config
+- Email + password (no email verification initially â€” add Resend-based verification later as a follow-up)
+- Apple OAuth â€” deferred until an Apple Developer account is available ($99/year)
+- Other providers (GitHub etc.) â€” easy to add later, Better Auth supports them all with minimal config
 
 **Ktor integration:** SvelteKit signs a short-lived token (HMAC-SHA256, shared secret) after verifying the Better Auth session. Ktor verifies this token on protected routes. No direct DB access from Ktor for auth.
 
@@ -24,28 +24,28 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 ## Steps
 
-### Step 1 — Better Auth setup
+### Step 1 â€” Better Auth setup
 
 **What:** Google, Apple, and email+password sign-in working end-to-end in SvelteKit on localhost.
 
 **How:**
 - Install `better-auth` in the SvelteKit project
 - Configure OAuth apps:
-  - Google: Google Cloud Console → OAuth 2.0 credentials
-  - Apple: deferred — no Apple Developer account yet
+  - Google: Google Cloud Console â†’ OAuth 2.0 credentials
+  - Apple: deferred â€” no Apple Developer account yet
   - Additional providers can be added later with minimal config
-- Add Better Auth config (`src/lib/auth.ts`) — define providers, point at local PostgreSQL
+- Add Better Auth config (`src/lib/auth.ts`) â€” define providers, point at local PostgreSQL
 - Run Better Auth's schema migration to create `users`, `sessions`, `accounts` tables
 - Add the catch-all server route (`src/routes/api/auth/[...all]/+server.ts`)
 - Add `hooks.server.ts` to attach session to `event.locals` on every request
 - Build sign-in UI: modal or dedicated `/signin` page with Google button and email+password form
-- Build sign-out — single button, clears session cookie
+- Build sign-out â€” single button, clears session cookie
 
 **Done when:** You can sign in with Google, sign in with email+password, and sign out. Session persists across page refreshes.
 
 ---
 
-### Step 2 — Ktor token verification
+### Step 2 â€” Ktor token verification
 
 **What:** Ktor can identify which authenticated user is making a request from SvelteKit.
 
@@ -59,7 +59,7 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 ---
 
-### Step 3 — Home player
+### Step 3 â€” Home player
 
 **What:** Users can designate any player as "their player", stored on their account.
 
@@ -76,16 +76,16 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 ---
 
-### Step 4 — Follow system
+### Step 4 â€” Follow system
 
 **What:** Users can follow players, teams, and divisions to receive notifications when results land.
 
 **How:**
 - DB table: `follows (id, user_id, entity_type ENUM('player','team','division'), entity_id, created_at)`
 - Ktor endpoints:
-  - `POST /follows` — body: `{ entityType, entityId }`
+  - `POST /follows` â€” body: `{ entityType, entityId }`
   - `DELETE /follows/{id}`
-  - `GET /follows` — returns the current user's follows
+  - `GET /follows` â€” returns the current user's follows
 - Follow/unfollow toggle buttons on player, team, and division pages
   - Signed-out users see the button with a "sign in to follow" nudge on click
 - Follows listed and manageable from the personal dashboard
@@ -94,7 +94,7 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 ---
 
-### Step 5 — Push notifications
+### Step 5 â€” Push notifications
 
 **What:** Users receive a push notification when a result lands for any entity they follow.
 
@@ -102,7 +102,7 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 **Infrastructure:**
 - Generate VAPID key pair, store public key in SvelteKit env, private key in Ktor env
-- Update the service worker to handle `push` events — show a notification with title + body
+- Update the service worker to handle `push` events â€” show a notification with title + body
 
 **Subscription registration:**
 - SvelteKit page: "Enable notifications" button
@@ -110,13 +110,13 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
   - Registers a push subscription via the Push API
   - POSTs subscription object (`endpoint`, `p256dh`, `auth`) to Ktor
 - DB table: `push_subscriptions (id, user_id, endpoint, p256dh, auth, created_at)`
-- PWA install prompt shown alongside the notification enable prompt (required on iOS Safari — notifications only work from installed PWA on iOS)
+- PWA install prompt shown alongside the notification enable prompt (required on iOS Safari â€” notifications only work from installed PWA on iOS)
 
 **Sending notifications:**
 - Ktor background job: after each match result is scraped and saved, query `follows` to find users who follow any participant (player, team, or division)
-- Fire notifications immediately — no batching needed since match results are always entered fully at once
+- Fire notifications immediately â€” no batching needed since match results are always entered fully at once
 - For each affected user, look up their `push_subscriptions` and send a Web Push notification
-- Notification payload: e.g. "Concordia Basel 6:4 Carouge 1 — followed match result"
+- Notification payload: e.g. "Concordia Basel 6:4 Carouge 1 â€” followed match result"
 - Handle expired/invalid subscriptions gracefully (remove from DB on 410 Gone)
 
 **Notification preferences:**
@@ -127,20 +127,20 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 ---
 
-### Step 6 — Personal dashboard
+### Step 6 â€” Personal dashboard
 
 **What:** Signed-in users get a personalised home experience.
 
 **How:**
 - `/` route logic:
-  - Not signed in → league browser (current behaviour)
-  - Signed in, no home player set → league browser + "Set your player" prompt banner
-  - Signed in, home player set → personal dashboard
+  - Not signed in â†’ league browser (current behaviour)
+  - Signed in, no home player set â†’ league browser + "Set your player" prompt banner
+  - Signed in, home player set â†’ personal dashboard
 - Dashboard content:
   - ELO badge + current classification + club
   - Next fixture (date, opponent, division)
   - Recent results (last 5 games with result and ELO delta)
-  - Followed entities section — recent results for each follow
+  - Followed entities section â€” recent results for each follow
 - "My account" page:
   - Manage home player
   - Manage follows (list with unfollow buttons)
@@ -151,7 +151,7 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 ---
 
-### Step 7 — Railway deployment
+### Step 7 â€” Railway deployment
 
 **What:** Move everything to production. This is the final step.
 
@@ -202,6 +202,6 @@ CREATE TABLE push_subscriptions (
 
 ## Deferred / follow-up items
 
-- **Apple Sign In** — add once an Apple Developer account is available
-- **Email verification** — add via Resend once the basic flow is stable
-- **Additional OAuth providers** — GitHub etc. trivial to add via Better Auth when needed
+- **Apple Sign In** â€” add once an Apple Developer account is available
+- **Email verification** â€” add via Resend once the basic flow is stable
+- **Additional OAuth providers** â€” GitHub etc. trivial to add via Better Auth when needed

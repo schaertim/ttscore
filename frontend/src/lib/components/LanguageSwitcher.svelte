@@ -1,11 +1,11 @@
-<script lang="ts">
+﻿<script lang="ts">
 	import { locale, _ } from 'svelte-i18n';
 	import { GlobeIcon } from 'phosphor-svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 
 	const languages: { code: string; label: string; native: string }[] = [
 		{ code: 'de', label: 'German', native: 'Deutsch' },
-		{ code: 'fr', label: 'French', native: 'Français' },
+		{ code: 'fr', label: 'French', native: 'FranÃ§ais' },
 		{ code: 'it', label: 'Italian', native: 'Italiano' },
 		{ code: 'en', label: 'English', native: 'English' }
 	];
@@ -18,8 +18,8 @@
 			body: JSON.stringify({ locale: code })
 		});
 		// Also mirror in localStorage for browser-side detection
-		localStorage.setItem('ttfeed_locale', code);
-		// Update the reactive store — components re-render immediately
+		localStorage.setItem('ttscore_locale', code);
+		// Update the reactive store â€” components re-render immediately
 		locale.set(code);
 	}
 </script>
@@ -35,7 +35,7 @@
 			>
 				<span class="font-semibold">{lang.native}</span>
 				{#if active}
-					<span class="text-xs font-bold text-primary">✓</span>
+					<span class="text-xs font-bold text-primary">âœ“</span>
 				{/if}
 			</button>
 		{/each}

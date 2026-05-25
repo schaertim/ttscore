@@ -1,4 +1,4 @@
-import { createBrowserClient, createServerClient, isBrowser } from '@supabase/ssr';
+﻿import { createBrowserClient, createServerClient, isBrowser } from '@supabase/ssr';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
 import type { LayoutLoad } from './$types';
 import '$lib/i18n'; // registers all locale loaders
@@ -10,7 +10,7 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 
 	// Initialise locale: server picks from cookie/Accept-Language; browser may refine
 	const activeLocale = isBrowser()
-		? resolveLocale(localStorage.getItem('ttfeed_locale') ?? navigator.language)
+		? resolveLocale(localStorage.getItem('ttscore_locale') ?? navigator.language)
 		: data.locale;
 	locale.set(activeLocale);
 	await waitLocale();
@@ -25,10 +25,10 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 			});
 
 	// On the server: use session + user already validated by safeGetSession() in
-	// +layout.server.ts (which called getUser()). Never touch session.user here —
+	// +layout.server.ts (which called getUser()). Never touch session.user here â€”
 	// that object comes from cookie storage and triggers the Supabase SDK warning.
 	//
-	// On the browser: getSession() is fine — we're reading from localStorage/memory,
+	// On the browser: getSession() is fine â€” we're reading from localStorage/memory,
 	// not untrusted cookie storage.
 	if (!isBrowser()) {
 		return { supabase, session: data.session, user: data.user, hasHomePlayer: data.hasHomePlayer };

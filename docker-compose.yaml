@@ -1,11 +1,11 @@
-services:
+﻿services:
   postgres:
     image: postgres:16
-    container_name: ttfeed-postgres
+    container_name: ttscore-postgres
     environment:
-      POSTGRES_USER: ttfeed
-      POSTGRES_PASSWORD: ttfeed
-      POSTGRES_DB: ttfeed
+      POSTGRES_USER: ttscore
+      POSTGRES_PASSWORD: ttscore
+      POSTGRES_DB: ttscore
     ports:
       - "5432:5432"
     volumes:
