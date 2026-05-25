@@ -47,7 +47,7 @@ object MatchService {
     suspend fun getById(matchId: String): MatchDetailResponse? {
         val uuid = matchId.toUuidOrNull() ?: return null
         return dbQuery {
-            // Step 1 â€” fetch the match with team names + season (via group)
+            // Step 1 — fetch the match with team names + season (via group)
             val matchRow =
                 Matches
                     .join(homeTeam, JoinType.INNER, Matches.homeTeamId, homeTeam[Teams.id])
@@ -69,7 +69,7 @@ object MatchService {
 
             val seasonId = matchRow[Groups.seasonId]
 
-            // Step 2 â€” fetch all games with player names
+            // Step 2 — fetch all games with player names
             val gameRows =
                 Games
                     .join(homePlayer, JoinType.LEFT, Games.homePlayer1Id, homePlayer[Players.id])
@@ -98,7 +98,7 @@ object MatchService {
                     .where { Games.matchId eq uuid }
                     .orderBy(Games.orderInMatch to SortOrder.ASC)
 
-            // Step 3 â€” batch-fetch klass for all players in these games
+            // Step 3 — batch-fetch klass for all players in these games
             val playerIds =
                 gameRows.flatMap { row ->
                     listOfNotNull(
@@ -118,7 +118,7 @@ object MatchService {
                         .associate { it[PlayerSeasons.playerId] to it[PlayerSeasons.klass] }
                 }
 
-            // Step 4 â€” fetch all sets for all games in one query
+            // Step 4 — fetch all sets for all games in one query
             val gameIds = gameRows.map { it[Games.id] }
             val setsByGame =
                 if (gameIds.isEmpty()) {
@@ -131,7 +131,7 @@ object MatchService {
                         .groupBy { it[GameSets.gameId] }
                 }
 
-            // Step 5 â€” assemble nested response
+            // Step 5 — assemble nested response
             val games =
                 gameRows.map { gameRow ->
                     val gameId = gameRow[Games.id]

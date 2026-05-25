@@ -9,6 +9,165 @@ import org.jsoup.nodes.Document
 
 class ClickTTParser {
     /**
+     * Returns all player-game season URLs from a portrait page:
+     * - Cup seasons (season contains "Cup"): keep mode=CHAMPIONSHIP — the cup data lives there
+     * - Regular seasons: replace mode=CHAMPIONSHIP with mode=TOURNAMENT
+     *
+     * The current tournament season has no direct link on the portrait, so deriving it from
+     * the championship link is the only way to reach it.
+     * Previous-season pages that require login will return empty results when parsed — fine.
+     */
+    fun extractPlayerGameUrls(portraitHtml: String): List<String> {
+        val doc = Jsoup.parse(portraitHtml)
+        val base = "https://www.click-tt.ch"
+        return doc.select("a[href*='mode=CHAMPIONSHIP']")
+            .map { link ->
+                val href = link.attr("href")
+                val season = extractParam(href, "season") ?: ""
+                if (season.contains("Cup", ignoreCase = true)) href
+                else href.replace("mode=CHAMPIONSHIP", "mode=TOURNAMENT")
+            }
+            .map { if (it.startsWith("http")) it else "$base$it" }
+            .distinct()
+    }
+
+    /**
+     * Parses a tournament season portrait page (mode=TOURNAMENT).
+     *
+     * Row layout within each result-set table:
+     *   tr.table-split           — tournament name header, skip
+     *   tr > td[colspan=13]      — competition category header, skip
+     *   tr > th                  — column headers (Datum / Gegner / win / Sätze), skip
+     *   tr (game row)            — td[0]=date  td[1]=opponent link  td[2]=win icon  td[3]=<b>sets</b>
+     *
+     * Sets are in "player:opponent" format (e.g. "3:1" means the synced player won 3 sets).
+     */
+    fun parseTournamentPage(html: String): List<ParsedTournamentGame> {
+        val doc = Jsoup.parse(html)
+        val games = mutableListOf<ParsedTournamentGame>()
+        val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+
+        for (table in doc.select("table.result-set")) {
+            for (row in table.select("tbody tr")) {
+                if (row.hasClass("table-split")) continue
+                val cells = row.select("td")
+                if (cells.isEmpty()) continue
+                if (row.selectFirst("th") != null) continue
+                if (cells[0].attr("colspan").isNotBlank()) continue
+
+                val dateText = cells.getOrNull(0)?.text()?.trim() ?: continue
+                val date = runCatching {
+                    java.time.LocalDateTime.parse(dateText, dateFormatter).toLocalDate()
+                }.getOrNull() ?: continue
+
+                val opponentLink = cells.getOrNull(1)?.selectFirst("a[href*='person=']") ?: continue
+                val opponentPersonId = extractParam(opponentLink.attr("href"), "person")?.toIntOrNull()
+                val opponentName = opponentLink.text().trim().takeIf { it.isNotBlank() } ?: continue
+
+                val isWin = cells.getOrNull(2)?.selectFirst("img[title=Sieg]") != null
+
+                val setsText = cells.getOrNull(3)?.selectFirst("b")?.text()?.trim() ?: continue
+                val homeSets = setsText.substringBefore(":").trim().toIntOrNull() ?: continue
+                val awaySets = setsText.substringAfter(":").trim().toIntOrNull() ?: continue
+
+                val sets = mutableListOf<ParsedClickTTSet>()
+                for (setIndex in 0..6) {
+                    val cell = cells.getOrNull(4 + setIndex) ?: break
+                    val text = cell.text().trim()
+                    if (text.isBlank() || !text.contains(":")) continue
+                    val hp = text.substringBefore(":").trim().toIntOrNull() ?: continue
+                    val ap = text.substringAfter(":").trim().toIntOrNull() ?: continue
+                    sets += ParsedClickTTSet(setNumber = setIndex + 1, homePoints = hp, awayPoints = ap)
+                }
+
+                games += ParsedTournamentGame(
+                    date = date,
+                    opponentPersonId = opponentPersonId,
+                    opponentName = opponentName,
+                    isWin = isWin,
+                    homeSets = homeSets,
+                    awaySets = awaySets,
+                    sets = sets,
+                )
+            }
+        }
+        return games
+    }
+
+    /**
+     * Parses a cup season page (mode=CHAMPIONSHIP with a Cup season).
+     *
+     * Row layout (singles, 13 cells):
+     *   cells[0] = date "DD.MM.YYYY" — or &nbsp; on continuation rows (carry forward)
+     *   cells[1] = position code ("U-B", "V-A", …)
+     *   cells[2] = opponent link with person=
+     *   cells[3] = opponent klass
+     *   cells[4] = win icon
+     *   cells[5] = total sets <b>3:2</b>
+     *   cells[6..10] = individual set scores (may be used later)
+     *
+     * Doubles tables contain a "Partner" column header — skip those tables entirely.
+     */
+    fun parseCupPage(html: String): List<ParsedTournamentGame> {
+        val doc = Jsoup.parse(html)
+        val games = mutableListOf<ParsedTournamentGame>()
+        val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy")
+
+        for (table in doc.select("table.result-set")) {
+            // Skip doubles tables — they have a "Partner" column header
+            if (table.select("th").any { it.text().contains("Partner", ignoreCase = true) }) continue
+
+            var currentDate: java.time.LocalDate? = null
+
+            for (row in table.select("tbody tr")) {
+                val cells = row.select("td")
+                if (cells.size < 6) continue
+
+                // Update date only when the first cell has real content (not &nbsp; continuation)
+                val dateText = cells[0].text().trim()
+                if (dateText.isNotBlank()) {
+                    currentDate = runCatching {
+                        java.time.LocalDate.parse(dateText, dateFormatter)
+                    }.getOrNull() ?: currentDate
+                }
+
+                val date = currentDate ?: continue
+
+                val opponentLink = cells.getOrNull(2)?.selectFirst("a[href*='person=']") ?: continue
+                val opponentPersonId = extractParam(opponentLink.attr("href"), "person")?.toIntOrNull()
+                val opponentName = opponentLink.text().trim().takeIf { it.isNotBlank() } ?: continue
+
+                val isWin = cells.getOrNull(4)?.selectFirst("img[title=Sieg]") != null
+
+                val setsText = cells.getOrNull(5)?.selectFirst("b")?.text()?.trim() ?: continue
+                val homeSets = setsText.substringBefore(":").trim().toIntOrNull() ?: continue
+                val awaySets = setsText.substringAfter(":").trim().toIntOrNull() ?: continue
+
+                val sets = mutableListOf<ParsedClickTTSet>()
+                for (setIndex in 0..4) {
+                    val cell = cells.getOrNull(6 + setIndex) ?: break
+                    val text = cell.text().trim()
+                    if (text.isBlank() || !text.contains(":")) continue
+                    val hp = text.substringBefore(":").trim().toIntOrNull() ?: continue
+                    val ap = text.substringAfter(":").trim().toIntOrNull() ?: continue
+                    sets += ParsedClickTTSet(setNumber = setIndex + 1, homePoints = hp, awayPoints = ap)
+                }
+
+                games += ParsedTournamentGame(
+                    date = date,
+                    opponentPersonId = opponentPersonId,
+                    opponentName = opponentName,
+                    isWin = isWin,
+                    homeSets = homeSets,
+                    awaySets = awaySets,
+                    sets = sets,
+                )
+            }
+        }
+        return games
+    }
+
+    /**
      * Extracts the URL of the Elo-Protokoll (or Ergebnishistorie) tab from a player portrait page.
      * Searches within the content-tabs nav to avoid matching the mobile menu's '#' placeholder links.
      */
@@ -59,7 +218,7 @@ class ClickTTParser {
 
             val link = cells[1].select("a[href*='person=']").firstOrNull() ?: continue
             val personId = link.attr("href").let { extractParam(it, "person") }?.toIntOrNull() ?: continue
-            // Raw "Lastname, Firstname" â€” no normalisation here; storage layer converts format
+            // Raw "Lastname, Firstname" — no normalisation here; storage layer converts format
             val fullName = link.text().trim().takeIf { it.isNotBlank() } ?: continue
             val licence = cells[2].text().trim().takeIf { it.isNotBlank() } ?: continue
             val serie = cells.getOrNull(3)?.text()?.trim()?.takeIf { it.isNotBlank() }
@@ -81,7 +240,7 @@ class ClickTTParser {
     }
 
     private fun parseClubName(doc: Document): String? =
-        // The h1 contains "ClubName\nLizenzierte Spieler des Vereins" â€” strip the subtitle regardless
+        // The h1 contains "ClubName\nLizenzierte Spieler des Vereins" — strip the subtitle regardless
         // of whether a <br> is present between them.
         doc.selectFirst("div.content-section h1, h1.page-title, h1")
             ?.text()?.trim()
@@ -95,7 +254,7 @@ class ClickTTParser {
             eloLabelCell.nextElementSibling()?.text()?.trim()?.toIntOrNull()?.let { return it }
         }
 
-        // Portrait page: Klassierung shows a classification string like "C7 / B12" â€” no numeric ELO here.
+        // Portrait page: Klassierung shows a classification string like "C7 / B12" — no numeric ELO here.
         // Some older pages may show "A21 (1234)", so still try parsing as a fallback.
         val klassCell =
             doc.select("td:containsOwn(Klassierung)").next("td").firstOrNull()
@@ -127,7 +286,7 @@ class ClickTTParser {
 
                 val date = cells[0].text().trim()
                 val competition = cells[1].text().trim()
-                // cells[2] is the player's own ELO at the time â€” not stored
+                // cells[2] is the player's own ELO at the time — not stored
                 val opponent = cells[3].text().trim()
                 val opponentElo = cells[4].text().trim().toIntOrNull()
                 val isWin = cells[5].select("img[title=Sieg], img[alt=Sieg]").isNotEmpty()
@@ -150,12 +309,12 @@ class ClickTTParser {
     }
 
     // -------------------------------------------------------------------------
-    // Season scraping â€” league page, group standings, match schedule, match detail
+    // Season scraping — league page, group standings, match schedule, match detail
     // -------------------------------------------------------------------------
 
     /**
      * Parses the league overview page and returns one entry per group link.
-     * The category (Herren / Damen / Senioren O40 / â€¦) is taken from the nearest
+     * The category (Herren / Damen / Senioren O40 / …) is taken from the nearest
      * preceding <h2> in document order.
      */
     fun parseLeaguePage(
@@ -215,13 +374,13 @@ class ClickTTParser {
             val gamesFor = gamesText.substringBefore(":").trim().toIntOrNull() ?: 0
             val gamesAgainst = gamesText.substringAfter(":").trim().toIntOrNull() ?: 0
 
-            // Points cell is cells[9] and contains "W:L" format e.g. "18:6" â€” take the left side
+            // Points cell is cells[9] and contains "W:L" format e.g. "18:6" — take the left side
             val points =
                 cells[9].text().trim().substringBefore(":").trim().toIntOrNull()
                     ?: cells[8].text().trim().substringBefore(":").trim().toIntOrNull()
                     ?: 0
 
-            // click-tt uses "Relegation" as the alt text for the promotion (upward) zone arrow â€”
+            // click-tt uses "Relegation" as the alt text for the promotion (upward) zone arrow —
             // confusing naming on their part. "Absteiger" marks the actual relegation zone.
             val isPromotion = cells[0].selectFirst("img[alt='Relegation']") != null
             val isRelegation = cells[0].selectFirst("img[alt='Absteiger']") != null
@@ -250,8 +409,8 @@ class ClickTTParser {
      * requested with displayDetail=meetings.
      *
      * The schedule table has 13 columns (0-indexed):
-     *   0  day name "Sa."       â€” OR td.tabelle-rowspan on continuation rows
-     *   1  date "11.10.2025"    â€” OR td.tabelle-rowspan on continuation rows
+     *   0  day name "Sa."       — OR td.tabelle-rowspan on continuation rows
+     *   1  date "11.10.2025"    — OR td.tabelle-rowspan on continuation rows
      *   2  time "14:00"         (nowrap)
      *   3  Spiellokal link "(2)"(center+nowrap)
      *   4  round number "1"
@@ -259,7 +418,7 @@ class ClickTTParser {
      *   6  home winner icon
      *   7  away team name       (nowrap)
      *   8  away winner icon
-     *   9  score / meeting link (center+nowrap) â€” e.g. "6:2" when completed
+     *   9  score / meeting link (center+nowrap) — e.g. "6:2" when completed
      *   10+ additional cells (unused)
      *
      * Date rows introduce a new date/time context that carries forward to all
@@ -318,7 +477,7 @@ class ClickTTParser {
      *              set1 | set2 | set3 | set4 | set5 | total-sets | running-score]
      *
      * Singles have one <a href*="person="> per player cell.
-     * Doubles have TWO â€” unlike knob.ch which uses a single combined link.
+     * Doubles have TWO — unlike knob.ch which uses a single combined link.
      */
     fun parseClickTTMatchDetail(
         html: String,
@@ -356,7 +515,7 @@ class ClickTTParser {
 
             // Klass is in cells[2] (home) and cells[4] (away).
             // For singles: plain text e.g. "A19".
-            // For doubles: two values separated by <br> e.g. "A21\nA20" â€” use textNodes() to
+            // For doubles: two values separated by <br> e.g. "A21\nA20" — use textNodes() to
             // split them individually rather than .text() which joins with a space ("A21 A20").
             val homeKlassNodes = cells[2].textNodes().map { it.text().trim() }.filter { it.isNotBlank() }
             val homeKlass = homeKlassNodes.getOrNull(0)

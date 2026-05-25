@@ -53,11 +53,15 @@
 	{@const won = isWin(pg)}
 	{@const notPlayed = pg.result === 'NOT_PLAYED'}
 	{@const scoreColor = won ? 'text-win' : notPlayed ? 'text-muted-foreground' : 'text-loss'}
-	<a href="/matches/{pg.matchId}" class="block">
-		<Card.Root class="py-4 transition-colors hover:bg-accent">
+	<svelte:element
+		this={pg.matchId ? 'a' : 'div'}
+		href={pg.matchId ? `/matches/${pg.matchId}` : undefined}
+		class="block"
+	>
+		<Card.Root class="py-4 transition-colors {pg.matchId ? 'hover:bg-accent' : ''}">
 			<div class="space-y-2 px-6">
 				<p class="truncate text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-					{formatDate(pg.playedAt)} · {pg.homeTeam} vs {pg.awayTeam}
+					{formatDate(pg.playedAt)} · {pg.competitionName ?? '—'}
 				</p>
 
 				<div class="flex items-baseline gap-4">
@@ -108,7 +112,7 @@
 				{/if}
 			</div>
 		</Card.Root>
-	</a>
+	</svelte:element>
 {:else}
 	{@const mg = toGame(game)}
 	{@const homeWon = mg.result === 'HOME'}

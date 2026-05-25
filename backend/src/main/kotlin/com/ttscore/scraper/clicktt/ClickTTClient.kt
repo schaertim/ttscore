@@ -67,7 +67,7 @@ class ClickTTClient {
     }
 
     /**
-     * Fetches a group page â€” either the standings view (default) or the full match schedule
+     * Fetches a group page — either the standings view (default) or the full match schedule
      * (displayDetail = "meetings").
      */
     suspend fun fetchGroupPage(

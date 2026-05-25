@@ -20,7 +20,7 @@ fun Application.configureAuthentication() {
     val issuer = "$supabaseUrl/auth/v1"
 
     // Read the EC P-256 public key coordinates from config.
-    // These come from: Supabase dashboard â†’ Project Settings â†’ API â†’ JWT Keys â†’ current key â†’ Key Details.
+    // These come from: Supabase dashboard → Project Settings → API → JWT Keys → current key → Key Details.
     val keyX = environment.config.property("supabase.jwtKeyX").getString()
     val keyY = environment.config.property("supabase.jwtKeyY").getString()
 

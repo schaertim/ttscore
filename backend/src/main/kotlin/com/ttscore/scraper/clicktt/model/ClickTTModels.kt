@@ -22,13 +22,23 @@ data class ClickTTClubMember(
     val fullName: String,
     /** "MALE" or "FEMALE" */
     val sex: String,
-    /** STT age-category: "Aktive", "O40", "U19", â€¦ */
+    /** STT age-category: "Aktive", "O40", "U19", … */
     val serie: String?,
-    /** ISO 3-letter country code: "SUI", "GER", â€¦ */
+    /** ISO 3-letter country code: "SUI", "GER", … */
     val nationality: String?,
 )
 
 data class ClickTTClubPage(
     val clubName: String?,
     val members: List<ClickTTClubMember>,
+)
+
+data class ParsedTournamentGame(
+    val date: java.time.LocalDate,
+    val opponentPersonId: Int?,
+    val opponentName: String,
+    val isWin: Boolean,
+    val homeSets: Int,
+    val awaySets: Int,
+    val sets: List<ParsedClickTTSet> = emptyList(),
 )

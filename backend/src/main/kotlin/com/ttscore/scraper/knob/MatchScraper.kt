@@ -2,8 +2,7 @@
 
 import com.ttscore.database.*
 import com.ttscore.model.MatchStatus
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -17,7 +16,11 @@ class MatchScraper(
     suspend fun run() {
         val matches =
             transaction {
+                val homeTeam = Teams.alias("home_team")
+                val awayTeam = Teams.alias("away_team")
                 (Matches innerJoin Groups innerJoin Federations innerJoin Seasons)
+                    .join(homeTeam, JoinType.LEFT, Matches.homeTeamId, homeTeam[Teams.id])
+                    .join(awayTeam, JoinType.LEFT, Matches.awayTeamId, awayTeam[Teams.id])
                     .select(
                         Matches.id,
                         Matches.knobMatchId,
@@ -25,9 +28,12 @@ class MatchScraper(
                         Matches.awayTeamId,
                         Matches.playedAt,
                         Groups.knobGruppe,
+                        Groups.name,
                         Federations.name,
                         Seasons.id,
                         Seasons.name,
+                        homeTeam[Teams.name],
+                        awayTeam[Teams.name],
                     )
                     .where {
                         (Matches.status eq MatchStatus.COMPLETED) and
@@ -46,6 +52,9 @@ class MatchScraper(
                             rvid = FEDERATION_RVIDS[it[Federations.name]],
                             seasonId = it[Seasons.id],
                             season = it[Seasons.name],
+                            groupName = it[Groups.name],
+                            homeTeamName = it[homeTeam[Teams.name]],
+                            awayTeamName = it[awayTeam[Teams.name]],
                         )
                     }
             }
@@ -110,6 +119,7 @@ class MatchScraper(
                     it[Games.awaySets] = game.awaySets?.toShort()
                     it[Games.result] = game.result
                     it[Games.playedAt] = match.playedAt
+                    it[Games.competitionName] = match.competitionName
                 }
 
                 val gameId =
@@ -137,7 +147,7 @@ class MatchScraper(
     /**
      * Returns the player's UUID, inserting a new player and player_season record if the knobId
      * is not yet in the database. This ensures match detail scraping never produces null player
-     * references â€” players who only appear as substitutes or guests are created on the fly.
+     * references — players who only appear as substitutes or guests are created on the fly.
      */
     private fun upsertPlayer(
         knobId: Int?,
@@ -147,7 +157,7 @@ class MatchScraper(
         seasonId: UUID,
     ): UUID? {
         if (knobId == null) {
-            // Doubles player 2 with no gid on the page â€” look up by name as a best-effort fallback
+            // Doubles player 2 with no gid on the page — look up by name as a best-effort fallback
             name ?: return null
             return Players.select(Players.id)
                 .where { Players.fullName eq name }
@@ -200,5 +210,11 @@ class MatchScraper(
         val rvid: Int?,
         val seasonId: UUID,
         val season: String,
-    )
+        val groupName: String,
+        val homeTeamName: String?,
+        val awayTeamName: String?,
+    ) {
+        val competitionName: String
+            get() = "$groupName | ${homeTeamName ?: "?"} : ${awayTeamName ?: "?"}"
+    }
 }

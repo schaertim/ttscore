@@ -59,7 +59,7 @@ object FollowService {
 
     /**
      * Subscribes the user to notifications for the target.
-     * Idempotent â€” returns the existing row if already subscribed.
+     * Idempotent — returns the existing row if already subscribed.
      * Returns null if the target entity does not exist.
      */
     suspend fun follow(
@@ -115,7 +115,7 @@ object FollowService {
             } > 0
         }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────────────────────────────────
 
     internal fun resolveTargetName(
         type: FollowTargetType,

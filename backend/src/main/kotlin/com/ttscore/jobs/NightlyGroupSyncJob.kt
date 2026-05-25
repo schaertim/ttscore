@@ -27,7 +27,6 @@ class NightlyGroupSyncJob(private val groupScraper: ClickTTGroupScraper) {
         for (group in groups) {
             try {
                 groupScraper.refreshGroupSchedule(group)
-                groupScraper.refreshGroupStandings(group)
                 refreshed++
             } catch (e: Exception) {
                 logger.error("NightlyGroupSyncJob: failed group ${group.clickttId}: ${e.message}")
@@ -35,7 +34,7 @@ class NightlyGroupSyncJob(private val groupScraper: ClickTTGroupScraper) {
             delay(500L)
         }
 
-        logger.info("NightlyGroupSyncJob: complete â€” $refreshed / ${groups.size} groups refreshed")
+        logger.info("NightlyGroupSyncJob: complete — $refreshed / ${groups.size} groups refreshed")
     }
 
     private fun getGroupsForSeason(seasonId: UUID): List<GroupRef> =

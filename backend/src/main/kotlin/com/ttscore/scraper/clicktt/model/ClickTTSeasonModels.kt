@@ -6,7 +6,7 @@ import com.ttscore.model.MatchStatus
 
 /**
  * A single group link parsed from the click-tt league overview page.
- * One entry per group (not per division â€” divisions can contain multiple groups).
+ * One entry per group (not per division — divisions can contain multiple groups).
  */
 data class ParsedClickTTGroup(
     val groupId: Int,
@@ -23,7 +23,7 @@ data class ParsedClickTTGroup(
  */
 data class ParsedClickTTStanding(
     val teamName: String,
-    // from teamPortrait?teamtable= href â€” globally unique in click-tt
+    // from teamPortrait?teamtable= href — globally unique in click-tt
     val teamTableId: Int,
     val position: Int,
     val played: Int,
@@ -47,7 +47,7 @@ data class ParsedClickTTMatch(
     val date: String,
     // "20:15", null if not listed
     val time: String?,
-    // "1", "2", â€¦ as printed in the schedule table
+    // "1", "2", … as printed in the schedule table
     val round: String?,
     val homeTeamName: String,
     val awayTeamName: String,

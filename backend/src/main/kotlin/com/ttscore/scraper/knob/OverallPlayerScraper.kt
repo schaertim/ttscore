@@ -42,7 +42,7 @@ class OverallPlayerScraper(
 
         logger.info("OverallPlayerScraper: scraping all ${seasons.size} seasons up to $latestSeasonName")
 
-        // Build lookup once â€” covers all players regardless of season.
+        // Build lookup once — covers all players regardless of season.
         // License lives on the player row, not on player_season, so no season scoping needed.
         // After the GroupScraper phase 1 fix, DB names are already clean (no age suffixes),
         // so a direct name lookup is sufficient.
@@ -55,8 +55,8 @@ class OverallPlayerScraper(
                     )
             }
 
-        // Secondary lookup keyed by accent-folded + lowercased name so that "GrÃ©gory" matches
-        // "Gregory" and vice-versa â€” knob.ch is inconsistent with diacritics across pages/seasons.
+        // Secondary lookup keyed by accent-folded + lowercased name so that "Grégory" matches
+        // "Gregory" and vice-versa — knob.ch is inconsistent with diacritics across pages/seasons.
         val existingByFolded: Map<String, List<Pair<String?, UUID>>> =
             existingPlayers.entries
                 .groupBy { (name, _) -> accentFold(name) }
@@ -73,7 +73,7 @@ class OverallPlayerScraper(
             }
         }
 
-        logger.info("OverallPlayerScraper complete â€” $totalUpdated licences linked")
+        logger.info("OverallPlayerScraper complete — $totalUpdated licences linked")
     }
 
     private suspend fun scrapeSeason(
@@ -85,24 +85,24 @@ class OverallPlayerScraper(
         val players = parser.parseOverallPlayers(html)
 
         if (players.isEmpty()) {
-            logger.info("  $seasonName â€” no players found (licence registry predates online records)")
+            logger.info("  $seasonName — no players found (licence registry predates online records)")
             return 0
         }
 
-        logger.info("  $seasonName â€” ${players.size} licensed players scraped")
+        logger.info("  $seasonName — ${players.size} licensed players scraped")
 
         var updated = 0
 
         transaction {
             for (player in players) {
-                // Exact match first; fall back to accent-folded match so "GrÃ©gory" finds "Gregory"
+                // Exact match first; fall back to accent-folded match so "Grégory" finds "Gregory"
                 val candidates =
                     existingPlayers[player.fullName]
                         ?: existingByFolded[accentFold(player.fullName)]
 
                 when {
                     candidates == null -> {
-                        // No existing player row found â€” skip. The licence scraper only links
+                        // No existing player row found — skip. The licence scraper only links
                         // licences to players already in the DB from match scraping. Players who
                         // appear in the licence registry but not in any scraped match detail are
                         // not useful records (no games, no club, no class). In a full historical
@@ -125,7 +125,7 @@ class OverallPlayerScraper(
                         }
                     }
                     else -> {
-                        // Multiple players share this name â€” use new club to disambiguate
+                        // Multiple players share this name — use new club to disambiguate
                         val playerId =
                             if (player.newClub != null) {
                                 findPlayerAtClub(candidates.map { it.second }, player.newClub)
@@ -150,7 +150,7 @@ class OverallPlayerScraper(
                         } else {
                             logger.warn(
                                 "  Name collision for '${player.fullName}' (${candidates.size} candidates)," +
-                                    " club='${player.newClub}' â€” skipping licence ${player.licenceNr}",
+                                    " club='${player.newClub}' — skipping licence ${player.licenceNr}",
                             )
                         }
                     }
@@ -159,7 +159,7 @@ class OverallPlayerScraper(
         }
 
         if (updated > 0) {
-            logger.info("    â†’ $updated licences linked")
+            logger.info("    → $updated licences linked")
         }
 
         return updated

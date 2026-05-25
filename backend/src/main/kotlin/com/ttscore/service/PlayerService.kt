@@ -71,9 +71,9 @@ object PlayerService {
             val awayPlayer = Players.alias("away_player")
 
             Games
-                .join(Matches, JoinType.INNER, Games.matchId, Matches.id)
-                .join(homeTeam, JoinType.INNER, Matches.homeTeamId, homeTeam[Teams.id])
-                .join(awayTeam, JoinType.INNER, Matches.awayTeamId, awayTeam[Teams.id])
+                .join(Matches, JoinType.LEFT, Games.matchId, Matches.id)
+                .join(homeTeam, JoinType.LEFT, Matches.homeTeamId, homeTeam[Teams.id])
+                .join(awayTeam, JoinType.LEFT, Matches.awayTeamId, awayTeam[Teams.id])
                 .join(homePlayer, JoinType.LEFT, Games.homePlayer1Id, homePlayer[Players.id])
                 .join(awayPlayer, JoinType.LEFT, Games.awayPlayer1Id, awayPlayer[Players.id])
                 .select(
@@ -85,8 +85,9 @@ object PlayerService {
                     Games.result,
                     Games.homePlayer1EloDelta,
                     Games.awayPlayer1EloDelta,
+                    Games.playedAt,
+                    Games.competitionName,
                     Matches.id,
-                    Matches.playedAt,
                     Matches.homeScore,
                     Matches.awayScore,
                     Matches.round,
@@ -100,7 +101,7 @@ object PlayerService {
                     ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
                         (Games.gameType eq GameType.SINGLES)
                 }
-                .orderBy(Matches.playedAt to SortOrder.DESC)
+                .orderBy(Games.playedAt to SortOrder.DESC)
                 .toList()
                 .let { rows ->
                     val gameIds = rows.map { it[Games.id] }
@@ -137,15 +138,16 @@ object PlayerService {
                         val gameId = row[Games.id]
                         val opponentId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
                         PlayerGameResponse(
-                            matchId = row[Matches.id].toString(),
+                            matchId = row.getOrNull(Matches.id)?.toString(),
                             gameId = gameId.toString(),
-                            playedAt = row[Matches.playedAt]?.toString(),
-                            homeTeam = row[homeTeam[Teams.name]],
-                            awayTeam = row[awayTeam[Teams.name]],
-                            homeScore = row[Matches.homeScore]?.toInt(),
-                            awayScore = row[Matches.awayScore]?.toInt(),
-                            round = row[Matches.round],
-                            status = row[Matches.status],
+                            playedAt = row[Games.playedAt]?.toString(),
+                            homeTeam = row.getOrNull(homeTeam[Teams.name]),
+                            awayTeam = row.getOrNull(awayTeam[Teams.name]),
+                            homeScore = row.getOrNull(Matches.homeScore)?.toInt(),
+                            awayScore = row.getOrNull(Matches.awayScore)?.toInt(),
+                            round = row.getOrNull(Matches.round),
+                            status = row.getOrNull(Matches.status),
+                            competitionName = row[Games.competitionName],
                             playerSide = if (isHome) "home" else "away",
                             opponentId = opponentId?.toString(),
                             opponentName =
@@ -314,7 +316,7 @@ object PlayerService {
                     .where { Players.fullName.lowerCase() like pattern }
                     .count()
 
-            // Step 1 â€” fetch paged core player rows
+            // Step 1 — fetch paged core player rows
             val basePlayers =
                 Players.select(Players.id, Players.fullName, Players.licenceNr)
                     .where { Players.fullName.lowerCase() like pattern }
@@ -328,7 +330,7 @@ object PlayerService {
                 return@dbQuery PagedResponse(emptyList(), page, size, total)
             }
 
-            // Step 2 â€” fetch club/klass for found players, picking the most recent season
+            // Step 2 — fetch club/klass for found players, picking the most recent season
             val playerStats =
                 (PlayerSeasons innerJoin Teams innerJoin Clubs innerJoin Seasons)
                     .select(PlayerSeasons.playerId, PlayerSeasons.klass, Clubs.name)
@@ -338,7 +340,7 @@ object PlayerService {
                     .groupBy { it[PlayerSeasons.playerId] }
                     .mapValues { it.value.first() }
 
-            // Step 3 â€” merge results
+            // Step 3 — merge results
             val items =
                 basePlayers.map { row ->
                     val stats = playerStats[row[Players.id]]
@@ -388,7 +390,7 @@ object PlayerService {
                 .where { Players.fullName.lowerCase() eq dbName.lowercase() }
                 .map { it[Players.id] }
                 .firstOrNull()
-                // Accent-fold fallback: "GrÃ©gory" finds "Gregory"
+                // Accent-fold fallback: "Grégory" finds "Gregory"
                 ?: run {
                     val folded = accentFold(dbName)
                     Players.select(Players.id, Players.fullName)
@@ -437,7 +439,7 @@ object PlayerService {
             for (member in members) {
                 Players.update({ Players.licenceNr eq member.licence }) {
                     it[Players.clickttId] = member.personId
-                    // Convert "Lastname, Firstname" â†’ "Lastname Firstname" to match knob storage format
+                    // Convert "Lastname, Firstname" → "Lastname Firstname" to match knob storage format
                     it[Players.fullName] = clickTtNameToDb(member.fullName)
                     it[Players.sex] = member.sex
                     it[Players.serie] = member.serie
@@ -483,7 +485,7 @@ object PlayerService {
 
     /**
      * Phase B of the backfill: for club members that couldn't be matched by licence,
-     * attempts a name + club fallback â€” accent-folds both sides and checks that the player
+     * attempts a name + club fallback — accent-folds both sides and checks that the player
      * has a player_season record at a club whose name fuzzy-matches [clickTtClubName].
      * On a unique match the player gains the licence, click-tt ID, canonical name, and metadata.
      */
@@ -533,7 +535,7 @@ object PlayerService {
                     it[Players.nationality] = member.nationality
                 }
             }
-            // Multiple candidates with same folded name at same club â†’ ambiguous, skip
+            // Multiple candidates with same folded name at same club → ambiguous, skip
         }
     }
 
@@ -565,6 +567,13 @@ object PlayerService {
                 .where { Players.id eq playerId }
                 .map { it[Players.clickttId] }
                 .firstOrNull()
+        }
+
+    suspend fun findPlayerIdByClickTtId(clickttId: Int): UUID? =
+        dbQuery {
+            Players.select(Players.id)
+                .where { Players.clickttId eq clickttId }
+                .firstOrNull()?.get(Players.id)
         }
 
     private fun ResultRow.toPlayerResponse(

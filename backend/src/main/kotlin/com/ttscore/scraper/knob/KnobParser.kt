@@ -11,7 +11,7 @@ import java.text.Normalizer
 
 class KnobParser {
     // -------------------------------------------------------------------------
-    // Gruppe page â€” identifies which division/league a gruppe belongs to
+    // Gruppe page — identifies which division/league a gruppe belongs to
     // -------------------------------------------------------------------------
 
     /**
@@ -19,7 +19,7 @@ class KnobParser {
      * Returns null if the page does not correspond to the requested gruppe
      * (knob.ch redirects invalid gruppe IDs to a default page).
      *
-     * [seasonYear] is used to determine league assignment â€” before 2011 all
+     * [seasonYear] is used to determine league assignment — before 2011 all
      * groups were STT regardless of nav block position.
      */
     fun parseGruppePage(
@@ -57,7 +57,7 @@ class KnobParser {
             if (contentHeader.contains("/")) {
                 val division = contentHeader.substringBefore("/").trim()
                 val groupPart = contentHeader.substringAfter("/").trim()
-                // Numeric group parts get a prefix: "2" â†’ "Gruppe 2"
+                // Numeric group parts get a prefix: "2" → "Gruppe 2"
                 val group = if (groupPart.toIntOrNull() != null) "Gruppe $groupPart" else groupPart
                 division to group
             } else {
@@ -75,7 +75,7 @@ class KnobParser {
     }
 
     // -------------------------------------------------------------------------
-    // Division page â€” teams, players, matches
+    // Division page — teams, players, matches
     // -------------------------------------------------------------------------
 
     fun parseDivisionPage(html: String): ParsedDivisionPage {
@@ -94,7 +94,7 @@ class KnobParser {
     private fun parseStandings(html: String): ParsedStandingsPage {
         val doc = Jsoup.parse(html)
 
-        // The standings table is the first pTitle table â€” it has the team ranking header
+        // The standings table is the first pTitle table — it has the team ranking header
         val table =
             doc.select("table.pTitle").firstOrNull {
                 it.selectFirst("tr td:contains(Rang)") != null ||
@@ -108,12 +108,12 @@ class KnobParser {
         var position = 1
 
         for (row in rows) {
-            // Promotion zone separator â€” rows above this are promotion spots
+            // Promotion zone separator — rows above this are promotion spots
             if (row.hasClass("auf")) {
                 promotionSpots = position - 1
                 continue
             }
-            // Relegation zone separator â€” rows from here down are relegation spots
+            // Relegation zone separator — rows from here down are relegation spots
             if (row.hasClass("ab")) {
                 relegationStart = position
                 continue
@@ -140,7 +140,7 @@ class KnobParser {
             val gamesFor = siegVerh.substringBefore(":").trim().toIntOrNull() ?: 0
             val gamesAgainst = siegVerh.substringAfter(":").trim().toIntOrNull() ?: 0
 
-            // Points are in a bold td â€” cells[9]
+            // Points are in a bold td — cells[9]
             val points = cells[9].text().trim().toIntOrNull() ?: continue
 
             standings.add(
@@ -177,7 +177,7 @@ class KnobParser {
         if (seasonYear < 2011) return "STT" // regional leagues didn't exist before 2011
         if (selectedBlockIndex == 0) return "STT"
 
-        // Regional â€” the active league is the grayed-out item (no <a>) in the rvNav
+        // Regional — the active league is the grayed-out item (no <a>) in the rvNav
         val rvNav = doc.selectFirst("ul#rvNav") ?: return "NWTTV"
         val grayedItem =
             rvNav.select("li").firstOrNull { li ->
@@ -189,7 +189,7 @@ class KnobParser {
     private fun parseTeams(doc: Document): List<ParsedTeam> {
         // Primary: extract teams from the match schedule. Every match row carries home and
         // away team links with teamid/clubid in the href, so this works for regular groups,
-        // playoffs, and cups â€” anything that has matches.
+        // playoffs, and cups — anything that has matches.
         val matchTable =
             doc.select("tr:has(td:containsOwn(Runde))")
                 .firstOrNull()?.parent()?.parent()
@@ -283,7 +283,7 @@ class KnobParser {
                         .let { extractParamFromTitle(it, "matchid") }
                         ?.toIntOrNull() ?: return@mapNotNull null
 
-                // Round is a number ("8 ( 1 )") or cup label ("Viertelfinal") â€” store normalised
+                // Round is a number ("8 ( 1 )") or cup label ("Viertelfinal") — store normalised
                 val roundRaw = cells[0].text().trim()
                 val round =
                     roundRaw.split(" ").first().toIntOrNull()?.toString()
@@ -336,7 +336,7 @@ class KnobParser {
     }
 
     // -------------------------------------------------------------------------
-    // Match detail page â€” individual game and set results
+    // Match detail page — individual game and set results
     // -------------------------------------------------------------------------
 
     fun parseMatchDetail(
@@ -348,7 +348,7 @@ class KnobParser {
         // The match detail page is the group page with one match's detail expanded inline.
         // Multiple tables on the page share the same tr CSS classes (psodd, playerStats), so
         // we identify the correct table by the presence of a "Partie" header cell, then
-        // additionally guard every row by requiring player links â€” only genuine game rows have those.
+        // additionally guard every row by requiring player links — only genuine game rows have those.
         val gameTable =
             doc.select("table:has(tr > td:containsOwn(Partie))").firstOrNull()
                 ?: return ParsedMatchDetail(matchId, emptyList())
@@ -366,7 +366,7 @@ class KnobParser {
             // into a single colspan=5 td). Rows shorter than 12 are header/total/other rows.
             if (cells.size < 12) continue
 
-            // Only genuine game rows carry player links â€” skip header, total, and summary rows.
+            // Only genuine game rows carry player links — skip header, total, and summary rows.
             val homeLinks = cells.getOrNull(1)?.select("a[href*='gid=']") ?: continue
             val awayLinks = cells.getOrNull(2)?.select("a[href*='gid=']") ?: continue
             if (homeLinks.isEmpty() || awayLinks.isEmpty()) continue
@@ -409,7 +409,7 @@ class KnobParser {
                 if (homeGid1 != null && homeName1 != null) nameToKnobId[homeName1] = homeGid1
                 if (awayGid1 != null && awayName1 != null) nameToKnobId[awayName1] = awayGid1
             } else {
-                // "Player A / Player B" â€” split on the slash to get each name
+                // "Player A / Player B" — split on the slash to get each name
                 homeName1 = homeClean.substringBefore("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
                 homeName2 = homeClean.substringAfter("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
                 homeGid2 = homeName2?.let { nameToKnobId[it] }
@@ -421,7 +421,7 @@ class KnobParser {
             }
 
             // Cells 3..7 hold individual set scores (e.g. "11:8") when available.
-            // When unavailable they collapse into a single colspan=5 td â€” parseSetScores
+            // When unavailable they collapse into a single colspan=5 td — parseSetScores
             // breaks early on blank/non-score text and returns an empty list.
             val sets = parseSetScores(cells, fromIndex = 3, toIndex = 7)
 
@@ -514,17 +514,17 @@ class KnobParser {
     // -------------------------------------------------------------------------
 
     /**
-     * Converts a raw knob.ch Klassierung number (1â€“22) to the Swiss TT letter-prefix format.
+     * Converts a raw knob.ch Klassierung number (1–22) to the Swiss TT letter-prefix format.
      * knob.ch stores just the ladder position; the standard format used by click-tt and the DB
      * prefixes the position with the division letter:
-     *   D = 1â€“5 | C = 6â€“10 | B = 11â€“15 | A = 16â€“22
+     *   D = 1–5 | C = 6–10 | B = 11–15 | A = 16–22
      * Values that are already formatted (e.g. "D2") or empty are returned unchanged.
      */
     /**
-     * Converts a raw knob.ch Klassierung number (1â€“22) to the Swiss TT letter-prefix format.
+     * Converts a raw knob.ch Klassierung number (1–22) to the Swiss TT letter-prefix format.
      * knob.ch stores just the ladder position; the standard format used by click-tt and the DB
      * prefixes the position with the division letter:
-     *   D = 1â€“5 | C = 6â€“10 | B = 11â€“15 | A = 16â€“22
+     *   D = 1–5 | C = 6–10 | B = 11–15 | A = 16–22
      * Values that are already formatted (e.g. "D2"), empty, or null are returned unchanged.
      */
     private fun expandKlass(raw: String?): String? {

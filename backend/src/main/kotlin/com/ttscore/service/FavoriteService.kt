@@ -111,7 +111,7 @@ object FavoriteService {
 
     /**
      * Returns full [PlayerResponse] objects for all players the user has starred.
-     * Uses the same batch-join pattern as [PlayerService.search] â€” two queries, no N+1.
+     * Uses the same batch-join pattern as [PlayerService.search] — two queries, no N+1.
      */
     suspend fun getFavoritePlayers(userId: String): List<PlayerResponse> =
         dbQuery {

@@ -4,8 +4,7 @@ import com.ttscore.database.*
 import com.ttscore.model.MatchStatus
 import com.ttscore.scraper.clicktt.ClickTTGroupScraper.Companion.toChampionship
 import com.ttscore.util.clickTtNameToDb
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insertIgnore
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -39,8 +38,12 @@ class ClickTTMatchScraper(
 
     private fun pendingMatches(filterIds: Set<UUID>? = null): List<MatchToScrape> =
         transaction {
+            val homeTeam = Teams.alias("home_team")
+            val awayTeam = Teams.alias("away_team")
             val rows =
                 (Matches innerJoin Groups innerJoin Federations innerJoin Seasons)
+                    .join(homeTeam, JoinType.LEFT, Matches.homeTeamId, homeTeam[Teams.id])
+                    .join(awayTeam, JoinType.LEFT, Matches.awayTeamId, awayTeam[Teams.id])
                     .select(
                         Matches.id,
                         Matches.clickttMatchId,
@@ -48,8 +51,11 @@ class ClickTTMatchScraper(
                         Matches.awayTeamId,
                         Matches.playedAt,
                         Groups.clickttId,
+                        Groups.name,
                         Federations.name,
                         Seasons.name,
+                        homeTeam[Teams.name],
+                        awayTeam[Teams.name],
                     )
                     .where {
                         val base =
@@ -70,6 +76,9 @@ class ClickTTMatchScraper(
                     playedAt = it[Matches.playedAt],
                     federationName = it[Federations.name],
                     season = it[Seasons.name],
+                    groupName = it[Groups.name],
+                    homeTeamName = it[homeTeam[Teams.name]],
+                    awayTeamName = it[awayTeam[Teams.name]],
                 )
             }
         }
@@ -125,6 +134,7 @@ class ClickTTMatchScraper(
                     it[Games.awaySets] = game.awaySets?.toShort()
                     it[Games.result] = game.result
                     it[Games.playedAt] = match.playedAt
+                    it[Games.competitionName] = match.competitionName
                 }
 
                 val gameId =
@@ -165,7 +175,7 @@ class ClickTTMatchScraper(
         val dbName = name?.let { clickTtNameToDb(it) }
 
         if (personId == null) {
-            // Doubles player with no personId â€” try name lookup as a best-effort fallback
+            // Doubles player with no personId — try name lookup as a best-effort fallback
             dbName ?: return null
             return Players.select(Players.id)
                 .where { Players.fullName eq dbName }
@@ -189,7 +199,7 @@ class ClickTTMatchScraper(
                     // Fallback: player wasn't created by the backfill job (club ID outside
                     // the scanned range, mid-season join, etc.). Insert a minimal row so
                     // the game result is not lost.
-                    logger.warn("upsertPlayer: no row for clickttId=$personId (name=$dbName) â€” inserting fallback row")
+                    logger.warn("upsertPlayer: no row for clickttId=$personId (name=$dbName) — inserting fallback row")
                     Players.insertIgnore {
                         it[Players.clickttId] = personId
                         it[Players.fullName] = dbName ?: "Unknown"
@@ -218,5 +228,11 @@ class ClickTTMatchScraper(
         val playedAt: java.time.OffsetDateTime?,
         val federationName: String,
         val season: String,
-    )
+        val groupName: String,
+        val homeTeamName: String?,
+        val awayTeamName: String?,
+    ) {
+        val competitionName: String
+            get() = "$groupName | ${homeTeamName ?: "?"} : ${awayTeamName ?: "?"}"
+    }
 }

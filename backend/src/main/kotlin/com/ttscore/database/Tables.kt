@@ -60,7 +60,7 @@ object Teams : Table("team") {
     val groupId = uuid("group_id").references(Groups.id)
     val name = varchar("name", 100)
 
-    // knobId is NOT globally unique â€” team IDs are reused across seasons, unique only within a group
+    // knobId is NOT globally unique — team IDs are reused across seasons, unique only within a group
     val knobId = integer("knob_id").nullable()
     val clickttId = integer("clicktt_id").nullable() // teamtable= param, globally unique in click-tt
     override val primaryKey = PrimaryKey(id)
@@ -73,13 +73,13 @@ object Players : Table("player") {
     val clickttId = integer("clicktt_id").nullable().uniqueIndex()
     val fullName = varchar("full_name", 100)
 
-    /** "MALE" or "FEMALE" â€” populated from the click-tt club members page */
+    /** "MALE" or "FEMALE" — populated from the click-tt club members page */
     val sex = varchar("sex", 6).nullable()
 
-    /** STT age-category ("Aktive", "O40", "U19", â€¦) â€” from click-tt club page */
+    /** STT age-category ("Aktive", "O40", "U19", …) — from click-tt club page */
     val serie = varchar("serie", 20).nullable()
 
-    /** ISO 3-letter country code ("SUI", "GER", â€¦) â€” from click-tt club page */
+    /** ISO 3-letter country code ("SUI", "GER", …) — from click-tt club page */
     val nationality = varchar("nationality", 3).nullable()
     override val primaryKey = PrimaryKey(id)
 }
@@ -108,13 +108,13 @@ object Matches : Table("match") {
     val homeTeamId = uuid("home_team_id").references(Teams.id)
     val awayTeamId = uuid("away_team_id").references(Teams.id)
 
-    // round stores the raw round text from knob â€” may be a number ("8") or label ("Viertelfinal")
+    // round stores the raw round text from knob — may be a number ("8") or label ("Viertelfinal")
     val round = varchar("round", 50).nullable()
     val playedAt = timestampWithTimeZone("played_at").nullable()
     val homeScore = short("home_score").nullable()
     val awayScore = short("away_score").nullable()
 
-    // knobMatchId is NOT globally unique â€” match IDs are reused across seasons, unique only within a group
+    // knobMatchId is NOT globally unique — match IDs are reused across seasons, unique only within a group
     val knobMatchId = integer("knob_match_id").nullable()
     val clickttMatchId = integer("clicktt_match_id").nullable() // meeting= param, globally unique in click-tt
     val status = enumerationByName("status", 20, MatchStatus::class)
@@ -149,7 +149,7 @@ object GameSets : Table("game_set") {
     override val primaryKey = PrimaryKey(id)
 }
 
-/** Shared helper â€” maps the native PG follow_target_type enum to/from our Kotlin enum. */
+/** Shared helper — maps the native PG follow_target_type enum to/from our Kotlin enum. */
 private fun targetTypeColumn(table: Table) =
     table.customEnumeration(
         name = "target_type",

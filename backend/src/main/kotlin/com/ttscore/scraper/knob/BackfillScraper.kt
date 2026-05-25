@@ -13,14 +13,14 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
     private val matchScraper = MatchScraper(client, parser)
     private val licenceScraper = OverallPlayerScraper(client, parser)
 
-    /** Full historical backfill: groups â†’ match details + players â†’ licences (all seasons 1989â€“present) */
+    /** Full historical backfill: groups → match details + players → licences (all seasons 1989–present) */
     suspend fun run() {
         runGroupScraper()
         runMatchScraper()
         runLicenceScraper()
     }
 
-    /** Single-season backfill â€” useful for testing or catching up a specific season */
+    /** Single-season backfill — useful for testing or catching up a specific season */
     suspend fun runForSeason(season: String) {
         groupScraper.run(listOf(season))
         matchScraper.run()

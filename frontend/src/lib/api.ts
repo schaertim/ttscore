@@ -126,15 +126,16 @@ export type EloEntry = {
 };
 
 export type PlayerGame = {
-	matchId: string;
+	matchId: string | null;
 	gameId: string;
 	playedAt: string | null;
-	homeTeam: string;
-	awayTeam: string;
+	homeTeam: string | null;
+	awayTeam: string | null;
 	homeScore: number | null;
 	awayScore: number | null;
 	round: string | null;
-	status: string;
+	status: string | null;
+	competitionName: string | null;
 	playerSide: 'home' | 'away';
 	opponentId: string | null;
 	opponentName: string | null;

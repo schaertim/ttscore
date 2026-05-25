@@ -253,15 +253,16 @@ data class LeagueContextResponse(
 
 @Serializable
 data class PlayerGameResponse(
-    val matchId: String,
+    val matchId: String?,
     val gameId: String,
     val playedAt: String?,
-    val homeTeam: String,
-    val awayTeam: String,
+    val homeTeam: String?,
+    val awayTeam: String?,
     val homeScore: Int?,
     val awayScore: Int?,
     val round: String?,
-    val status: MatchStatus,
+    val status: MatchStatus?,
+    val competitionName: String?,
     val playerSide: String,
     val opponentId: String?,
     val opponentName: String?,

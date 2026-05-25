@@ -42,9 +42,10 @@ async function fetchPlayerEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]
 		});
 	}
 
-	// Group completed games by matchId, then count personal wins per team match
+	// Group completed league games by matchId, then count personal wins per team match
 	const byMatch = new Map<string, PlayerGame[]>();
 	for (const game of games) {
+		if (!game.matchId) continue;
 		if (game.status === 'SCHEDULED') continue;
 		if (!byMatch.has(game.matchId)) byMatch.set(game.matchId, []);
 		byMatch.get(game.matchId)!.push(game);
@@ -72,7 +73,7 @@ async function fetchPlayerEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]
 			item: {
 				kind: 'player_match',
 				result,
-				opponentTeam: first.playerSide === 'home' ? first.awayTeam : first.homeTeam,
+				opponentTeam: (first.playerSide === 'home' ? first.awayTeam : first.homeTeam) ?? '—',
 				matchScore: `${myWins}–${oppWins}`,
 				playedAt: first.playedAt
 			},

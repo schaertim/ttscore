@@ -22,7 +22,7 @@ class GroupScraper(
     private val logger = LoggerFactory.getLogger(GroupScraper::class.java)
 
     // Gruppe ID ranges per season, scoped to avoid unnecessary requests.
-    // Derived from observed data â€” knob.ch reuses gruppe IDs across seasons
+    // Derived from observed data — knob.ch reuses gruppe IDs across seasons
     // but they cluster within predictable ranges per era.
     private fun gruppeRange(season: String): IntRange {
         val year = season.substringBefore("/").toInt()
@@ -49,9 +49,9 @@ class GroupScraper(
         for (season in seasons) {
             val range = gruppeRange(season)
             val seasonYear = season.substringBefore("/").toInt()
-            logger.info("Season $season â€” gruppe range $range")
+            logger.info("Season $season — gruppe range $range")
 
-            // Regional federations were introduced in 2011/12 â€” only run STT for earlier seasons
+            // Regional federations were introduced in 2011/12 — only run STT for earlier seasons
             val federationsToRun =
                 if (seasonYear < 2011) {
                     FEDERATION_RVIDS.filter { it.value == null }
@@ -82,10 +82,10 @@ class GroupScraper(
                 val html = client.fetchDivisionPage(gruppeId, season, rvid)
                 val result = parser.parseGruppePage(html, gruppeId, seasonYear) ?: continue
 
-                // Cross-check â€” the page's active league must match this pass's league
+                // Cross-check — the page's active league must match this pass's league
                 if (result.leagueName != leagueName) continue
 
-                // Skip if already scraped â€” gruppe IDs are reused across seasons so we
+                // Skip if already scraped — gruppe IDs are reused across seasons so we
                 // must scope the check to both gruppe ID and season name
                 if (isAlreadyScraped(gruppeId, season)) {
                     logger.debug("    gruppe=$gruppeId season=$season already scraped, skipping")
@@ -117,15 +117,15 @@ class GroupScraper(
 
                 found++
                 logger.info(
-                    "    gruppe=$gruppeId â†’ $leagueName / ${result.divisionName} / " +
-                        "${result.groupName} â€” ${page.teams.size} teams, ${page.matches.size} matches",
+                    "    gruppe=$gruppeId → $leagueName / ${result.divisionName} / " +
+                        "${result.groupName} — ${page.teams.size} teams, ${page.matches.size} matches",
                 )
             } catch (e: Exception) {
                 logger.error("    gruppe=$gruppeId failed: ${e.message}")
             }
         }
 
-        logger.info("  [$season] $leagueName done â€” $found groups found")
+        logger.info("  [$season] $leagueName done — $found groups found")
     }
 
     private fun isAlreadyScraped(
@@ -142,7 +142,7 @@ class GroupScraper(
         }
 
     // -------------------------------------------------------------------------
-    // DB upserts â€” insert-ignore then select to get the ID
+    // DB upserts — insert-ignore then select to get the ID
     // -------------------------------------------------------------------------
 
     private fun upsertSeason(name: String): UUID {
@@ -221,10 +221,10 @@ class GroupScraper(
     ): Map<Int, UUID> {
         return teams.associate { team ->
             // Strip only trailing numbers, roman numerals, or single letters from team names
-            // to derive the club name. e.g. "Burgdorf 1" â†’ "Burgdorf", "Young Stars ZH" â†’ "Young Stars ZH"
+            // to derive the club name. e.g. "Burgdorf 1" → "Burgdorf", "Young Stars ZH" → "Young Stars ZH"
             val cleanClubName = team.name.replace(Regex("""\s+(\d+|[IVX]+|[a-zA-Z])$"""), "").trim()
 
-            // knob_id was removed from the club table in V2 â€” look up by name only
+            // knob_id was removed from the club table in V2 — look up by name only
             Clubs.insertIgnore {
                 it[Clubs.name] = cleanClubName
             }
@@ -233,7 +233,7 @@ class GroupScraper(
                     .where { Clubs.name eq cleanClubName }
                     .first()[Clubs.id]
 
-            // Team knobIds are only unique within a group â€” scope lookup to (knobId, groupId)
+            // Team knobIds are only unique within a group — scope lookup to (knobId, groupId)
             val existingTeamId =
                 Teams.select(Teams.id)
                     .where { (Teams.knobId eq team.knobTeamId) and (Teams.groupId eq groupId) }
@@ -266,7 +266,7 @@ class GroupScraper(
             val awayTeamId = teamIdMap[match.awayKnobTeamId] ?: continue
             val playedAt = match.playedAt?.let { parseMatchDate(it) }
 
-            // Match knobIds are only unique within a group â€” scope lookup to (groupId, knobMatchId)
+            // Match knobIds are only unique within a group — scope lookup to (groupId, knobMatchId)
             val exists =
                 Matches.select(Matches.id)
                     .where { (Matches.groupId eq groupId) and (Matches.knobMatchId eq match.knobMatchId) }
@@ -285,7 +285,7 @@ class GroupScraper(
                     it[Matches.status] = match.status
                 }
             } else if (match.status == MatchStatus.COMPLETED) {
-                // Only update if the match has just completed â€” completed matches are immutable
+                // Only update if the match has just completed — completed matches are immutable
                 Matches.update({
                     (Matches.groupId eq groupId) and (Matches.knobMatchId eq match.knobMatchId) and
                         (Matches.status eq MatchStatus.SCHEDULED)
@@ -298,7 +298,7 @@ class GroupScraper(
         }
     }
 
-    // Date format from knob: "Sa. 12.10.2024 14:00" â€” strip the day-of-week prefix
+    // Date format from knob: "Sa. 12.10.2024 14:00" — strip the day-of-week prefix
     private fun parseMatchDate(raw: String): OffsetDateTime? =
         try {
             val withoutDay = raw.substringAfter(". ").trim()

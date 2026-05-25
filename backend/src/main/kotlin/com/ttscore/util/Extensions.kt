@@ -17,7 +17,7 @@ fun ApplicationCall.userId(): String = userIdOrNull() ?: error("userId() called 
 
 /**
  * Strips diacritics and lowercases a string for accent-insensitive comparison.
- * e.g. "GrÃ©gory" â†’ "gregory", "MÃ¼ller" â†’ "muller"
+ * e.g. "Grégory" → "gregory", "Müller" → "muller"
  */
 fun accentFold(s: String): String =
     Normalizer.normalize(s, Normalizer.Form.NFD)
@@ -36,7 +36,7 @@ fun normalizeKnobName(raw: String): String {
 
 /**
  * Converts a click-tt name ("Lastname, Firstname") to "Firstname Lastname".
- * Only kept for legacy callers â€” prefer [clickTtNameToDb] for storage.
+ * Only kept for legacy callers — prefer [clickTtNameToDb] for storage.
  */
 fun normalizeClickTtName(raw: String): String {
     val normalized = Normalizer.normalize(raw, Normalizer.Form.NFC)
@@ -46,7 +46,7 @@ fun normalizeClickTtName(raw: String): String {
 
 /**
  * Converts a click-tt name ("Lastname, Firstname") to "Lastname Firstname" for DB storage.
- * This matches the knob.ch storage format â€” lastname first, no comma, NFC-normalised.
+ * This matches the knob.ch storage format — lastname first, no comma, NFC-normalised.
  */
 fun clickTtNameToDb(raw: String): String {
     val normalized = Normalizer.normalize(raw, Normalizer.Form.NFC)

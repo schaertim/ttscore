@@ -1,9 +1,11 @@
 ﻿package com.ttscore.service
 
+import com.ttscore.database.GameSets
 import com.ttscore.database.Games
 import com.ttscore.database.dbQuery
 import com.ttscore.model.GameResult
 import com.ttscore.model.GameType
+import com.ttscore.scraper.clicktt.model.ParsedClickTTSet
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
@@ -12,6 +14,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.update
 import java.time.OffsetDateTime
@@ -20,21 +23,27 @@ import java.util.*
 object GameService {
     suspend fun gameExists(
         playerId: UUID,
+        opponentId: UUID?,
         playedAt: OffsetDateTime,
         competition: String,
     ): Boolean =
         dbQuery {
-            Games.select(Games.id)
-                .where {
-                    ((Games.homePlayer1Id eq playerId) or (Games.awayPlayer1Id eq playerId)) and
-                        (Games.playedAt eq playedAt) and
-                        (Games.competitionName eq competition)
-                }.count() > 0
+            val base =
+                ((Games.homePlayer1Id eq playerId) or (Games.awayPlayer1Id eq playerId)) and
+                    (Games.playedAt eq playedAt) and
+                    (Games.competitionName eq competition)
+            val condition =
+                if (opponentId != null) {
+                    base and ((Games.homePlayer1Id eq opponentId) or (Games.awayPlayer1Id eq opponentId))
+                } else {
+                    base
+                }
+            Games.select(Games.id).where(condition).count() > 0
         }
 
     /**
      * Returns true if a league game (matchId IS NOT NULL) already exists for the player on the
-     * given Swiss day â€” used to avoid inserting a duplicate tournament game entry when the
+     * given Swiss day — used to avoid inserting a duplicate tournament game entry when the
      * Elo-Protokoll lists a league game that has not been rated yet (eloDelta == null).
      */
     suspend fun leagueGameExists(
@@ -68,6 +77,7 @@ object GameService {
         opponentId: UUID?,
         dayStart: OffsetDateTime,
         eloDelta: Double,
+        competition: String? = null,
     ): Boolean =
         dbQuery {
             val dayEnd = dayStart.plusDays(1)
@@ -88,6 +98,7 @@ object GameService {
             val homeUpdate =
                 Games.update({ homeCondition }) {
                     it[Games.homePlayer1EloDelta] = eloDelta
+                    if (competition != null) it[Games.competitionName] = competition
                 }
             if (homeUpdate > 0) return@dbQuery true
 
@@ -107,6 +118,7 @@ object GameService {
             val awayUpdate =
                 Games.update({ awayCondition }) {
                     it[Games.awayPlayer1EloDelta] = eloDelta
+                    if (competition != null) it[Games.competitionName] = competition
                 }
             awayUpdate > 0
         }
@@ -119,6 +131,47 @@ object GameService {
                 .flatMap { listOfNotNull(it[Games.homePlayer1Id], it[Games.awayPlayer1Id]) }
                 .toSet()
         }
+
+    /** Updates home/away set totals on a tournament game row and returns its ID, or null if not found. */
+    suspend fun updateTournamentGameSets(
+        playerId: UUID,
+        opponentId: UUID,
+        dayStart: OffsetDateTime,
+        homeSets: Int,
+        awaySets: Int,
+    ): UUID? =
+        dbQuery {
+            val dayEnd = dayStart.plusDays(1)
+            val gameId =
+                Games.select(Games.id)
+                    .where {
+                        (Games.matchId.isNull()) and
+                            (Games.homePlayer1Id eq playerId) and
+                            (Games.awayPlayer1Id eq opponentId) and
+                            (Games.playedAt greaterEq dayStart) and
+                            (Games.playedAt less dayEnd) and
+                            (Games.homeSets.isNull())
+                    }.firstOrNull()?.get(Games.id) ?: return@dbQuery null
+            Games.update({ Games.id eq gameId }) {
+                it[Games.homeSets] = homeSets.toShort()
+                it[Games.awaySets] = awaySets.toShort()
+            }
+            gameId
+        }
+
+    suspend fun insertTournamentSets(
+        gameId: UUID,
+        sets: List<ParsedClickTTSet>,
+    ) = dbQuery {
+        for (set in sets) {
+            GameSets.insertIgnore {
+                it[GameSets.gameId] = gameId
+                it[GameSets.setNumber] = set.setNumber.toShort()
+                it[GameSets.homePoints] = set.homePoints.toShort()
+                it[GameSets.awayPoints] = set.awayPoints.toShort()
+            }
+        }
+    }
 
     suspend fun insertTournamentGame(
         playerId: UUID,

@@ -3,6 +3,7 @@
 import com.ttscore.model.GameResult
 import com.ttscore.model.GameType
 import com.ttscore.scraper.clicktt.model.ClickTTGame
+import com.ttscore.scraper.clicktt.model.ParsedTournamentGame
 import com.ttscore.service.GameService
 import com.ttscore.service.PlayerService
 import org.slf4j.LoggerFactory
@@ -27,7 +28,7 @@ object ClickTTSyncService {
     /** Syncs ELO and game history for all players with a click-tt ID. Intended for backfill. */
     suspend fun runPortraitBackfill(seasonId: UUID) {
         val players = PlayerService.getAllPlayersWithClickTtId()
-        logger.info("Portrait backfill starting â€” ${players.size} players with click-tt ID")
+        logger.info("Portrait backfill starting — ${players.size} players with click-tt ID")
 
         var successCount = 0
         var noEloCount = 0
@@ -45,7 +46,7 @@ object ClickTTSyncService {
                 if (result.elo == null) noEloCount++
                 if (index % 50 == 0) {
                     logger.info(
-                        "Portrait backfill progress: $index / ${players.size} â€” " +
+                        "Portrait backfill progress: $index / ${players.size} — " +
                             "$successCount ok, $noEloCount no-elo, $failCount failed, " +
                             "$tourneyInserts tournament inserts, $leagueUpdates league delta updates",
                     )
@@ -57,7 +58,7 @@ object ClickTTSyncService {
         }
 
         logger.info(
-            "Portrait backfill complete â€” $successCount ok, $noEloCount no-elo, $failCount failed, " +
+            "Portrait backfill complete — $successCount ok, $noEloCount no-elo, $failCount failed, " +
                 "$tourneyInserts tournament inserts, $leagueUpdates league delta updates",
         )
     }
@@ -71,7 +72,7 @@ object ClickTTSyncService {
         if (!ignoreCooldown) {
             val lastSync = syncCooldowns[playerId]
             if (lastSync != null && Instant.now().isBefore(lastSync.plus(COOLDOWN))) {
-                logger.debug("Skipping sync for player $playerId â€” within cooldown window")
+                logger.debug("Skipping sync for player $playerId — within cooldown window")
                 return
             }
         }
@@ -91,7 +92,7 @@ object ClickTTSyncService {
     ): SyncResult {
         val personId = PlayerService.getClickTtIdById(playerId)
         if (personId == null) {
-            logger.warn("Cannot sync player $playerId â€” no clickttId in database")
+            logger.warn("Cannot sync player $playerId — no clickttId in database")
             return SyncResult(null, 0, 0)
         }
 
@@ -103,7 +104,7 @@ object ClickTTSyncService {
                 ?.cleanWosid()
                 ?.takeIf { it.isNotBlank() && it != "#" }
 
-        if (eloUrl == null) logger.debug("  personId=$personId â€” no Elo-Protokoll tab found")
+        if (eloUrl == null) logger.debug("  personId=$personId — no Elo-Protokoll tab found")
 
         val eloHtml =
             if (eloUrl != null) {
@@ -111,7 +112,7 @@ object ClickTTSyncService {
                     client.fetchUrl(eloUrl)
                 } catch (e: Exception) {
                     logger.warn(
-                        "  personId=$personId â€” Elo-Protokoll fetch failed, ELO snapshot still saved: ${e.message}",
+                        "  personId=$personId — Elo-Protokoll fetch failed, ELO snapshot still saved: ${e.message}",
                     )
                     null
                 }
@@ -120,12 +121,12 @@ object ClickTTSyncService {
             }
 
         val portrait = parser.parsePlayerPortrait(portraitHtml, eloHtml, personId)
-        logger.debug("  personId=$personId â€” elo=${portrait.currentElo}, games=${portrait.games.size}")
+        logger.debug("  personId=$personId — elo=${portrait.currentElo}, games=${portrait.games.size}")
 
         if (portrait.currentElo != null) {
             PlayerService.saveBaseElo(playerId, seasonId, portrait.currentElo)
         } else {
-            logger.debug("  personId=$personId â€” no current ELO on portrait page")
+            logger.debug("  personId=$personId — no current ELO on portrait page")
         }
 
         val (tourneyInserts, leagueUpdates) =
@@ -134,6 +135,8 @@ object ClickTTSyncService {
             } else {
                 0 to 0
             }
+
+        updateTournamentSets(playerId, portraitHtml)
 
         return SyncResult(portrait.currentElo, tourneyInserts, leagueUpdates)
     }
@@ -157,18 +160,18 @@ object ClickTTSyncService {
 
             // First try to backfill the ELO delta on an existing league game row
             if (game.eloDelta != null) {
-                val updated = GameService.updateLeagueGameEloDelta(playerId, opponentId, playedAt, game.eloDelta)
+                val updated = GameService.updateLeagueGameEloDelta(playerId, opponentId, playedAt, game.eloDelta, game.competition)
                 if (updated) {
                     leagueUpdates++
                     continue
                 }
             } else if (GameService.leagueGameExists(playerId, opponentId, playedAt)) {
-                // League game exists but hasn't been rated yet â€” don't insert a spurious tournament record
+                // League game exists but hasn't been rated yet — don't insert a spurious tournament record
                 continue
             }
 
-            // No league game found â€” insert as tournament game if not already stored
-            if (!GameService.gameExists(playerId, playedAt, game.competition)) {
+            // No league game found — insert as tournament game if not already stored
+            if (!GameService.gameExists(playerId, opponentId, playedAt, game.competition)) {
                 GameService.insertTournamentGame(
                     playerId = playerId,
                     opponentId = opponentId,
@@ -183,6 +186,52 @@ object ClickTTSyncService {
         }
 
         return tourneyInserts to leagueUpdates
+    }
+
+    private suspend fun updateTournamentSets(
+        playerId: UUID,
+        portraitHtml: String,
+    ) {
+        val urls = parser.extractPlayerGameUrls(portraitHtml)
+        for (url in urls) {
+            try {
+                val html = client.fetchUrl(url.cleanWosid())
+                val isCup = url.contains("Cup", ignoreCase = true) && url.contains("mode=CHAMPIONSHIP")
+                val games = if (isCup) parser.parseCupPage(html) else parser.parseTournamentPage(html)
+                applyTournamentSets(playerId, games)
+            } catch (e: Exception) {
+                logger.warn("Tournament page fetch/parse failed for player $playerId: ${e.message}")
+            }
+        }
+    }
+
+    private suspend fun applyTournamentSets(
+        playerId: UUID,
+        games: List<ParsedTournamentGame>,
+    ) {
+        for (game in games) {
+            val opponentId =
+                if (game.opponentPersonId != null) {
+                    PlayerService.findPlayerIdByClickTtId(game.opponentPersonId)
+                } else {
+                    PlayerService.findPlayerIdByName(game.opponentName)
+                } ?: continue
+
+            val dayStart = game.date.atStartOfDay(swissZone).toOffsetDateTime()
+
+            val gameId =
+                GameService.updateTournamentGameSets(
+                    playerId = playerId,
+                    opponentId = opponentId,
+                    dayStart = dayStart,
+                    homeSets = game.homeSets,
+                    awaySets = game.awaySets,
+                ) ?: continue
+
+            if (game.sets.isNotEmpty()) {
+                GameService.insertTournamentSets(gameId, game.sets)
+            }
+        }
     }
 
     /**

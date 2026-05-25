@@ -38,7 +38,7 @@ fun Route.playerRoutes() {
 
             val shouldSync = player.licenceNr != null
             if (shouldSync) {
-                // Scoped to the application lifecycle â€” cancelled cleanly on shutdown
+                // Scoped to the application lifecycle — cancelled cleanly on shutdown
                 call.application.launch(Dispatchers.IO) {
                     try {
                         val currentSeasonId = SeasonService.getCurrentSeasonId()

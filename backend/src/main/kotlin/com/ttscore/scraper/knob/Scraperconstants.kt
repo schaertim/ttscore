@@ -2,7 +2,7 @@
 
 /**
  * Maps league names to their knob.ch rvid parameter.
- * STT has no rvid (null) â€” it is the default national league.
+ * STT has no rvid (null) — it is the default national league.
  * Used by both GroupScraper and MatchScraper.
  */
 val FEDERATION_RVIDS: Map<String, Int?> =

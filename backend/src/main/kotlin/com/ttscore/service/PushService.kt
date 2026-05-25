@@ -111,7 +111,7 @@ object PushService {
                     val notification = Notification(sub, payload)
                     webPushService.send(notification)
                 } catch (e: Exception) {
-                    logger.warn("Push failed for endpoint ${endpoint.take(40)}â€¦: ${e.message}")
+                    logger.warn("Push failed for endpoint ${endpoint.take(40)}…: ${e.message}")
                 }
             }
         }

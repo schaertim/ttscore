@@ -49,10 +49,12 @@ class MatchPollJob(
         logger.info("MatchPollJob: refreshing ${groups.size} groups with past-due matches")
 
         val newlyCompletedMatchIds = mutableSetOf<java.util.UUID>()
+        val groupsWithCompletions = mutableListOf<GroupRef>()
         for (group in groups) {
             try {
                 val completed = groupScraper.refreshGroupSchedule(group)
                 newlyCompletedMatchIds.addAll(completed)
+                if (completed.isNotEmpty()) groupsWithCompletions.add(group)
             } catch (e: Exception) {
                 logger.error("MatchPollJob: failed to refresh group ${group.clickttId}: ${e.message}")
             }
@@ -63,8 +65,17 @@ class MatchPollJob(
             return
         }
 
-        logger.info("MatchPollJob: ${newlyCompletedMatchIds.size} matches completed â€” scraping game details")
+        logger.info("MatchPollJob: ${newlyCompletedMatchIds.size} matches completed scraping game details")
         matchScraper.scrapeForMatches(newlyCompletedMatchIds)
+
+        logger.info("MatchPollJob: refreshing standings for ${groupsWithCompletions.size} groups")
+        for (group in groupsWithCompletions) {
+            try {
+                groupScraper.refreshGroupStandings(group)
+            } catch (e: Exception) {
+                logger.error("MatchPollJob: failed to refresh standings for group ${group.clickttId}: ${e.message}")
+            }
+        }
 
         // Send push notifications for newly completed matches
         sendMatchPushNotifications(newlyCompletedMatchIds)
@@ -85,7 +96,7 @@ class MatchPollJob(
         sendPlayerPushNotifications(playerIds)
 
         logger.info(
-            "MatchPollJob: complete â€” ${newlyCompletedMatchIds.size} new matches, ${playerIds.size} players synced",
+            "MatchPollJob: complete — ${newlyCompletedMatchIds.size} new matches, ${playerIds.size} players synced",
         )
     }
 
@@ -130,7 +141,7 @@ class MatchPollJob(
                 if (m.homeScore != null && m.awayScore != null) {
                     "${m.homeScore}:${m.awayScore}"
                 } else {
-                    "â€”:â€”"
+                    "—:—"
                 }
             val title = "$homeTeam vs $awayTeam"
             val body = "Result: $score"

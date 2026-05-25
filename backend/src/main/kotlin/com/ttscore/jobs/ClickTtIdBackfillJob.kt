@@ -21,22 +21,22 @@ class ClickTtIdBackfillJob(
         var totalClubs = 0
         var emptyPages = 0
 
-        // Wide range to cover all Swiss clubs â€” empty IDs are cheap (10 ms fetch, no extra delay)
+        // Wide range to cover all Swiss clubs — empty IDs are cheap (10 ms fetch, no extra delay)
         val clubIdRange = 32000..35000
 
         logger.info("ClickTtIdBackfillJob: scanning ${clubIdRange.count()} club IDs")
 
         for (clickttClubId in clubIdRange) {
             try {
-                // Gate on the MALE page â€” invalid club IDs won't have "Lizenzierte Spieler"
+                // Gate on the MALE page — invalid club IDs won't have "Lizenzierte Spieler"
                 val maleHtml = client.fetchClubMembersPage(clickttClubId, "MALE")
 
                 if (!maleHtml.contains("Lizenzierte Spieler")) {
                     emptyPages++
                     if (emptyPages % 200 == 0) {
-                        logger.info("  Scanned up to club ID $clickttClubId â€” $emptyPages empty so far")
+                        logger.info("  Scanned up to club ID $clickttClubId — $emptyPages empty so far")
                     }
-                    // No extra delay for empty IDs â€” the 10 ms in fetchWithRetry is sufficient
+                    // No extra delay for empty IDs — the 10 ms in fetchWithRetry is sufficient
                     continue
                 }
 
@@ -52,29 +52,29 @@ class ClickTtIdBackfillJob(
 
                 if (allMembers.isEmpty()) continue
 
-                // Phase A â€” match by licence number (primary key)
+                // Phase A — match by licence number (primary key)
                 PlayerService.updateClickTtDataBatch(allMembers)
                 totalPlayers += allMembers.size
 
                 val licences = allMembers.map { it.licence }
 
-                // Phase B + C â€” for members whose licence wasn't in our DB
+                // Phase B + C — for members whose licence wasn't in our DB
                 val matchedLicences = PlayerService.findLicencesInDb(licences)
                 val unmatched = allMembers.filter { it.licence !in matchedLicences }
 
                 if (unmatched.isNotEmpty()) {
-                    // Phase B â€” name + club fallback: links unmatched members to existing knob rows
+                    // Phase B — name + club fallback: links unmatched members to existing knob rows
                     if (clubName != null) {
                         PlayerService.matchAndLinkByNameAndClub(unmatched, clubName)
                     }
 
-                    // Phase C â€” insert any still-unmatched members as fresh rows.
+                    // Phase C — insert any still-unmatched members as fresh rows.
                     // INSERT IGNORE means members already linked by Phase B (their clicktt_id
                     // now lives on an existing row) are silently skipped.
                     PlayerService.insertUnmatchedClickTtMembers(unmatched)
 
                     logger.debug(
-                        "  Club ID $clickttClubId â€” ${unmatched.size} unmatched by licence," +
+                        "  Club ID $clickttClubId — ${unmatched.size} unmatched by licence," +
                             " ran name+club fallback + insert",
                     )
                 }
@@ -89,11 +89,11 @@ class ClickTtIdBackfillJob(
                     }
                     totalClubs++
                     logger.info(
-                        "  Club ID $clickttClubId â†’ '$clubName' â€” " +
+                        "  Club ID $clickttClubId → '$clubName' — " +
                             "${allMembers.size} players (${malePage.members.size}M/${femalePage.members.size}F)",
                     )
                 } else {
-                    logger.debug("  Club ID $clickttClubId ($clubName) â€” no matching club found in DB")
+                    logger.debug("  Club ID $clickttClubId ($clubName) — no matching club found in DB")
                 }
 
                 // Polite delay only for real clubs (2 requests already made)
@@ -103,6 +103,6 @@ class ClickTtIdBackfillJob(
             }
         }
 
-        logger.info("ClickTtIdBackfillJob complete â€” $totalPlayers players and $totalClubs clubs linked")
+        logger.info("ClickTtIdBackfillJob complete — $totalPlayers players and $totalClubs clubs linked")
     }
 }
