@@ -4,11 +4,11 @@
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import BackButton from '$lib/components/BackButton.svelte';
 	import { api, type Player, type FavoriteResponse, type FollowResponse } from '$lib/api';
 	import { StarIcon, BellRingingIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon } from 'phosphor-svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { _ } from 'svelte-i18n';
+	import { formatName } from '$lib/utils';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { page } from '$app/state';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
@@ -91,10 +91,9 @@
 
 <div class="space-y-6">
 	<header class="space-y-4">
-		<BackButton class="" />
 		<div>
-			<h1 class="mb-1.5 text-3xl leading-none font-black tracking-tighter">{$_("account.title")}</h1>
-			<p class="text-sm text-muted-foreground">{data.user?.email}</p>
+			<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">{$_("account.subtitle")}</p>
+			<h1 class="text-3xl leading-none font-black tracking-tighter">{$_("account.title")}</h1>
 		</div>
 	</header>
 
@@ -107,7 +106,7 @@
 					href="/players/{data.profile.homePlayerId}"
 					class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-accent"
 				>
-					<span class="font-semibold">{data.profile.homePlayerName ?? 'Unknown player'}</span>
+					<span class="font-semibold">{formatName(data.profile.homePlayerName) ?? 'Unknown player'}</span>
 					<form method="POST" action="?/removeHomePlayer" use:enhance>
 						<button
 							type="submit"
@@ -156,7 +155,7 @@
 									type="submit"
 									class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-accent"
 								>
-									<span class="font-medium">{player.fullName}</span>
+									<span class="font-medium">{formatName(player.fullName)}</span>
 									<span class="text-xs text-muted-foreground">{player.currentClubName ?? ''}</span>
 								</button>
 							</form>
@@ -166,6 +165,33 @@
 			</div>
 		{/if}
 	</section>
+
+	{#if !pushUnsupported}
+		<section class="space-y-3">
+			<SectionLabel label={$_("account.push_notifications")} icon={BellRingingIcon} />
+			<button
+				onclick={togglePush}
+				disabled={pushLoading || pushSubscribed === null}
+				class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent disabled:opacity-50"
+			>
+				<div class="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+					<span class="font-semibold">
+						{$_(pushSubscribed ? 'account.push_enabled' : 'account.push_disabled')}
+					</span>
+					<span class="text-xs text-muted-foreground">
+						{pushSubscribed
+							? $_('account.push_enabled_desc')
+							: $_('account.push_disabled_desc')}
+					</span>
+				</div>
+				<BellRingingIcon
+					size="20"
+					weight={pushSubscribed ? 'fill' : 'regular'}
+					class="m-1 shrink-0 text-muted-foreground"
+				/>
+			</button>
+		</section>
+	{/if}
 
 	{#if favoriteGroups.length > 0}
 		<section class="space-y-3">
@@ -179,7 +205,7 @@
 						>
 							<div class="flex min-w-0 items-center gap-3">
 								<group.icon size="18" class="shrink-0 text-muted-foreground" />
-								<span class="truncate font-semibold">{item.targetName}</span>
+								<span class="truncate font-semibold">{item.targetType === 'player' ? formatName(item.targetName) : item.targetName}</span>
 							</div>
 							<form method="POST" action="?/removeFavorite" use:enhance>
 								<input type="hidden" name="favoriteId" value={item.id} />
@@ -211,7 +237,7 @@
 						>
 							<div class="flex min-w-0 items-center gap-3">
 								<group.icon size="18" class="shrink-0 text-muted-foreground" />
-								<span class="truncate font-semibold">{item.targetName}</span>
+								<span class="truncate font-semibold">{item.targetType === 'player' ? formatName(item.targetName) : item.targetName}</span>
 							</div>
 							<form method="POST" action="?/removeNotification" use:enhance>
 								<input type="hidden" name="notifyId" value={item.id} />
@@ -245,33 +271,6 @@
 			{/if}
 		</button>
 	</section>
-
-	{#if !pushUnsupported}
-		<section class="space-y-3">
-			<SectionLabel label={$_("account.push_notifications")} icon={BellRingingIcon} />
-			<button
-				onclick={togglePush}
-				disabled={pushLoading || pushSubscribed === null}
-				class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent disabled:opacity-50"
-			>
-				<div class="flex flex-col items-start gap-0.5">
-					<span class="font-semibold">
-						{$_(pushSubscribed ? 'account.push_enabled' : 'account.push_disabled')}
-					</span>
-					<span class="text-xs text-muted-foreground">
-						{pushSubscribed
-							? $_('account.push_enabled_desc')
-							: $_('account.push_disabled_desc')}
-					</span>
-				</div>
-				<BellRingingIcon
-					size="20"
-					weight={pushSubscribed ? 'fill' : 'regular'}
-					class="ml-3 shrink-0 text-muted-foreground"
-				/>
-			</button>
-		</section>
-	{/if}
 
 	<LanguageSwitcher />
 

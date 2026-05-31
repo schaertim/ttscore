@@ -20,9 +20,16 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
         runLicenceScraper()
     }
 
-    /** Single-season backfill — useful for testing or catching up a specific season */
-    suspend fun runForSeason(season: String) {
-        groupScraper.run(listOf(season))
+    /**
+     * Single-season backfill — useful for testing or catching up a specific season.
+     * [federations] optionally restricts the group scrape to a subset (e.g. listOf("MTTV"));
+     * the match scraper is DB-driven so it naturally only processes whatever groups were inserted.
+     */
+    suspend fun runForSeason(
+        season: String,
+        federations: Collection<String>? = null,
+    ) {
+        groupScraper.run(listOf(season), federations)
         matchScraper.run()
         licenceScraper.run()
     }

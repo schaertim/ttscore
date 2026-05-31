@@ -32,18 +32,19 @@ fun Application.module() {
     configureAuthentication()
     configureRouting()
     configureCors()
-    runBackfill()
 }
 
 private fun Application.runBackfill() {
     val logger = LoggerFactory.getLogger("Backfill")
+    // Restrict the backfill to a single region to keep it fast while testing.
+    val federations = listOf("MTTV")
     launch {
         try {
-            logger.info("Backfill starting — knob 2024/2025")
-            BackfillScraper.create().runForSeason("2024/2025")
+            logger.info("Backfill starting — knob 2024/2025 (federations=$federations)")
+            BackfillScraper.create().runForSeason("2024/2025", federations)
 
-            logger.info("Backfill — clicktt 2025/2026")
-            ClickTTSeasonScraper.create().run("2025/2026")
+            logger.info("Backfill — clicktt 2025/2026 (federations=$federations)")
+            ClickTTSeasonScraper.create().run("2025/2026", federations)
 
             logger.info("Backfill — portrait sync (ELO + tournament games)")
             val seasonId = SeasonService.getCurrentSeasonId()

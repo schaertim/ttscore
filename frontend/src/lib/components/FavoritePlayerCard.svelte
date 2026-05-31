@@ -3,18 +3,23 @@
 	import { StarIcon } from 'phosphor-svelte';
 	import PlayerAvatar from './PlayerAvatar.svelte';
 	import ClassBadge from './ClassBadge.svelte';
+	import { formatName } from '$lib/utils';
 
 	interface Props {
 		id: string;
 		fullName: string;
-		klass?: string | null;
+		classification?: string | null;
 		favoriteId: string;
 		onunfavorite?: () => void;
 	}
 
-	let { id, fullName, klass, favoriteId, onunfavorite }: Props = $props();
+	let { id, fullName, classification, favoriteId, onunfavorite }: Props = $props();
 
-	const shortName = $derived(fullName.includes(' ') ? `${fullName.split(' ')[0][0]}. ${fullName.split(' ').slice(1).join(' ')}` : fullName);
+	const formatted = $derived(formatName(fullName));
+	// Abbreviate to "F. Lastname" for compact display
+	const shortName = $derived(formatted.includes(' ')
+		? `${formatted.split(' ')[0][0]}. ${formatted.split(' ').slice(1).join(' ')}`
+		: formatted);
 </script>
 
 <div class="relative w-32 shrink-0">
@@ -29,7 +34,7 @@
 			{shortName}
 		</p>
 
-		<ClassBadge {klass} />
+		<ClassBadge {classification} />
 	</a>
 
 	<form

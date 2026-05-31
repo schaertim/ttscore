@@ -170,7 +170,7 @@
 		{/if}
 	</Tabs.Content>
 
-	<Tabs.Content value="results" class="mt-4 space-y-2">
+	<Tabs.Content value="results" class="mt-4 space-y-3.5">
 		{#if completedMatches.length === 0}
 			<p class="py-12 text-center text-sm text-muted-foreground">{$_("group.no_results")}</p>
 		{:else}
@@ -180,7 +180,7 @@
 		{/if}
 	</Tabs.Content>
 
-	<Tabs.Content value="schedule" class="mt-4 space-y-2">
+	<Tabs.Content value="schedule" class="mt-4 space-y-3.5">
 		{#if scheduledMatches.length === 0}
 			<p class="py-12 text-center text-sm text-muted-foreground">{$_("group.no_schedule")}</p>
 		{:else}

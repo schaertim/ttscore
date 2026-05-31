@@ -17,7 +17,7 @@
 </script>
 
 <div class="space-y-6">
-	<!-- Hero: greeting + klass badge + ELO + sparkline -->
+	<!-- Hero: greeting + class badge + ELO + sparkline -->
 	<HomeHero {player} recentMatches={streamed.recentMatches} />
 
 	<HomeQuicklinks {player} leagueContext={streamed.leagueContext} />

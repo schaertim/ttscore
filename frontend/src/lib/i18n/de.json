@@ -65,7 +65,9 @@
     "wins": "Siege",
     "losses": "Niederlagen",
     "win_pct": "Siegquote",
-    "show_full_history": "Vollständige Historie"
+    "show_full_history": "Vollständige Historie",
+    "games_count": "{count, number} {count, plural, one {Spiel} other {Spiele}}",
+    "no_games": "Keine Spiele gefunden."
   },
   "feed": {
     "won": "Gewonnen",
@@ -73,7 +75,9 @@
     "drew": "Unentschieden",
     "promoted": "Aufgestiegen",
     "relegated": "Abgestiegen",
-    "vs": "vs."
+    "vs": "vs.",
+    "latest": "Neueste",
+    "unknown_date": "Unbekanntes Datum"
   },
   "group": {
     "standings": "Tabelle",
@@ -91,14 +95,21 @@
     "round_label": "Rd. {round}",
     "tbd": "Offen"
   },
+  "match": {
+    "game_label": "Spiel #{number}",
+    "singles": "Einzel",
+    "doubles": "Doppel"
+  },
   "team": {
     "record": "Bilanz",
     "last_5": "Letzte 5",
     "roster": "Teamkader",
-    "match_history": "Spielhistorie"
+    "match_history": "Spielhistorie",
+    "games": "Spiele"
   },
   "account": {
     "title": "Konto",
+    "subtitle": "Profil & Einstellungen",
     "my_player": "Mein Spieler",
     "search_placeholder": "Spieler suchen…",
     "searching": "Suche läuft…",
@@ -134,12 +145,14 @@
     "title": "Suche",
     "placeholder": "Spieler suchen…",
     "favourites": "Favoriten",
+    "recently_viewed": "Zuletzt angesehen",
     "results_for": "Ergebnisse für \"{query}\"",
     "found": "({count} gefunden)",
     "no_results": "Keine Spieler gefunden."
   },
   "common": {
     "remove": "Entfernen",
+    "back": "Zurück",
     "unknown_player": "Unbekannter Spieler",
     "leagues_label": "Ligen",
     "teams_label": "Teams",

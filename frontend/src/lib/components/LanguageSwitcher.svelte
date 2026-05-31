@@ -5,7 +5,7 @@
 
 	const languages: { code: string; label: string; native: string }[] = [
 		{ code: 'de', label: 'German', native: 'Deutsch' },
-		{ code: 'fr', label: 'French', native: 'FranÃ§ais' },
+		{ code: 'fr', label: 'French', native: 'Français' },
 		{ code: 'it', label: 'Italian', native: 'Italiano' },
 		{ code: 'en', label: 'English', native: 'English' }
 	];
@@ -19,7 +19,7 @@
 		});
 		// Also mirror in localStorage for browser-side detection
 		localStorage.setItem('ttscore_locale', code);
-		// Update the reactive store â€” components re-render immediately
+		// Update the reactive store — components re-render immediately
 		locale.set(code);
 	}
 </script>
@@ -35,7 +35,7 @@
 			>
 				<span class="font-semibold">{lang.native}</span>
 				{#if active}
-					<span class="text-xs font-bold text-primary">âœ“</span>
+					<span class=”text-xs font-bold text-primary”>✓</span>
 				{/if}
 			</button>
 		{/each}

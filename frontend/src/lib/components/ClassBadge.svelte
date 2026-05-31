@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { klassColors } from '$lib/utils';
+	import { classificationColors } from '$lib/utils';
 
-	let { klass }: { klass: string | null | undefined } = $props();
+	let { classification }: { classification: string | null | undefined } = $props();
 </script>
 
-{#if klass}
+{#if classification}
 	<span
-		class="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-black tracking-wide ring-1 ring-current/30 {klassColors(
-			klass
+		class="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-black tracking-wide ring-1 ring-current/30 {classificationColors(
+			classification
 		)}"
 	>
-		{klass}
+		{classification}
 	</span>
 {/if}

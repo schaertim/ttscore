@@ -41,4 +41,7 @@ data class ParsedTournamentGame(
     val homeSets: Int,
     val awaySets: Int,
     val sets: List<ParsedClickTTSet> = emptyList(),
+    /** Tournament name (TOURNAMENT page) or cup round (Cup page). Used as a fallback competition
+     *  label until the Elo-Protokoll overwrites it for rated games. */
+    val competition: String? = null,
 )

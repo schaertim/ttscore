@@ -12,10 +12,18 @@
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
-	import { StarIcon, ChartLineIcon, ClockCounterClockwiseIcon, UserCirclePlusIcon } from 'phosphor-svelte';
+	import {
+		StarIcon,
+		ChartLineIcon,
+		ClockCounterClockwiseIcon,
+		UserCirclePlusIcon,
+		TrendUpIcon,
+		TrendDownIcon
+	} from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { page } from '$app/state';
 	import { _, locale } from 'svelte-i18n';
+	import { classificationRank, formatName } from '$lib/utils';
 	let { data }: { data: PageData } = $props();
 
 	let settingHomePlayer = $state(false);
@@ -25,11 +33,11 @@
 	let notifying = $state(data.notifying);
 	let notifyId = $state(data.notifyId);
 
-	function klassStroke(klass: string | null | undefined): string {
-		if (!klass) return 'var(--color-primary)';
-		const letter = klass[0].toLowerCase();
+	function classificationStroke(classification: string | null | undefined): string {
+		if (!classification) return 'var(--color-primary)';
+		const letter = classification[0].toLowerCase();
 		return ['a', 'b', 'c', 'd', 'e'].includes(letter)
-			? `var(--klass-${letter})`
+			? `var(--class-${letter})`
 			: 'var(--color-primary)';
 	}
 </script>
@@ -47,7 +55,7 @@
 		<div class="flex items-start justify-between gap-4">
 			<div class="min-w-0">
 				<h1 class="text-3xl mb-1.5 leading-none font-black tracking-tighter wrap-break-word">
-					{data.player.fullName}
+					{formatName(data.player.fullName)}
 				</h1>
 				<p class="text-sm text-muted-foreground">
 					{data.player.currentClubName ?? 'No Club'}
@@ -56,13 +64,48 @@
 
 			<div class="flex shrink-0 flex-col items-end gap-1.5">
 				{#if data.player.currentElo}
-					<span class="text-4xl leading-none font-black tabular-nums">{data.player.currentElo}</span
-					>
-					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
-						>ELO</span
-					>
+					{@const displayElo = data.player.liveElo ?? data.player.currentElo}
+					{@const pendingDelta =
+						data.player.liveElo != null ? data.player.liveElo - data.player.currentElo : 0}
+					<span class="text-4xl leading-none font-black tabular-nums">{displayElo}</span>
+					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+						ELO
+					</span>
+					{#if pendingDelta !== 0}
+						<span
+							class="flex items-center gap-0.5 text-[10px] font-bold tabular-nums {pendingDelta > 0
+								? 'text-win'
+								: 'text-loss'}"
+						>
+							{#if pendingDelta > 0}
+								<TrendUpIcon size={11} weight="bold" />
+							{:else}
+								<TrendDownIcon size={11} weight="bold" />
+							{/if}
+							{pendingDelta > 0 ? '+' : ''}{pendingDelta}
+						</span>
+					{/if}
 				{/if}
-				<ClassBadge klass={data.player.klass} />
+				<ClassBadge classification={data.player.classification} />
+				{#if data.player.liveClassification && data.player.liveClassification !== data.player.classification}
+					{@const official = data.player.classification}
+					{@const live = data.player.liveClassification}
+					{@const trendingUp = official ? classificationRank(live) > classificationRank(official) : null}
+					<span
+						class="flex items-center gap-0.5 text-[10px] font-bold {trendingUp === null
+							? 'text-muted-foreground'
+							: trendingUp
+								? 'text-win'
+								: 'text-loss'}"
+					>
+						{#if trendingUp === true}
+							<TrendUpIcon size={11} weight="bold" />
+						{:else if trendingUp === false}
+							<TrendDownIcon size={11} weight="bold" />
+						{/if}
+						{live}
+					</span>
+				{/if}
 			</div>
 		</div>
 	</header>
@@ -129,7 +172,7 @@
 						date: new Date(e.recordedAt),
 						value: e.eloValue
 					}))}
-					{@const color = klassStroke(data.player.klass)}
+					{@const color = classificationStroke(data.player.classification)}
 					{@const chartConfig = { value: { label: 'ELO', color } } satisfies Chart.ChartConfig}
 					<div class="h-52 p-4">
 						<Chart.Container config={chartConfig} class="aspect-auto h-full">
@@ -219,7 +262,7 @@
 			{#if matches.length === 0}
 				<p class="py-8 text-center text-sm text-muted-foreground">{$_("player.no_matches")}</p>
 			{:else}
-				<div class="space-y-4">
+				<div class="space-y-3.5">
 					{#each matches.slice(0, 3) as game (game.gameId)}
 						<GameCard mode="player" {game} />
 					{/each}

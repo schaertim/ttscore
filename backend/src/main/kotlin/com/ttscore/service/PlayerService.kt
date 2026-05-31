@@ -9,6 +9,7 @@ import com.ttscore.util.toUuidOrNull
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.util.*
@@ -22,12 +23,13 @@ object PlayerService {
                     .where { Players.id eq uuid }
                     .firstOrNull() ?: return@dbQuery null
 
-            val seasonData =
+            val currentClubName =
                 (PlayerSeasons innerJoin Teams innerJoin Clubs innerJoin Seasons)
-                    .select(PlayerSeasons.klass, Clubs.name)
+                    .select(Clubs.name)
                     .where { PlayerSeasons.playerId eq uuid }
                     .orderBy(Seasons.name to SortOrder.DESC)
                     .firstOrNull()
+                    ?.get(Clubs.name)
 
             val currentElo =
                 PlayerElos
@@ -38,9 +40,10 @@ object PlayerService {
                     ?.get(PlayerElos.eloValue)
 
             playerRow.toPlayerResponse(
-                currentClubName = seasonData?.get(Clubs.name),
-                klass = seasonData?.get(PlayerSeasons.klass),
+                currentClubName = currentClubName,
+                classification = ClassificationService.currentClasses(listOf(uuid))[uuid],
                 currentElo = currentElo,
+                liveElo = LiveEloService.liveEloFor(uuid, currentElo),
             )
         }
     }
@@ -121,22 +124,40 @@ object PlayerService {
                             if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
                         }.toSet()
 
-                    val opponentKlassByPlayerId: Map<UUID, String?> =
-                        if (opponentIds.isEmpty()) {
-                            emptyMap()
-                        } else {
-                            (PlayerSeasons innerJoin Seasons)
-                                .select(PlayerSeasons.playerId, PlayerSeasons.klass)
-                                .where { PlayerSeasons.playerId inList opponentIds }
-                                .orderBy(Seasons.name to SortOrder.DESC)
-                                .groupBy { it[PlayerSeasons.playerId] }
-                                .mapValues { (_, seasonRows) -> seasonRows.first()[PlayerSeasons.klass] }
-                        }
+                    // Opponent class as it was on each game's date (not the current class).
+                    val seasonNames =
+                        rows.mapNotNull { row ->
+                            row[Games.playedAt]?.let {
+                                ClassificationService.seasonNameOf(ClassificationService.localDateOf(it))
+                            }
+                        }.toSet()
+                    val opponentBadges = ClassificationService.classBadges(opponentIds, seasonNames)
+
+                    // Base ELOs for computing provisional deltas of not-yet-rated games.
+                    val baseElos = LiveEloService.baseElos(opponentIds + uuid)
+                    val playerBase = baseElos[uuid]
 
                     rows.map { row ->
                         val isHome = row[Games.homePlayer1Id] == uuid
                         val gameId = row[Games.id]
                         val opponentId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
+                        val gameResult = row[Games.result]
+                        val officialDelta =
+                            if (isHome) row[Games.homePlayer1EloDelta] else row[Games.awayPlayer1EloDelta]
+                        val opponentBase = opponentId?.let { baseElos[it] }
+                        // Not officially rated yet, but recent + computable → provisional estimate.
+                        val isPending =
+                            officialDelta == null &&
+                                gameResult != GameResult.NOT_PLAYED &&
+                                LiveEloService.isWithinPendingWindow(row[Games.playedAt]) &&
+                                playerBase != null && opponentBase != null
+                        val eloDelta =
+                            officialDelta
+                                ?: if (isPending) {
+                                    LiveEloService.provisionalDelta(playerBase, opponentBase, isHome, gameResult)
+                                } else {
+                                    null
+                                }
                         PlayerGameResponse(
                             matchId = row.getOrNull(Matches.id)?.toString(),
                             gameId = gameId.toString(),
@@ -156,16 +177,21 @@ object PlayerService {
                                 } else {
                                     row[homePlayer[Players.fullName]]
                                 },
-                            opponentKlass = opponentId?.let { opponentKlassByPlayerId[it] },
+                            opponentClassification =
+                                row[Games.playedAt]?.let { playedAt ->
+                                    opponentId?.let {
+                                        ClassificationService.classOf(
+                                            opponentBadges,
+                                            it,
+                                            ClassificationService.localDateOf(playedAt),
+                                        )
+                                    }
+                                },
                             homeSets = row[Games.homeSets]?.toInt(),
                             awaySets = row[Games.awaySets]?.toInt(),
-                            result = row[Games.result],
-                            eloDelta =
-                                if (isHome) {
-                                    row[Games.homePlayer1EloDelta]
-                                } else {
-                                    row[Games.awayPlayer1EloDelta]
-                                },
+                            result = gameResult,
+                            eloDelta = eloDelta,
+                            eloDeltaProvisional = isPending,
                             sets =
                                 setsByGame[gameId]?.map { s ->
                                     SetResponse(
@@ -183,15 +209,19 @@ object PlayerService {
     suspend fun getClassHistory(playerId: String): List<ClassHistoryEntryResponse>? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
-            (PlayerSeasons innerJoin Seasons)
-                .select(PlayerSeasons.klass, Seasons.name)
-                .where { PlayerSeasons.playerId eq uuid }
+            (PlayerClassifications innerJoin Seasons)
+                .select(Seasons.name, PlayerClassifications.firstHalfClass, PlayerClassifications.secondHalfClass)
+                .where { PlayerClassifications.playerId eq uuid }
                 .orderBy(Seasons.name to SortOrder.DESC)
                 .limit(5)
                 .mapNotNull { row ->
-                    val klass = row[PlayerSeasons.klass] ?: return@mapNotNull null
+                    // One entry per season — the latest known half (second falls back to first).
+                    val classification =
+                        row[PlayerClassifications.secondHalfClass]
+                            ?: row[PlayerClassifications.firstHalfClass]
+                            ?: return@mapNotNull null
                     ClassHistoryEntryResponse(
-                        klass = klass,
+                        classification = classification,
                         seasonName = row[Seasons.name],
                     )
                 }
@@ -309,17 +339,26 @@ object PlayerService {
         if (name.length < 3) return null
 
         return dbQuery {
-            val pattern = LikePattern("%${name.lowercase()}%")
+            val tokens = name.trim().lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }
+
+            // DB stores "Lastname Firstname". Match every token independently (AND) so that both
+            // "Tim Schär" and "Schär Tim" find the same player — regardless of the order typed and
+            // regardless of whether each token is a full word or a partial prefix ("tim s" → finds
+            // "Schär Tim" because "schär tim" contains both "tim" and "s" somewhere in the string).
+            val nameCondition: Op<Boolean> =
+                tokens
+                    .map<String, Op<Boolean>> { Players.fullName.lowerCase() like LikePattern("%$it%") }
+                    .reduce { acc, op -> acc and op }
 
             val total =
                 Players.select(Players.id)
-                    .where { Players.fullName.lowerCase() like pattern }
+                    .where { nameCondition }
                     .count()
 
             // Step 1 — fetch paged core player rows
             val basePlayers =
                 Players.select(Players.id, Players.fullName, Players.licenceNr)
-                    .where { Players.fullName.lowerCase() like pattern }
+                    .where { nameCondition }
                     .orderBy(Players.fullName to SortOrder.ASC)
                     .limit(size).offset(start = (page * size).toLong())
                     .toList()
@@ -330,23 +369,25 @@ object PlayerService {
                 return@dbQuery PagedResponse(emptyList(), page, size, total)
             }
 
-            // Step 2 — fetch club/klass for found players, picking the most recent season
-            val playerStats =
+            // Step 2 — current club (most recent season) and current class for the found players
+            val clubByPlayer =
                 (PlayerSeasons innerJoin Teams innerJoin Clubs innerJoin Seasons)
-                    .select(PlayerSeasons.playerId, PlayerSeasons.klass, Clubs.name)
+                    .select(PlayerSeasons.playerId, Clubs.name)
                     .where { PlayerSeasons.playerId inList playerIds }
                     .orderBy(Seasons.name to SortOrder.DESC)
                     .toList()
                     .groupBy { it[PlayerSeasons.playerId] }
-                    .mapValues { it.value.first() }
+                    .mapValues { it.value.first()[Clubs.name] }
+
+            val classByPlayer = ClassificationService.currentClasses(playerIds)
 
             // Step 3 — merge results
             val items =
                 basePlayers.map { row ->
-                    val stats = playerStats[row[Players.id]]
+                    val id = row[Players.id]
                     row.toPlayerResponse(
-                        currentClubName = stats?.get(Clubs.name),
-                        klass = stats?.get(PlayerSeasons.klass),
+                        currentClubName = clubByPlayer[id],
+                        classification = classByPlayer[id],
                     )
                 }
 
@@ -578,16 +619,20 @@ object PlayerService {
 
     private fun ResultRow.toPlayerResponse(
         currentClubName: String? = null,
-        klass: String? = null,
+        classification: String? = null,
         currentElo: Int? = null,
+        liveElo: Int? = null,
         isSyncing: Boolean = false,
     ) = PlayerResponse(
         id = this[Players.id].toString(),
         fullName = this[Players.fullName],
         licenceNr = this[Players.licenceNr],
         currentClubName = currentClubName,
-        klass = klass,
+        classification = classification,
+        // Live class reflects the up-to-date ELO when we have it, else the official one.
+        liveClassification = (liveElo ?: currentElo)?.let { ClassificationService.fromElo(it) },
         currentElo = currentElo,
+        liveElo = liveElo,
         isSyncing = isSyncing,
     )
 }

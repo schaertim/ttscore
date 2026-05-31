@@ -1,6 +1,7 @@
 import type { FavoriteResponse, Match, PlayerGame } from '$lib/api';
 import type { FeedItem } from '$lib/components/home/feed-types';
 import { api } from '$lib/api';
+import { classificationRank, formatName } from '$lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -13,12 +14,6 @@ export type ResolvedEvent = {
 	sortKey: string; // ISO date string; '9999' for undated (class changes)
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function klassRank(klass: string): number {
-	return parseInt(klass.slice(1)) || 0;
-}
-
 // ── Per-entity event fetchers ─────────────────────────────────────────────────
 
 async function fetchPlayerEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]> {
@@ -30,14 +25,17 @@ async function fetchPlayerEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]
 	const events: ResolvedEvent[] = [];
 
 	// Class change (placed at top of feed, no specific date)
-	if (history.length >= 2 && history[0].klass !== history[1].klass) {
-		const direction = klassRank(history[0].klass) > klassRank(history[1].klass) ? 'UP' : 'DOWN';
+	if (history.length >= 2 && history[0].classification !== history[1].classification) {
+		const direction =
+			classificationRank(history[0].classification) > classificationRank(history[1].classification)
+				? 'UP'
+				: 'DOWN';
 		events.push({
 			key: `${fav.id}-class`,
 			entityType: 'player',
-			entityName: fav.targetName,
+			entityName: formatName(fav.targetName),
 			entityHref: `/players/${fav.targetId}`,
-			item: { kind: 'class_change', direction, from: history[1].klass, to: history[0].klass },
+			item: { kind: 'class_change', direction, from: history[1].classification, to: history[0].classification },
 			sortKey: '9999'
 		});
 	}
@@ -68,7 +66,7 @@ async function fetchPlayerEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]
 		events.push({
 			key: `${fav.id}-match-${matchId}`,
 			entityType: 'player',
-			entityName: fav.targetName,
+			entityName: formatName(fav.targetName),
 			entityHref: `/matches/${matchId}`,
 			item: {
 				kind: 'player_match',

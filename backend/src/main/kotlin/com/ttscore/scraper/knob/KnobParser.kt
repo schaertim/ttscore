@@ -420,6 +420,12 @@ class KnobParser {
                 awayPlayer1Klass = null
             }
 
+            // A team fielding only two players produces "w.o." forfeit rows where one side is an
+            // empty player placeholder (<a href="...gid=&...">[  ]</a>): a real link, but with no
+            // gid and no name. These still count toward the match score but are not actual games,
+            // so we skip them rather than inserting a phantom game into the history.
+            if (homeName1 == null || awayName1 == null) continue
+
             // Cells 3..7 hold individual set scores (e.g. "11:8") when available.
             // When unavailable they collapse into a single colspan=5 td — parseSetScores
             // breaks early on blank/non-score text and returns an empty list.

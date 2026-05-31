@@ -49,14 +49,14 @@
 	--radius-3xl: calc(var(--radius) * 2.2);
 	--radius-4xl: calc(var(--radius) * 2.6);
 
-	/* TTFeed additions → Tailwind classes: bg-win, text-win, bg-klass-b etc. */
+	/* TTFeed additions → Tailwind classes: bg-win, text-win, bg-class-b etc. */
 	--color-win: var(--win);
 	--color-loss: var(--loss);
 
-	--color-klass-d: var(--klass-d);
-	--color-klass-c: var(--klass-c);
-	--color-klass-b: var(--klass-b);
-	--color-klass-a: var(--klass-a);
+	--color-class-d: var(--class-d);
+	--color-class-c: var(--class-c);
+	--color-class-b: var(--class-b);
+	--color-class-a: var(--class-a);
 }
 
 :root {
@@ -94,16 +94,16 @@
 	--sidebar-ring: oklch(0.705 0.015 286.067);
 
 	/* ── TTFeed additions ─────────────────────────────────────
-       win/loss for match results, klass-* for player tiers.
+       win/loss for match results, class-* for player tiers.
        ──────────────────────────────────────────────────────── */
 
 	--win: oklch(62.7% 0.194 149.214); /* green-600 */
 	--loss: oklch(57.7% 0.245 27.325); /* red-600 */
 
-	--klass-d: oklch(44.6% 0.043 257.281); /* slate-600 */
-	--klass-c: oklch(54.6% 0.245 262.881); /* blue-600 */
-	--klass-b: oklch(66.6% 0.179 58.318); /* amber-600 */
-	--klass-a: oklch(54.1% 0.281 293.009); /* violet-600 */
+	--class-d: oklch(44.6% 0.043 257.281); /* slate-600 */
+	--class-c: oklch(54.6% 0.245 262.881); /* blue-600 */
+	--class-b: oklch(66.6% 0.179 58.318); /* amber-600 */
+	--class-a: oklch(54.1% 0.281 293.009); /* violet-600 */
 }
 
 .dark {
@@ -139,11 +139,11 @@
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.552 0.016 285.938);
 
-	/* klass dark overrides */
-	--klass-d: oklch(70.4% 0.04 256.788); /* slate-400 */
-	--klass-c: oklch(70.7% 0.165 254.624); /* blue-400 */
-	--klass-b: oklch(82.8% 0.189 84.429); /* amber-400 */
-	--klass-a: oklch(60.6% 0.25 292.717); /* violet-400 */
+	/* class dark overrides */
+	--class-d: oklch(70.4% 0.04 256.788); /* slate-400 */
+	--class-c: oklch(70.7% 0.165 254.624); /* blue-400 */
+	--class-b: oklch(82.8% 0.189 84.429); /* amber-400 */
+	--class-a: oklch(60.6% 0.25 292.717); /* violet-400 */
 }
 
 @layer base {

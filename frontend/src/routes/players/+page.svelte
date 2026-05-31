@@ -5,12 +5,15 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { api } from '$lib/api';
 	import type { Player, PagedResponse } from '$lib/api';
-	import { CaretLeftIcon, CaretRightIcon, MagnifyingGlassIcon, StarIcon } from 'phosphor-svelte';
+	import { CaretLeftIcon, CaretRightIcon, ClockIcon, MagnifyingGlassIcon, StarIcon } from 'phosphor-svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import FavoritePlayerCard from '$lib/components/FavoritePlayerCard.svelte';
+	import RecentPlayerCard from '$lib/components/RecentPlayerCard.svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { _ } from 'svelte-i18n';
+	import { formatName } from '$lib/utils';
+	import { getRecentPlayers, addRecentPlayer, type RecentPlayer } from '$lib/recentPlayers';
 
 	let { data }: { data: PageData } = $props();
 
@@ -19,6 +22,11 @@
 	let currentPage = $state(0);
 	let response = $state<PagedResponse<Player> | null>(null);
 	let favoritePlayers = $state([...data.favoritePlayers]);
+	let recentPlayers = $state<RecentPlayer[]>([]);
+
+	$effect(() => {
+		recentPlayers = getRecentPlayers();
+	});
 
 	const PAGE_SIZE = 20;
 
@@ -55,7 +63,10 @@
 	});
 
 	const totalPages = $derived(response ? Math.ceil(response.total / PAGE_SIZE) : 0);
+	const favoriteIds = $derived(new Set(favoritePlayers.map((p) => p.id)));
+	const filteredRecents = $derived(recentPlayers.filter((p) => !favoriteIds.has(p.id)));
 	const showFavorites = $derived(favoritePlayers.length > 0 && searchQuery.length < 3);
+	const showRecents = $derived(filteredRecents.length > 0 && searchQuery.length < 3);
 </script>
 
 <div class="space-y-6">
@@ -78,6 +89,24 @@
 		/>
 	</div>
 
+	{#if showRecents}
+		<section class="space-y-3">
+			<SectionLabel label={$_('search.recently_viewed')} icon={ClockIcon} />
+			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
+				{#each filteredRecents as player (player.id)}
+					<RecentPlayerCard
+						id={player.id}
+						fullName={player.fullName}
+						classification={player.classification}
+						onremove={() => {
+							recentPlayers = recentPlayers.filter((p) => p.id !== player.id);
+						}}
+					/>
+				{/each}
+			</div>
+		</section>
+	{/if}
+
 	{#if showFavorites}
 		<section class="space-y-3">
 			<SectionLabel label={$_('search.favourites')} icon={StarIcon} />
@@ -86,7 +115,7 @@
 					<FavoritePlayerCard
 						id={player.id}
 						fullName={player.fullName}
-						klass={player.klass}
+						classification={player.classification}
 						favoriteId={player.favoriteId}
 						onunfavorite={() => {
 							favoritePlayers = favoritePlayers.filter((p) => p.id !== player.id);
@@ -128,18 +157,24 @@
 					{#each response.items as player (player.id)}
 						<a
 							href="/players/{player.id}"
+							onclick={() => addRecentPlayer({
+								id: player.id,
+								fullName: player.fullName,
+								classification: player.classification ?? null,
+								currentClubName: player.currentClubName ?? null
+							})}
 							class="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 						>
 							<PlayerAvatar fullName={player.fullName} size="md" />
 
 							<div class="min-w-0 flex-1">
-								<p class="truncate text-sm font-semibold">{player.fullName}</p>
+								<p class="truncate text-sm font-semibold">{formatName(player.fullName)}</p>
 								<p class="truncate text-[10px] tracking-wide text-muted-foreground">
 									{player.currentClubName ?? '-'}
 								</p>
 							</div>
 
-							<ClassBadge klass={player.klass} />
+							<ClassBadge classification={player.classification} />
 						</a>
 					{/each}
 				</div>

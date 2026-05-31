@@ -65,7 +65,9 @@
     "wins": "Vittorie",
     "losses": "Sconfitte",
     "win_pct": "% vittorie",
-    "show_full_history": "Mostra storico completo"
+    "show_full_history": "Mostra storico completo",
+    "games_count": "{count, number} {count, plural, one {Partita} other {Partite}}",
+    "no_games": "Nessuna partita trovata."
   },
   "feed": {
     "won": "Vinto",
@@ -73,7 +75,9 @@
     "drew": "Pareggiato",
     "promoted": "Promosso",
     "relegated": "Retrocesso",
-    "vs": "vs."
+    "vs": "vs.",
+    "latest": "Recenti",
+    "unknown_date": "Data sconosciuta"
   },
   "group": {
     "standings": "Classifica",
@@ -91,14 +95,21 @@
     "round_label": "G {round}",
     "tbd": "Da definire"
   },
+  "match": {
+    "game_label": "Partita #{number}",
+    "singles": "Singolare",
+    "doubles": "Doppio"
+  },
   "team": {
     "record": "Bilancio",
     "last_5": "Ultimi 5",
     "roster": "Rosa",
-    "match_history": "Storico partite"
+    "match_history": "Storico partite",
+    "games": "Partite"
   },
   "account": {
     "title": "Account",
+    "subtitle": "Profilo & Impostazioni",
     "my_player": "Il mio giocatore",
     "search_placeholder": "Cerca il tuo giocatore…",
     "searching": "Ricerca…",
@@ -134,12 +145,14 @@
     "title": "Ricerca",
     "placeholder": "Cerca giocatori…",
     "favourites": "Preferiti",
+    "recently_viewed": "Visualizzati di recente",
     "results_for": "Risultati per \"{query}\"",
     "found": "({count} trovati)",
     "no_results": "Nessun giocatore trovato."
   },
   "common": {
     "remove": "Rimuovi",
+    "back": "Indietro",
     "unknown_player": "Giocatore sconosciuto",
     "leagues_label": "Leghe",
     "teams_label": "Squadre",

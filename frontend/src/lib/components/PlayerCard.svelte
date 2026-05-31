@@ -1,16 +1,18 @@
 ﻿<script lang="ts">
 	import PlayerAvatar from './PlayerAvatar.svelte';
 	import ClassBadge from './ClassBadge.svelte';
+	import { formatName } from '$lib/utils';
+	import { _ } from 'svelte-i18n';
 
 	interface Props {
 		id: string;
 		fullName: string;
-		klass?: string | null;
+		classification?: string | null;
 		wins?: number;
 		losses?: number;
 	}
 
-	let { id, fullName, klass, wins, losses }: Props = $props();
+	let { id, fullName, classification, wins, losses }: Props = $props();
 </script>
 
 <a
@@ -20,13 +22,13 @@
 	<PlayerAvatar {fullName} size="md" />
 
 	<div class="min-w-0 flex-1">
-		<p class="truncate text-sm font-semibold">{fullName}</p>
-		<ClassBadge {klass} />
+		<p class="truncate text-sm font-semibold">{formatName(fullName)}</p>
+		<ClassBadge {classification} />
 	</div>
 
 	{#if wins !== undefined && losses !== undefined}
 		<div class="shrink-0 text-right">
-			<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">Games</p>
+			<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">{$_('team.games')}</p>
 			<p class="text-sm font-black text-foreground tabular-nums">{wins}:{losses}</p>
 		</div>
 	{/if}

@@ -3,6 +3,7 @@
 import com.ttscore.database.*
 import com.ttscore.model.MatchStatus
 import com.ttscore.scraper.clicktt.ClickTTGroupScraper.Companion.toChampionship
+import com.ttscore.service.ClassificationService
 import com.ttscore.util.clickTtNameToDb
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -114,13 +115,41 @@ class ClickTTMatchScraper(
 
             for (game in detail.games) {
                 val homePlayer1Id =
-                    upsertPlayer(game.homePersonId, game.homeName, game.homeKlass, match.homeTeamId, seasonId)
+                    upsertPlayer(
+                        game.homePersonId,
+                        game.homeName,
+                        game.homeKlass,
+                        match.homeTeamId,
+                        seasonId,
+                        match.playedAt,
+                    )
                 val homePlayer2Id =
-                    upsertPlayer(game.homePersonId2, game.homeName2, game.homeKlass2, match.homeTeamId, seasonId)
+                    upsertPlayer(
+                        game.homePersonId2,
+                        game.homeName2,
+                        game.homeKlass2,
+                        match.homeTeamId,
+                        seasonId,
+                        match.playedAt,
+                    )
                 val awayPlayer1Id =
-                    upsertPlayer(game.awayPersonId, game.awayName, game.awayKlass, match.awayTeamId, seasonId)
+                    upsertPlayer(
+                        game.awayPersonId,
+                        game.awayName,
+                        game.awayKlass,
+                        match.awayTeamId,
+                        seasonId,
+                        match.playedAt,
+                    )
                 val awayPlayer2Id =
-                    upsertPlayer(game.awayPersonId2, game.awayName2, game.awayKlass2, match.awayTeamId, seasonId)
+                    upsertPlayer(
+                        game.awayPersonId2,
+                        game.awayName2,
+                        game.awayKlass2,
+                        match.awayTeamId,
+                        seasonId,
+                        match.playedAt,
+                    )
 
                 Games.insertIgnore {
                     it[Games.matchId] = match.matchId
@@ -168,9 +197,10 @@ class ClickTTMatchScraper(
     private fun upsertPlayer(
         personId: Int?,
         name: String?,
-        klass: String?,
+        className: String?,
         teamId: UUID,
         seasonId: UUID,
+        playedAt: java.time.OffsetDateTime?,
     ): UUID? {
         val dbName = name?.let { clickTtNameToDb(it) }
 
@@ -185,8 +215,8 @@ class ClickTTMatchScraper(
                         it[PlayerSeasons.playerId] = playerId
                         it[PlayerSeasons.teamId] = teamId
                         it[PlayerSeasons.seasonId] = seasonId
-                        it[PlayerSeasons.klass] = klass
                     }
+                    ClassificationService.recordMatchClass(playerId, seasonId, playedAt, className)
                 }
         }
 
@@ -213,8 +243,9 @@ class ClickTTMatchScraper(
             it[PlayerSeasons.playerId] = playerId
             it[PlayerSeasons.teamId] = teamId
             it[PlayerSeasons.seasonId] = seasonId
-            it[PlayerSeasons.klass] = klass
         }
+
+        ClassificationService.recordMatchClass(playerId, seasonId, playedAt, className)
 
         return playerId
     }

@@ -87,7 +87,7 @@
 			{/if}
 			{#if accountActive}
 				<span class="text-[10px] font-medium tracking-wide">
-					{data.user ? 'Account' : 'Sign in'}
+					{data.user ? $_('nav.account') : $_('nav.sign_in')}
 				</span>
 			{/if}
 		</button>

@@ -25,7 +25,7 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 			});
 
 	// On the server: use session + user already validated by safeGetSession() in
-	// +layout.server.ts (which called getUser()). Never touch session.user here â€”
+	// +layout.server.ts (which called getUser()). Never touch session.user here —
 	// that object comes from cookie storage and triggers the Supabase SDK warning.
 	//
 	// On the browser: getSession() is fine â€” we're reading from localStorage/memory,

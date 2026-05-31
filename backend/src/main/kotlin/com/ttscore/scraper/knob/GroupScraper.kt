@@ -38,7 +38,10 @@ class GroupScraper(
         }
     }
 
-    suspend fun run(seasons: List<String> = generateSeasons(fromYear = 1989, toYear = 2024)) {
+    suspend fun run(
+        seasons: List<String> = generateSeasons(fromYear = 1989, toYear = 2024),
+        federations: Collection<String>? = null,
+    ) {
         // Ensure all federations exist before scraping begins
         transaction {
             FEDERATION_RVIDS.keys.forEach { upsertFederation(it) }
@@ -53,11 +56,11 @@ class GroupScraper(
 
             // Regional federations were introduced in 2011/12 — only run STT for earlier seasons
             val federationsToRun =
-                if (seasonYear < 2011) {
-                    FEDERATION_RVIDS.filter { it.value == null }
-                } else {
-                    FEDERATION_RVIDS
-                }
+                FEDERATION_RVIDS
+                    .filterKeys { federations == null || it in federations }
+                    .let { selected ->
+                        if (seasonYear < 2011) selected.filterValues { it == null } else selected
+                    }
 
             for ((leagueName, rvid) in federationsToRun) {
                 runPass(season, seasonYear, leagueName = leagueName, rvid = rvid, range = range)

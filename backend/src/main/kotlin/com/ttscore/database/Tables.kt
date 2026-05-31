@@ -89,8 +89,25 @@ object PlayerSeasons : Table("player_season") {
     val playerId = uuid("player_id").references(Players.id)
     val teamId = uuid("team_id").references(Teams.id)
     val seasonId = uuid("season_id").references(Seasons.id)
-    val klass = varchar("klass", 5).nullable()
     override val primaryKey = PrimaryKey(id)
+}
+
+/**
+ * Official federation classification, kept separate from team membership because it is a property
+ * of the player (not the team) and tournament-only players have no team row. A season straddles the
+ * Jan-1 reclassification, so each season holds two values: first half = Jul-Dec, second = Jan-Jun.
+ */
+object PlayerClassifications : Table("player_classification") {
+    val id = uuid("id").autoGenerate()
+    val playerId = uuid("player_id").references(Players.id)
+    val seasonId = uuid("season_id").references(Seasons.id)
+    val firstHalfClass = varchar("first_half_class", 5).nullable()
+    val secondHalfClass = varchar("second_half_class", 5).nullable()
+    override val primaryKey = PrimaryKey(id)
+
+    init {
+        uniqueIndex(playerId, seasonId)
+    }
 }
 
 object PlayerElos : Table("player_elo") {

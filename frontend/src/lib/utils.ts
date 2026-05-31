@@ -5,18 +5,40 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
-const KLASS_CLASSES: Record<string, string> = {
-	A: 'text-klass-a bg-klass-a/15',
-	B: 'text-klass-b bg-klass-b/15',
-	C: 'text-klass-c bg-klass-c/15',
-	D: 'text-klass-d bg-klass-d/15',
-	E: 'text-klass-e bg-klass-e/15'
+/**
+ * Flips a player name from backend storage format ("Lastname Firstname") to
+ * display format ("Firstname Lastname"). Handles compound surnames.
+ * "Müller Hans"      → "Hans Müller"
+ * "De Marco Giovanni" → "Giovanni De Marco"
+ * Returns '—' for null/empty inputs.
+ */
+export function formatName(name: string | null | undefined): string {
+	if (!name?.trim()) return '—';
+	const parts = name.trim().split(/\s+/);
+	if (parts.length === 1) return parts[0];
+	const firstName = parts[parts.length - 1];
+	const lastName = parts.slice(0, -1).join(' ');
+	return `${firstName} ${lastName}`;
+}
+
+const CLASSIFICATION_CLASSES: Record<string, string> = {
+	A: 'text-class-a bg-class-a/15',
+	B: 'text-class-b bg-class-b/15',
+	C: 'text-class-c bg-class-c/15',
+	D: 'text-class-d bg-class-d/15',
+	E: 'text-class-e bg-class-e/15'
 };
 
-export function klassColors(klass: string | null | undefined): string {
-	if (!klass) return 'text-muted-foreground bg-muted';
-	const letter = klass[0].toUpperCase();
-	return KLASS_CLASSES[letter] ?? 'text-muted-foreground bg-muted';
+export function classificationColors(classification: string | null | undefined): string {
+	if (!classification) return 'text-muted-foreground bg-muted';
+	const letter = classification[0].toUpperCase();
+	return CLASSIFICATION_CLASSES[letter] ?? 'text-muted-foreground bg-muted';
+}
+
+/** Numeric ladder position of a classification ("B14" → 14, "A22" → 22). Higher = stronger. */
+export function classificationRank(classification: string | null | undefined): number {
+	if (!classification) return 0;
+	return parseInt(classification.slice(1)) || 0;
 }
 
 export function timeAgo(dateStr: string | null | undefined, lang?: string): string {

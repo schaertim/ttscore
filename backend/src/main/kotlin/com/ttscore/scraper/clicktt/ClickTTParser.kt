@@ -48,8 +48,14 @@ class ClickTTParser {
         val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
         for (table in doc.select("table.result-set")) {
+            // Tournament name lives in a `tr.table-split` header and applies to every game row
+            // until the next one. Carried forward as the fallback competition label.
+            var currentTournament: String? = null
             for (row in table.select("tbody tr")) {
-                if (row.hasClass("table-split")) continue
+                if (row.hasClass("table-split")) {
+                    currentTournament = row.selectFirst("h2")?.text()?.trim()?.takeIf { it.isNotBlank() }
+                    continue
+                }
                 val cells = row.select("td")
                 if (cells.isEmpty()) continue
                 if (row.selectFirst("th") != null) continue
@@ -88,6 +94,7 @@ class ClickTTParser {
                     homeSets = homeSets,
                     awaySets = awaySets,
                     sets = sets,
+                    competition = currentTournament,
                 )
             }
         }
@@ -118,8 +125,20 @@ class ClickTTParser {
             if (table.select("th").any { it.text().contains("Partner", ignoreCase = true) }) continue
 
             var currentDate: java.time.LocalDate? = null
+            // Each cup round is introduced by an <h2> header (e.g. "1. Hauptrunde Zone 3"),
+            // carried forward as the fallback competition label for the rows beneath it.
+            var currentRound: String? = null
 
             for (row in table.select("tbody tr")) {
+                val h2 = row.selectFirst("h2")
+                if (h2 != null) {
+                    currentRound =
+                        h2.text().trim()
+                            .replace(Regex("""\s*\(\s*\)\s*$"""), "")
+                            .trim()
+                            .takeIf { it.isNotBlank() }
+                    continue
+                }
                 val cells = row.select("td")
                 if (cells.size < 6) continue
 
@@ -161,6 +180,7 @@ class ClickTTParser {
                     homeSets = homeSets,
                     awaySets = awaySets,
                     sets = sets,
+                    competition = currentRound,
                 )
             }
         }
@@ -178,6 +198,20 @@ class ClickTTParser {
                 "ul.content-tabs a:contains(Elo-Protokoll), ul.content-tabs a:contains(Ergebnishistorie)",
             ).firstOrNull()
         return link?.attr("href")
+    }
+
+    /**
+     * Extracts the player's current classification from the portrait info table
+     * (`<td><b>Klassierung</b></td><td>B13</td>`). For women the value is "male / female"
+     * (e.g. "C7 / B12") — we keep the first token. Used only as a current-half fallback.
+     */
+    fun parseCurrentClass(portraitHtml: String): String? {
+        val doc = Jsoup.parse(portraitHtml)
+        val value =
+            doc.selectFirst("td:has(b:containsOwn(Klassierung))")
+                ?.nextElementSibling()?.text()?.trim()
+                ?: return null
+        return value.substringBefore("/").trim().takeIf { it.isNotBlank() }
     }
 
     fun parsePlayerPortrait(

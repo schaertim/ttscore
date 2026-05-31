@@ -22,7 +22,7 @@ class ClickTtIdBackfillJob(
         var emptyPages = 0
 
         // Wide range to cover all Swiss clubs — empty IDs are cheap (10 ms fetch, no extra delay)
-        val clubIdRange = 32000..35000
+        val clubIdRange = 33000..35000
 
         logger.info("ClickTtIdBackfillJob: scanning ${clubIdRange.count()} club IDs")
 

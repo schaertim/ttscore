@@ -46,7 +46,7 @@ export type TeamPlayer = {
 	id: string;
 	fullName: string;
 	licenceNr: string;
-	klass: string | null;
+	classification: string | null;
 	wins: number;
 	losses: number;
 };
@@ -95,10 +95,10 @@ export type Game = {
 	homePlayer2Name: string | null;
 	awayPlayerName: string | null;
 	awayPlayer2Name: string | null;
-	homePlayerKlass: string | null;
-	homePlayer2Klass: string | null;
-	awayPlayerKlass: string | null;
-	awayPlayer2Klass: string | null;
+	homePlayerClassification: string | null;
+	homePlayer2Classification: string | null;
+	awayPlayerClassification: string | null;
+	awayPlayer2Classification: string | null;
 	homeSets: number | null;
 	awaySets: number | null;
 	result: string;
@@ -114,8 +114,10 @@ export type Player = {
 	fullName: string;
 	licenceNr: string;
 	currentClubName: string | null;
-	klass: string | null;
+	classification: string | null;
+	liveClassification: string | null;
 	currentElo: number | null;
+	liveElo: number | null;
 	isSyncing: boolean;
 };
 
@@ -139,11 +141,12 @@ export type PlayerGame = {
 	playerSide: 'home' | 'away';
 	opponentId: string | null;
 	opponentName: string | null;
-	opponentKlass: string | null;
+	opponentClassification: string | null;
 	homeSets: number | null;
 	awaySets: number | null;
 	result: 'HOME' | 'AWAY' | 'NOT_PLAYED';
 	eloDelta: number | null;
+	eloDeltaProvisional: boolean;
 	sets: SetScore[];
 };
 
@@ -186,7 +189,7 @@ export type NextMatch = {
 };
 
 export type ClassHistoryEntry = {
-	klass: string;
+	classification: string;
 	seasonName: string;
 };
 

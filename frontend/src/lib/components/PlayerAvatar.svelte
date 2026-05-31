@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { formatName } from '$lib/utils';
+
 	interface Props {
 		fullName: string;
 		size?: 'sm' | 'md' | 'lg';
@@ -6,7 +8,8 @@
 
 	let { fullName, size = 'md' }: Props = $props();
 
-	const initials = $derived(fullName.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join(''));
+	// Format from storage format before computing initials so they read "F L" not "L F"
+	const initials = $derived(formatName(fullName).split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join(''));
 
 	const sizeClasses = {
 		sm: 'h-8 w-8 text-[10px]',

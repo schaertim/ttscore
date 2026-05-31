@@ -131,14 +131,16 @@ object FavoriteService {
                     .where { Players.id inList playerIds }
                     .toList()
 
-            val playerStats =
+            val clubByPlayer =
                 (PlayerSeasons innerJoin Teams innerJoin Clubs innerJoin Seasons)
-                    .select(PlayerSeasons.playerId, PlayerSeasons.klass, Clubs.name)
+                    .select(PlayerSeasons.playerId, Clubs.name)
                     .where { PlayerSeasons.playerId inList playerIds }
                     .orderBy(Seasons.name to SortOrder.DESC)
                     .toList()
                     .groupBy { it[PlayerSeasons.playerId] }
-                    .mapValues { it.value.first() }
+                    .mapValues { it.value.first()[Clubs.name] }
+
+            val classByPlayer = ClassificationService.currentClasses(playerIds)
 
             val eloByPlayer =
                 PlayerElos
@@ -151,13 +153,13 @@ object FavoriteService {
 
             basePlayers.map { row ->
                 val id = row[Players.id]
-                val stats = playerStats[id]
                 PlayerResponse(
                     id = id.toString(),
                     fullName = row[Players.fullName],
                     licenceNr = row[Players.licenceNr],
-                    currentClubName = stats?.get(Clubs.name),
-                    klass = stats?.get(PlayerSeasons.klass),
+                    currentClubName = clubByPlayer[id],
+                    classification = classByPlayer[id],
+                    liveClassification = eloByPlayer[id]?.let { ClassificationService.fromElo(it) },
                     currentElo = eloByPlayer[id],
                 )
             }

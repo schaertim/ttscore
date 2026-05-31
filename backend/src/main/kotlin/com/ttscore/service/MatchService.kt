@@ -10,7 +10,6 @@ import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.alias
-import org.jetbrains.exposed.sql.and
 
 object MatchService {
     private val homeTeam = Teams.alias("home_team")
@@ -108,14 +107,17 @@ object MatchService {
                         row.getOrNull(Games.awayPlayer2Id),
                     )
                 }.distinct()
-            val klassMap =
-                if (playerIds.isEmpty()) {
+            // Class as it was at match time (the half the match date falls in).
+            val matchLocalDate = matchRow[Matches.playedAt]?.let { ClassificationService.localDateOf(it) }
+            val classMap =
+                if (playerIds.isEmpty() || matchLocalDate == null) {
                     emptyMap()
                 } else {
-                    PlayerSeasons
-                        .select(PlayerSeasons.playerId, PlayerSeasons.klass)
-                        .where { (PlayerSeasons.playerId inList playerIds) and (PlayerSeasons.seasonId eq seasonId) }
-                        .associate { it[PlayerSeasons.playerId] to it[PlayerSeasons.klass] }
+                    ClassificationService.classesForSeasonHalf(
+                        playerIds,
+                        seasonId,
+                        ClassificationService.halfOf(matchLocalDate),
+                    )
                 }
 
             // Step 4 — fetch all sets for all games in one query
@@ -157,10 +159,10 @@ object MatchService {
                         homePlayer2Name = gameRow.getOrNull(homePlayer2[Players.fullName]),
                         awayPlayerName = gameRow[awayPlayer[Players.fullName]],
                         awayPlayer2Name = gameRow.getOrNull(awayPlayer2[Players.fullName]),
-                        homePlayerKlass = gameRow.getOrNull(Games.homePlayer1Id)?.let { klassMap[it] },
-                        homePlayer2Klass = gameRow.getOrNull(Games.homePlayer2Id)?.let { klassMap[it] },
-                        awayPlayerKlass = gameRow.getOrNull(Games.awayPlayer1Id)?.let { klassMap[it] },
-                        awayPlayer2Klass = gameRow.getOrNull(Games.awayPlayer2Id)?.let { klassMap[it] },
+                        homePlayerClassification = gameRow.getOrNull(Games.homePlayer1Id)?.let { classMap[it] },
+                        homePlayer2Classification = gameRow.getOrNull(Games.homePlayer2Id)?.let { classMap[it] },
+                        awayPlayerClassification = gameRow.getOrNull(Games.awayPlayer1Id)?.let { classMap[it] },
+                        awayPlayer2Classification = gameRow.getOrNull(Games.awayPlayer2Id)?.let { classMap[it] },
                         homeSets = gameRow[Games.homeSets]?.toInt(),
                         awaySets = gameRow[Games.awaySets]?.toInt(),
                         result = gameRow[Games.result],

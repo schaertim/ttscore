@@ -95,7 +95,7 @@
 					<PlayerCard
 						id={player.id}
 						fullName={player.fullName}
-						klass={player.klass}
+						classification={player.classification}
 						wins={player.wins}
 						losses={player.losses}
 					/>
@@ -112,7 +112,7 @@
 			<Skeleton class="h-16 w-full rounded-xl" />
 			<Skeleton class="h-16 w-full rounded-xl" />
 		{:then matches}
-			<div class="space-y-2">
+			<div class="space-y-3.5">
 				{#each matches as match (match.id)}
 					<MatchCard {match} perspectiveTeam={data.team.name} />
 				{/each}

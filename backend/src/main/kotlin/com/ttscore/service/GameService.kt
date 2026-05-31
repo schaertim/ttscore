@@ -9,7 +9,6 @@ import com.ttscore.scraper.clicktt.model.ParsedClickTTSet
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNotNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.and
@@ -21,58 +20,19 @@ import java.time.OffsetDateTime
 import java.util.*
 
 object GameService {
-    suspend fun gameExists(
-        playerId: UUID,
-        opponentId: UUID?,
-        playedAt: OffsetDateTime,
-        competition: String,
-    ): Boolean =
-        dbQuery {
-            val base =
-                ((Games.homePlayer1Id eq playerId) or (Games.awayPlayer1Id eq playerId)) and
-                    (Games.playedAt eq playedAt) and
-                    (Games.competitionName eq competition)
-            val condition =
-                if (opponentId != null) {
-                    base and ((Games.homePlayer1Id eq opponentId) or (Games.awayPlayer1Id eq opponentId))
-                } else {
-                    base
-                }
-            Games.select(Games.id).where(condition).count() > 0
-        }
-
     /**
-     * Returns true if a league game (matchId IS NOT NULL) already exists for the player on the
-     * given Swiss day — used to avoid inserting a duplicate tournament game entry when the
-     * Elo-Protokoll lists a league game that has not been rated yet (eloDelta == null).
+     * Fills a player's ELO delta (and refreshes the competition name) on an existing game — league
+     * OR tournament/cup — for the given Swiss day. Tries the player as home first, then as away,
+     * matching only rows whose delta is still null so that multiple games against the same opponent
+     * on the same day each get rated once.
+     *
+     * The Elo-Protokoll is the only page that carries deltas, so this is the sole writer of them and
+     * it never inserts: if no row matches (game unrated, or opponent unresolved) it simply does
+     * nothing. That is what keeps the sync from ever producing duplicate game rows.
+     *
+     * Returns true if a row was updated.
      */
-    suspend fun leagueGameExists(
-        playerId: UUID,
-        opponentId: UUID?,
-        dayStart: OffsetDateTime,
-    ): Boolean =
-        dbQuery {
-            val dayEnd = dayStart.plusDays(1)
-            val base =
-                (Games.matchId.isNotNull()) and
-                    (Games.playedAt greaterEq dayStart) and
-                    (Games.playedAt less dayEnd) and
-                    ((Games.homePlayer1Id eq playerId) or (Games.awayPlayer1Id eq playerId))
-            val condition =
-                if (opponentId != null) {
-                    base and ((Games.homePlayer1Id eq opponentId) or (Games.awayPlayer1Id eq opponentId))
-                } else {
-                    base
-                }
-            Games.select(Games.id).where(condition).count() > 0
-        }
-
-    /**
-     * Finds an existing league game (matchId IS NOT NULL) for the given player on the given day
-     * and fills in their ELO delta. Tries the player as home first, then as away.
-     * Returns true if a game was found and updated.
-     */
-    suspend fun updateLeagueGameEloDelta(
+    suspend fun updateGameEloDelta(
         playerId: UUID,
         opponentId: UUID?,
         dayStart: OffsetDateTime,
@@ -83,8 +43,7 @@ object GameService {
             val dayEnd = dayStart.plusDays(1)
 
             val homeBase =
-                (Games.matchId.isNotNull()) and
-                    (Games.homePlayer1Id eq playerId) and
+                (Games.homePlayer1Id eq playerId) and
                     (Games.playedAt greaterEq dayStart) and
                     (Games.playedAt less dayEnd) and
                     (Games.homePlayer1EloDelta.isNull())
@@ -103,8 +62,7 @@ object GameService {
             if (homeUpdate > 0) return@dbQuery true
 
             val awayBase =
-                (Games.matchId.isNotNull()) and
-                    (Games.awayPlayer1Id eq playerId) and
+                (Games.awayPlayer1Id eq playerId) and
                     (Games.playedAt greaterEq dayStart) and
                     (Games.playedAt less dayEnd) and
                     (Games.awayPlayer1EloDelta.isNull())
@@ -132,66 +90,76 @@ object GameService {
                 .toSet()
         }
 
-    /** Updates home/away set totals on a tournament game row and returns its ID, or null if not found. */
-    suspend fun updateTournamentGameSets(
-        playerId: UUID,
-        opponentId: UUID,
-        dayStart: OffsetDateTime,
-        homeSets: Int,
-        awaySets: Int,
-    ): UUID? =
-        dbQuery {
-            val dayEnd = dayStart.plusDays(1)
-            val gameId =
-                Games.select(Games.id)
-                    .where {
-                        (Games.matchId.isNull()) and
-                            (Games.homePlayer1Id eq playerId) and
-                            (Games.awayPlayer1Id eq opponentId) and
-                            (Games.playedAt greaterEq dayStart) and
-                            (Games.playedAt less dayEnd) and
-                            (Games.homeSets.isNull())
-                    }.firstOrNull()?.get(Games.id) ?: return@dbQuery null
-            Games.update({ Games.id eq gameId }) {
-                it[Games.homeSets] = homeSets.toShort()
-                it[Games.awaySets] = awaySets.toShort()
-            }
-            gameId
-        }
-
-    suspend fun insertTournamentSets(
-        gameId: UUID,
-        sets: List<ParsedClickTTSet>,
-    ) = dbQuery {
-        for (set in sets) {
-            GameSets.insertIgnore {
-                it[GameSets.gameId] = gameId
-                it[GameSets.setNumber] = set.setNumber.toShort()
-                it[GameSets.homePoints] = set.homePoints.toShort()
-                it[GameSets.awayPoints] = set.awayPoints.toShort()
-            }
-        }
-    }
-
-    suspend fun insertTournamentGame(
+    /**
+     * Inserts a tournament/cup game (matchId = null) with its set scores, unless an equivalent row
+     * already exists. The dedicated TOURNAMENT/Cup season pages are the source of truth for these
+     * games (they carry result + sets + opponent person-id); the synced player is always stored as
+     * the home side. ELO deltas are intentionally left null — they are filled afterwards from the
+     * Elo-Protokoll via [updateGameEloDelta], the only page that has them.
+     *
+     * Equivalence is checked against existing tournament rows (matchId IS NULL) on the same Swiss
+     * day. When the opponent is known we match the player pair in either orientation, which
+     * deduplicates both a re-sync of the same player and the mirror row produced when the opponent's
+     * own portrait is synced. When the opponent is not in our DB the row can only originate from this
+     * player's page, so we match on the player side plus the set score.
+     *
+     * Returns true if a new game was inserted.
+     */
+    suspend fun insertTournamentGameIfAbsent(
         playerId: UUID,
         opponentId: UUID?,
         playedAt: OffsetDateTime,
-        competition: String,
-        eloDelta: Double?,
+        competition: String?,
         result: GameResult,
-        gameType: GameType = GameType.SINGLES,
-    ) = dbQuery {
-        Games.insert {
-            it[Games.matchId] = null
-            it[Games.homePlayer1Id] = playerId
-            it[Games.awayPlayer1Id] = opponentId
-            it[Games.playedAt] = playedAt
-            it[Games.competitionName] = competition
-            it[Games.homePlayer1EloDelta] = eloDelta
-            it[Games.awayPlayer1EloDelta] = eloDelta?.let { delta -> -delta }
-            it[Games.result] = result
-            it[Games.gameType] = gameType
+        homeSets: Int,
+        awaySets: Int,
+        sets: List<ParsedClickTTSet>,
+    ): Boolean =
+        dbQuery {
+            val dayStart = playedAt
+            val dayEnd = playedAt.plusDays(1)
+            val onDay =
+                (Games.matchId.isNull()) and
+                    (Games.playedAt greaterEq dayStart) and
+                    (Games.playedAt less dayEnd)
+            val duplicateCondition =
+                if (opponentId != null) {
+                    onDay and
+                        (
+                            ((Games.homePlayer1Id eq playerId) and (Games.awayPlayer1Id eq opponentId)) or
+                                ((Games.homePlayer1Id eq opponentId) and (Games.awayPlayer1Id eq playerId))
+                        )
+                } else {
+                    onDay and
+                        (Games.homePlayer1Id eq playerId) and
+                        (Games.awayPlayer1Id.isNull()) and
+                        (Games.homeSets eq homeSets.toShort()) and
+                        (Games.awaySets eq awaySets.toShort())
+                }
+
+            if (Games.select(Games.id).where(duplicateCondition).count() > 0) return@dbQuery false
+
+            val gameId =
+                Games.insert {
+                    it[Games.matchId] = null
+                    it[Games.gameType] = GameType.SINGLES
+                    it[Games.homePlayer1Id] = playerId
+                    it[Games.awayPlayer1Id] = opponentId
+                    it[Games.playedAt] = playedAt
+                    it[Games.competitionName] = competition
+                    it[Games.homeSets] = homeSets.toShort()
+                    it[Games.awaySets] = awaySets.toShort()
+                    it[Games.result] = result
+                }[Games.id]
+
+            for (set in sets) {
+                GameSets.insertIgnore {
+                    it[GameSets.gameId] = gameId
+                    it[GameSets.setNumber] = set.setNumber.toShort()
+                    it[GameSets.homePoints] = set.homePoints.toShort()
+                    it[GameSets.awayPoints] = set.awayPoints.toShort()
+                }
+            }
+            true
         }
-    }
 }

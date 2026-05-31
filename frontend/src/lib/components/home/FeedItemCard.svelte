@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { FeedItem } from './feed-types';
-	import { cn, klassColors, timeAgo } from '$lib/utils';
+	import { cn, classificationColors, timeAgo } from '$lib/utils';
 	import { _ } from 'svelte-i18n';
 	import {
 		UserIcon,
@@ -48,7 +48,7 @@
 			return { icon: HandshakeIcon, bg: 'bg-muted', text: 'text-muted-foreground' };
 		}
 		if (i.kind === 'class_change') {
-			const kc = klassColors(i.to).split(' ');
+			const kc = classificationColors(i.to).split(' ');
 			const bg = kc.find((c) => c.startsWith('bg-')) ?? 'bg-muted';
 			const text = kc.find((c) => c.startsWith('text-')) ?? 'text-muted-foreground';
 			return { icon: MedalIcon, bg, text };

@@ -104,6 +104,8 @@ object TeamService {
                     }
             }
 
+            val classByPlayer = ClassificationService.currentClasses(playerIds)
+
             playerRows
                 .sortedByDescending { (wins[it[Players.id]] ?: 0) + (losses[it[Players.id]] ?: 0) }
                 .map { playerRow ->
@@ -112,7 +114,7 @@ object TeamService {
                         id = pId.toString(),
                         fullName = playerRow[Players.fullName],
                         licenceNr = playerRow[Players.licenceNr],
-                        klass = playerRow[PlayerSeasons.klass],
+                        classification = classByPlayer[pId],
                         wins = wins[pId] ?: 0,
                         losses = losses[pId] ?: 0,
                     )

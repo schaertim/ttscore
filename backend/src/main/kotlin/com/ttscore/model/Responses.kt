@@ -29,7 +29,7 @@ data class TeamPlayerResponse(
     val id: String,
     val fullName: String,
     val licenceNr: String?,
-    val klass: String?,
+    val classification: String?,
     val wins: Int,
     val losses: Int,
 )
@@ -102,10 +102,10 @@ data class GameResponse(
     val homePlayer2Name: String? = null,
     val awayPlayerName: String?,
     val awayPlayer2Name: String? = null,
-    val homePlayerKlass: String? = null,
-    val homePlayer2Klass: String? = null,
-    val awayPlayerKlass: String? = null,
-    val awayPlayer2Klass: String? = null,
+    val homePlayerClassification: String? = null,
+    val homePlayer2Classification: String? = null,
+    val awayPlayerClassification: String? = null,
+    val awayPlayer2Classification: String? = null,
     val homeSets: Int?,
     val awaySets: Int?,
     val result: GameResult,
@@ -139,8 +139,13 @@ data class PlayerResponse(
     val fullName: String,
     val licenceNr: String?,
     val currentClubName: String? = null,
-    val klass: String? = null,
+    val classification: String? = null,
+    /** Class derived from the up-to-date ELO (may differ from the official [classification]). */
+    val liveClassification: String? = null,
+    /** Latest officially-rated ELO. */
     val currentElo: Int? = null,
+    /** Up-to-date ELO including provisional deltas of matches not yet officially rated. */
+    val liveElo: Int? = null,
     val isSyncing: Boolean = false,
 )
 
@@ -234,7 +239,7 @@ data class NextMatchResponse(
 
 @Serializable
 data class ClassHistoryEntryResponse(
-    val klass: String,
+    val classification: String,
     val seasonName: String,
 )
 
@@ -266,10 +271,12 @@ data class PlayerGameResponse(
     val playerSide: String,
     val opponentId: String?,
     val opponentName: String?,
-    val opponentKlass: String?,
+    val opponentClassification: String?,
     val homeSets: Int?,
     val awaySets: Int?,
     val result: GameResult,
     val eloDelta: Double?,
+    /** True when [eloDelta] is our own provisional estimate (match not yet officially rated). */
+    val eloDeltaProvisional: Boolean = false,
     val sets: List<SetResponse>,
 )

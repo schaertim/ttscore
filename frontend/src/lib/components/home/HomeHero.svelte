@@ -2,6 +2,7 @@
 	import type { Player, PlayerGame } from '$lib/api';
 	import { ArrowUpIcon, ArrowDownIcon } from 'phosphor-svelte';
 	import { _ } from 'svelte-i18n';
+	import { formatName } from '$lib/utils';
 
 	interface Props {
 		player: Player;
@@ -10,9 +11,9 @@
 
 	let { player, recentMatches }: Props = $props();
 
-	const klassLetter = $derived((player.klass?.[0] ?? '').toLowerCase());
-	const klassVar = $derived(
-		klassLetter ? `var(--klass-${klassLetter})` : 'var(--muted-foreground)'
+	const classificationLetter = $derived((player.classification?.[0] ?? '').toLowerCase());
+	const classificationVar = $derived(
+		classificationLetter ? `var(--class-${classificationLetter})` : 'var(--muted-foreground)'
 	);
 
 	// ── Sparkline ─────────────────────────────────────────────────────────────────
@@ -73,25 +74,25 @@
 <a href="/players/{player.id}" class="block">
 	<div
 		class="relative overflow-hidden rounded-2xl border border-border/50 bg-card p-5"
-		style="background-image: radial-gradient(circle at calc(100% - 3.25rem) 3.25rem, color-mix(in srgb, {klassVar} 32%, transparent) 0%, color-mix(in srgb, {klassVar} 7%, transparent) 30%, transparent 56%);"
+		style="background-image: radial-gradient(circle at calc(100% - 3.25rem) 3.25rem, color-mix(in srgb, {classificationVar} 32%, transparent) 0%, color-mix(in srgb, {classificationVar} 7%, transparent) 30%, transparent 56%);"
 	>
 		<!-- Top row: name/club + class badge -->
 		<div class="relative mb-6 flex items-start justify-between gap-4">
 			<div class="min-w-0">
 				<h1 class="mb-1 text-3xl leading-tight font-black tracking-tight">
-					{player.fullName}
+					{formatName(player.fullName)}
 				</h1>
 				{#if player.currentClubName}
 					<p class="text-sm text-muted-foreground">{player.currentClubName}</p>
 				{/if}
 			</div>
 
-			{#if player.klass}
+			{#if player.classification}
 				<div
 					class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-black"
-					style="background: {klassVar}; color: var(--card);"
+					style="background: {classificationVar}; color: var(--card);"
 				>
-					{player.klass}
+					{player.classification}
 				</div>
 			{/if}
 		</div>
@@ -139,25 +140,25 @@
 							aria-hidden="true"
 						>
 							<defs>
-								<linearGradient id="hero-fill-{player.klass}" x1="0" y1="0" x2="0" y2="1">
-									<stop offset="0%" style="stop-color:{klassVar}; stop-opacity:0.25" />
-									<stop offset="100%" style="stop-color:{klassVar}; stop-opacity:0" />
+								<linearGradient id="hero-fill-{player.classification}" x1="0" y1="0" x2="0" y2="1">
+									<stop offset="0%" style="stop-color:{classificationVar}; stop-opacity:0.25" />
+									<stop offset="100%" style="stop-color:{classificationVar}; stop-opacity:0" />
 								</linearGradient>
 							</defs>
 							<!-- Fill area -->
-							<path d={buildFillPath(pts)} fill="url(#hero-fill-{player.klass})" />
+							<path d={buildFillPath(pts)} fill="url(#hero-fill-{player.classification})" />
 							<!-- Line -->
 							<path
 								d={buildLinePath(pts)}
 								fill="none"
-								stroke={klassVar}
+								stroke={classificationVar}
 								stroke-width="2.5"
 								stroke-linecap="round"
 								stroke-linejoin="round"
 							/>
 							<!-- End dot -->
-							<circle cx="300" cy={endDotY(pts)} r="3.5" fill={klassVar} />
-							<circle cx="300" cy={endDotY(pts)} r="6" fill={klassVar} opacity="0.25" />
+							<circle cx="300" cy={endDotY(pts)} r="3.5" fill={classificationVar} />
+							<circle cx="300" cy={endDotY(pts)} r="6" fill={classificationVar} opacity="0.25" />
 						</svg>
 					</div>
 				{/if}

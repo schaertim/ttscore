@@ -2,6 +2,7 @@
 
 import com.ttscore.database.*
 import com.ttscore.model.MatchStatus
+import com.ttscore.service.ClassificationService
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -93,9 +94,17 @@ class MatchScraper(
                         game.homePlayer1Klass,
                         match.homeTeamId,
                         match.seasonId,
+                        match.playedAt,
                     )
                 val homePlayer2Id =
-                    upsertPlayer(game.homePlayer2KnobId, game.homePlayer2Name, null, match.homeTeamId, match.seasonId)
+                    upsertPlayer(
+                        game.homePlayer2KnobId,
+                        game.homePlayer2Name,
+                        null,
+                        match.homeTeamId,
+                        match.seasonId,
+                        match.playedAt,
+                    )
                 val awayPlayer1Id =
                     upsertPlayer(
                         game.awayPlayer1KnobId,
@@ -103,9 +112,17 @@ class MatchScraper(
                         game.awayPlayer1Klass,
                         match.awayTeamId,
                         match.seasonId,
+                        match.playedAt,
                     )
                 val awayPlayer2Id =
-                    upsertPlayer(game.awayPlayer2KnobId, game.awayPlayer2Name, null, match.awayTeamId, match.seasonId)
+                    upsertPlayer(
+                        game.awayPlayer2KnobId,
+                        game.awayPlayer2Name,
+                        null,
+                        match.awayTeamId,
+                        match.seasonId,
+                        match.playedAt,
+                    )
 
                 Games.insertIgnore {
                     it[Games.matchId] = match.matchId
@@ -152,9 +169,10 @@ class MatchScraper(
     private fun upsertPlayer(
         knobId: Int?,
         name: String?,
-        klass: String?,
+        className: String?,
         teamId: UUID,
         seasonId: UUID,
+        playedAt: java.time.OffsetDateTime?,
     ): UUID? {
         if (knobId == null) {
             // Doubles player 2 with no gid on the page — look up by name as a best-effort fallback
@@ -167,8 +185,8 @@ class MatchScraper(
                         it[PlayerSeasons.playerId] = playerId
                         it[PlayerSeasons.teamId] = teamId
                         it[PlayerSeasons.seasonId] = seasonId
-                        it[PlayerSeasons.klass] = klass
                     }
+                    ClassificationService.recordMatchClass(playerId, seasonId, playedAt, className)
                 }
         }
 
@@ -194,8 +212,9 @@ class MatchScraper(
             it[PlayerSeasons.playerId] = playerId
             it[PlayerSeasons.teamId] = teamId
             it[PlayerSeasons.seasonId] = seasonId
-            it[PlayerSeasons.klass] = klass
         }
+
+        ClassificationService.recordMatchClass(playerId, seasonId, playedAt, className)
 
         return playerId
     }
