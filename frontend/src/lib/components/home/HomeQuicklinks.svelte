@@ -32,14 +32,14 @@
 	{#await leagueContext}
 		<div class="flex items-center gap-3 px-4 py-3">
 			<Skeleton class="h-9 w-9 shrink-0 rounded-lg" />
-			<div class="flex-1 space-y-1.5">
+			<div class="flex-1 space-y-2">
 				<Skeleton class="h-3.5 w-24 rounded" />
 				<Skeleton class="h-3 w-36 rounded" />
 			</div>
 		</div>
 		<div class="flex items-center gap-3 px-4 py-3">
 			<Skeleton class="h-9 w-9 shrink-0 rounded-lg" />
-			<div class="flex-1 space-y-1.5">
+			<div class="flex-1 space-y-2">
 				<Skeleton class="h-3.5 w-24 rounded" />
 				<Skeleton class="h-3 w-36 rounded" />
 			</div>

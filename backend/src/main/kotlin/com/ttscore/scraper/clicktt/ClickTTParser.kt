@@ -320,7 +320,7 @@ class ClickTTParser {
 
                 val date = cells[0].text().trim()
                 val competition = cells[1].text().trim()
-                // cells[2] is the player's own ELO at the time — not stored
+                val playerMonthlyElo = cells[2].text().trim().toIntOrNull()
                 val opponent = cells[3].text().trim()
                 val opponentElo = cells[4].text().trim().toIntOrNull()
                 val isWin = cells[5].select("img[title=Sieg], img[alt=Sieg]").isNotEmpty()
@@ -335,6 +335,7 @@ class ClickTTParser {
                         opponentElo = opponentElo,
                         eloDelta = eloDelta,
                         isWin = isWin,
+                        playerMonthlyElo = playerMonthlyElo,
                     ),
                 )
             }

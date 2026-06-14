@@ -34,7 +34,7 @@ object PlayerService {
             val currentElo =
                 PlayerElos
                     .select(PlayerElos.eloValue)
-                    .where { PlayerElos.playerId eq uuid }
+                    .where { (PlayerElos.playerId eq uuid) and (PlayerElos.isProvisional eq false) }
                     .orderBy(PlayerElos.recordedAt to SortOrder.DESC)
                     .firstOrNull()
                     ?.get(PlayerElos.eloValue)
@@ -51,15 +51,17 @@ object PlayerService {
     suspend fun getEloHistory(playerId: String): List<EloEntryResponse>? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
-            (PlayerElos innerJoin Seasons)
-                .select(PlayerElos.eloValue, PlayerElos.recordedAt, Seasons.name)
+            PlayerElos
+                .select(PlayerElos.eloValue, PlayerElos.recordedAt)
                 .where { PlayerElos.playerId eq uuid }
-                .orderBy(PlayerElos.recordedAt to SortOrder.ASC)
+                .orderBy(PlayerElos.recordedAt to SortOrder.DESC)
+                .toList()
+                .distinctBy { it[PlayerElos.recordedAt].toLocalDate() }
+                .sortedBy { it[PlayerElos.recordedAt] }
                 .map {
                     EloEntryResponse(
                         eloValue = it[PlayerElos.eloValue],
                         recordedAt = it[PlayerElos.recordedAt].toString(),
-                        seasonName = it[Seasons.name],
                     )
                 }
         }
@@ -409,36 +411,57 @@ object PlayerService {
                 .map { it[Players.id] to it[Players.clickttId]!! }
         }
 
-    suspend fun saveBaseElo(
+    data class EloHistoryEntry(
+        val eloValue: Int,
+        val recordedAt: OffsetDateTime,
+        val isProvisional: Boolean,
+    )
+
+    suspend fun replaceEloHistory(
         playerId: UUID,
-        seasonId: UUID,
-        eloValue: Int,
+        entries: List<EloHistoryEntry>,
     ) = dbQuery {
-        PlayerElos.insert {
-            it[PlayerElos.playerId] = playerId
-            it[PlayerElos.seasonId] = seasonId
-            it[PlayerElos.eloValue] = eloValue
-            it[PlayerElos.recordedAt] = OffsetDateTime.now(ZoneId.of("Europe/Zurich"))
+        PlayerElos.deleteWhere { PlayerElos.playerId eq playerId }
+        if (entries.isNotEmpty()) {
+            PlayerElos.batchInsert(entries) { e ->
+                this[PlayerElos.playerId] = playerId
+                this[PlayerElos.seasonId] = null
+                this[PlayerElos.eloValue] = e.eloValue
+                this[PlayerElos.recordedAt] = e.recordedAt
+                this[PlayerElos.isProvisional] = e.isProvisional
+            }
         }
     }
 
+    /**
+     * Resolves a click-tt name ("Lastname, Firstname") to a single player id, or null when it cannot
+     * be resolved *uniquely*. Critically, this returns null on a name collision (e.g. two different
+     * players both named "Hess Matthias") rather than picking an arbitrary namesake — callers use the
+     * result to link games and classifications, so guessing silently corrupts the wrong player's data.
+     * Prefer an id-based lookup ([findPlayerIdByClickTtId]) whenever a person/knob id is available.
+     */
     suspend fun findPlayerIdByName(clickTtName: String): UUID? {
         val dbName = clickTtNameToDb(clickTtName) // "Lastname Firstname"
 
         return dbQuery {
-            // Fast path: exact case-insensitive SQL match
-            Players.select(Players.id)
-                .where { Players.fullName.lowerCase() eq dbName.lowercase() }
-                .map { it[Players.id] }
-                .firstOrNull()
-                // Accent-fold fallback: "Grégory" finds "Gregory"
-                ?: run {
-                    val folded = accentFold(dbName)
-                    Players.select(Players.id, Players.fullName)
-                        .toList()
-                        .firstOrNull { accentFold(it[Players.fullName]) == folded }
-                        ?.get(Players.id)
-                }
+            // Fast path: exact case-insensitive SQL match. Resolve only when unique; a collision is
+            // ambiguous, so refuse rather than fall through to a fuzzier (even more collision-prone) match.
+            val exact =
+                Players.select(Players.id)
+                    .where { Players.fullName.lowerCase() eq dbName.lowercase() }
+                    .limit(2)
+                    .map { it[Players.id] }
+            if (exact.size == 1) return@dbQuery exact.single()
+            if (exact.size >= 2) return@dbQuery null
+
+            // Accent-fold fallback: "Grégory" finds "Gregory". Also unique-or-nothing.
+            val folded = accentFold(dbName)
+            val foldedMatches =
+                Players.select(Players.id, Players.fullName)
+                    .toList()
+                    .filter { accentFold(it[Players.fullName]) == folded }
+                    .map { it[Players.id] }
+            if (foldedMatches.size == 1) foldedMatches.single() else null
         }
     }
 

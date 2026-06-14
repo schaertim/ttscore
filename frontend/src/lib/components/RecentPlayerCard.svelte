@@ -47,7 +47,7 @@
 
 	<button
 		onclick={handleRemove}
-		class="absolute top-2 right-2 rounded-full p-0.5 text-foreground/40
+		class="absolute top-2 right-2 rounded-full p-1 text-foreground/40
 		       transition-colors hover:text-foreground"
 		aria-label="Remove from recently viewed"
 	>

@@ -26,6 +26,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		player,
 		streamed: {
 			recentMatches: api.players.matches(homePlayerId),
+			eloHistory: api.players.elo(homePlayerId),
 			leagueContext: api.players.leagueContext(homePlayerId).catch(() => null),
 			favorites: ktor
 				.get('/favorites')

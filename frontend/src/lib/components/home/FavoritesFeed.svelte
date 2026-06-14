@@ -24,11 +24,11 @@
 		<section class="space-y-3">
 			<SectionLabel label={$_('home.favorite_feed')} icon={StarIcon} />
 			{#await feedPromise}
-				<div class="space-y-3.5">
+				<div class="space-y-3">
 					{#each [1, 2, 3] as i (i)}
-						<div class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
+						<div class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
 							<Skeleton class="h-10 w-10 shrink-0 rounded-xl" />
-							<div class="flex-1 space-y-1.5">
+							<div class="flex-1 space-y-2">
 								<Skeleton class="h-3.5 w-32 rounded" />
 								<Skeleton class="h-3 w-48 rounded" />
 							</div>
@@ -39,7 +39,7 @@
 			{:then events}
 				{@const preview = events.slice(0, PREVIEW_COUNT)}
 				{#if preview.length > 0}
-					<div class="space-y-3.5">
+					<div class="space-y-3">
 						{#each preview as event (event.key)}
 							<FeedItemCard
 								entityType={event.entityType}

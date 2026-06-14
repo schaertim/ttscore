@@ -64,19 +64,19 @@
 			{@const active = isActive(item.href)}
 			<a
 				href={item.href}
-				class="flex w-16 flex-col items-center justify-center gap-0.5 transition-colors
+				class="flex w-16 flex-col items-center justify-center gap-1 transition-colors
 				       {active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
 			>
 				<item.icon size="22" weight={active ? 'fill' : 'regular'} />
 				{#if active}
-					<span class="text-[10px] font-medium tracking-wide">{item.label}</span>
+					<span class="text-xs font-semibold tracking-wide">{item.label}</span>
 				{/if}
 			</a>
 		{/each}
 
 		<button
 			onclick={handleAccountClick}
-			class="flex w-16 flex-col items-center justify-center gap-0.5 transition-colors
+			class="flex w-16 flex-col items-center justify-center gap-1 transition-colors
 			       {accountActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
 			aria-label={data.user ? $_('nav.account') : $_('nav.sign_in')}
 		>
@@ -86,7 +86,7 @@
 				<SignInIcon size="22" weight="regular" />
 			{/if}
 			{#if accountActive}
-				<span class="text-[10px] font-medium tracking-wide">
+				<span class="text-xs font-semibold tracking-wide">
 					{data.user ? $_('nav.account') : $_('nav.sign_in')}
 				</span>
 			{/if}

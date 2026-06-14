@@ -1,43 +1,41 @@
-﻿<script lang="ts">
+<script lang="ts">
 	import { locale, _ } from 'svelte-i18n';
 	import { GlobeIcon } from 'phosphor-svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select/index.js';
 
-	const languages: { code: string; label: string; native: string }[] = [
-		{ code: 'de', label: 'German', native: 'Deutsch' },
-		{ code: 'fr', label: 'French', native: 'Français' },
-		{ code: 'it', label: 'Italian', native: 'Italiano' },
-		{ code: 'en', label: 'English', native: 'English' }
+	const languages: { code: string; native: string }[] = [
+		{ code: 'de', native: 'Deutsch' },
+		{ code: 'fr', native: 'Français' },
+		{ code: 'it', native: 'Italiano' },
+		{ code: 'en', native: 'English' }
 	];
 
-	async function setLocale(code: string) {
-		// Persist to cookie via API
+	async function setLocale(code: string | undefined) {
+		if (!code) return;
 		await fetch('/api/locale', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ locale: code })
 		});
-		// Also mirror in localStorage for browser-side detection
 		localStorage.setItem('ttscore_locale', code);
-		// Update the reactive store — components re-render immediately
 		locale.set(code);
 	}
+
+	let selectedLocale = $state($locale ?? 'de');
+	const currentNative = $derived(languages.find((l) => l.code === selectedLocale)?.native ?? selectedLocale);
 </script>
 
 <section class="space-y-3">
 	<SectionLabel label={$_('account.language')} icon={GlobeIcon} />
-	<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
-		{#each languages as lang (lang.code)}
-			{@const active = $locale === lang.code}
-			<button
-				onclick={() => setLocale(lang.code)}
-				class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-accent"
-			>
-				<span class="font-semibold">{lang.native}</span>
-				{#if active}
-					<span class=”text-xs font-bold text-primary”>✓</span>
-				{/if}
-			</button>
-		{/each}
-	</div>
+	<Select type="single" bind:value={selectedLocale} onValueChange={setLocale}>
+		<SelectTrigger class="w-full rounded-xl border border-border bg-card px-4 py-3 h-auto font-semibold">
+			{currentNative}
+		</SelectTrigger>
+		<SelectContent>
+			{#each languages as lang (lang.code)}
+				<SelectItem value={lang.code}>{lang.native}</SelectItem>
+			{/each}
+		</SelectContent>
+	</Select>
 </section>

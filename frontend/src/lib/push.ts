@@ -1,4 +1,6 @@
-const API = '/api/v1/push';
+import { PUBLIC_API_URL } from '$env/static/public';
+
+const API = PUBLIC_API_URL + '/api/v1/push';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
 	const padding = '='.repeat((4 - (base64String.length % 4)) % 4);

@@ -21,7 +21,11 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const favorites = favoritesRes.ok ? await favoritesRes.json() : [];
 	const notifications = notificationsRes.ok ? await notificationsRes.json() : [];
 
-	return { profile, favorites, notifications };
+	const homePlayer = profile.homePlayerId
+		? await ktor.get(`/players/${profile.homePlayerId}`).then(r => r.ok ? r.json() : null)
+		: null;
+
+	return { profile, favorites, notifications, homePlayer };
 };
 
 export const actions: Actions = {

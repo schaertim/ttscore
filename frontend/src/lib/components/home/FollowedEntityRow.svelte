@@ -36,13 +36,13 @@
 
 <div class="space-y-3 rounded-xl border border-border bg-card p-4">
 	<a href={hrefBase} class="flex items-center justify-between">
-		<p class="text-sm font-bold hover:underline">{follow.targetType === 'player' ? formatName(follow.targetName) : follow.targetName}</p>
+		<p class="text-sm font-semibold hover:underline">{follow.targetType === 'player' ? formatName(follow.targetName) : follow.targetName}</p>
 		<CaretRightIcon size="16" class="shrink-0 text-muted-foreground" />
 	</a>
 
 	{#if isPlayer}
 		{#await playerMatchesPromise}
-			<div class="space-y-2">
+			<div class="space-y-3">
 				{#each [1, 2] as i (i)}
 					<Skeleton class="h-12 w-full rounded-xl" />
 				{/each}
@@ -51,7 +51,7 @@
 			{#if games.length === 0}
 				<p class="text-xs text-muted-foreground">No recent activity.</p>
 			{:else}
-				<div class="space-y-2">
+				<div class="space-y-3">
 					{#each games as game (game.gameId)}
 						<GameCard mode="player" {game} />
 					{/each}
@@ -60,7 +60,7 @@
 		{/await}
 	{:else}
 		{#await teamMatchesPromise}
-			<div class="space-y-2">
+			<div class="space-y-3">
 				{#each [1, 2] as i (i)}
 					<Skeleton class="h-12 w-full rounded-xl" />
 				{/each}
@@ -69,7 +69,7 @@
 			{#if matches.length === 0}
 				<p class="text-xs text-muted-foreground">No recent activity.</p>
 			{:else}
-				<div class="space-y-2">
+				<div class="space-y-3">
 					{#each matches as match (match.id)}
 						<MatchCard {match} />
 					{/each}

@@ -1,11 +1,14 @@
 ﻿package com.ttscore.scraper.clicktt
 
+import com.ttscore.database.dbQuery
 import com.ttscore.model.GameResult
 import com.ttscore.scraper.clicktt.model.ClickTTGame
 import com.ttscore.scraper.clicktt.model.ParsedTournamentGame
 import com.ttscore.service.ClassificationService
 import com.ttscore.service.GameService
+import com.ttscore.service.LiveEloService
 import com.ttscore.service.PlayerService
+import kotlin.math.roundToInt
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
@@ -132,7 +135,10 @@ object ClickTTSyncService {
         logger.debug("  personId=$personId — elo=${portrait.currentElo}, games=${portrait.games.size}")
 
         if (portrait.currentElo != null) {
-            PlayerService.saveBaseElo(playerId, seasonId, portrait.currentElo)
+            val officialEntries = computeOfficialEloHistory(portrait.games, portrait.currentElo)
+            val provisionalEntries = computeProvisionalEloHistory(playerId, officialEntries.lastOrNull()?.eloValue ?: portrait.currentElo)
+            logger.debug("  personId=$personId — ${officialEntries.size} official + ${provisionalEntries.size} provisional ELO entries")
+            PlayerService.replaceEloHistory(playerId, officialEntries + provisionalEntries)
         } else {
             logger.debug("  personId=$personId — no current ELO on portrait page")
         }
@@ -151,6 +157,96 @@ object ClickTTSyncService {
 
         return SyncResult(portrait.currentElo, tourneyInserts, deltaUpdates)
     }
+
+    /**
+     * Builds per-game official ELO history from the Elo-Protokoll game list.
+     *
+     * The Elo-Protokoll exposes the player's monthly official ELO (cells[2]) — same value for every
+     * game settled in the same monthly rating run. When that value changes we snap to the new anchor,
+     * then apply per-game deltas forward within the month to produce a data point after every rated
+     * game. [currentElo] is the most recent official ELO from the summary table and is used as a
+     * fallback anchor when no monthly value is available in the list.
+     */
+    private fun computeOfficialEloHistory(
+        games: List<ClickTTGame>,
+        currentElo: Int,
+    ): List<PlayerService.EloHistoryEntry> {
+        val sorted =
+            games.mapNotNull { game ->
+                runCatching { LocalDate.parse(game.date, dateFormatter) }.getOrNull()
+                    ?.let { game to it }
+            }.sortedBy { it.second }
+
+        val entries = mutableListOf<PlayerService.EloHistoryEntry>()
+        var monthlyAnchor: Int? = null
+        var runningElo = 0.0
+        val dayCounter = mutableMapOf<LocalDate, Int>()
+
+        for ((game, date) in sorted) {
+            if (game.eloDelta == null) continue
+
+            // Snap to a new monthly anchor whenever the official column changes.
+            val anchor = game.playerMonthlyElo ?: monthlyAnchor ?: currentElo
+            if (monthlyAnchor == null || anchor != monthlyAnchor) {
+                monthlyAnchor = anchor
+                runningElo = anchor.toDouble()
+            }
+
+            runningElo += game.eloDelta
+
+            val idx = dayCounter.getOrDefault(date, 0)
+            dayCounter[date] = idx + 1
+            entries.add(
+                PlayerService.EloHistoryEntry(
+                    eloValue = runningElo.roundToInt(),
+                    recordedAt = date.atStartOfDay(swissZone).plusMinutes(idx.toLong()).toOffsetDateTime(),
+                    isProvisional = false,
+                ),
+            )
+        }
+
+        return entries
+    }
+
+    /**
+     * Computes provisional ELO entries for pending (not yet officially rated) games, starting from
+     * [lastOfficialElo]. Each game advances the running ELO using our own calculator so the graph
+     * extends right up to today without any frontend delta arithmetic.
+     */
+    private suspend fun computeProvisionalEloHistory(
+        playerId: UUID,
+        lastOfficialElo: Int,
+    ): List<PlayerService.EloHistoryEntry> =
+        dbQuery {
+            val pending = LiveEloService.pendingGamesFor(playerId)
+            if (pending.isEmpty()) return@dbQuery emptyList()
+
+            val opponentBases =
+                LiveEloService.baseElos(pending.mapNotNull { it.opponentId }.toSet())
+
+            var runningElo = lastOfficialElo.toDouble()
+            val dayCounter = mutableMapOf<LocalDate, Int>()
+
+            pending.mapNotNull { game ->
+                val opponentBase = game.opponentId?.let { opponentBases[it] } ?: return@mapNotNull null
+                val delta = LiveEloService.provisionalDelta(
+                    runningElo.roundToInt(),
+                    opponentBase,
+                    game.playerIsHome,
+                    game.result,
+                )
+                runningElo += delta
+
+                val date = game.playedAt?.toLocalDate() ?: return@mapNotNull null
+                val idx = dayCounter.getOrDefault(date, 0)
+                dayCounter[date] = idx + 1
+                PlayerService.EloHistoryEntry(
+                    eloValue = runningElo.roundToInt(),
+                    recordedAt = date.atStartOfDay(swissZone).plusMinutes(idx.toLong()).toOffsetDateTime(),
+                    isProvisional = true,
+                )
+            }
+        }
 
     /**
      * Fetches the player's TOURNAMENT and Cup season pages and inserts each singles game (with its
@@ -224,15 +320,15 @@ object ClickTTSyncService {
         var updates = 0
         for (game in games) {
             val eloDelta = game.eloDelta ?: continue
-            val opponentName = game.opponent.substringBefore("(").trim()
-            val opponentId = PlayerService.findPlayerIdByName(opponentName)
 
             val playedAt =
                 LocalDate.parse(game.date, dateFormatter)
                     .atStartOfDay(swissZone)
                     .toOffsetDateTime()
 
-            if (GameService.updateGameEloDelta(playerId, opponentId, playedAt, eloDelta, game.competition)) {
+            // Pass the raw Protokoll opponent name + result; the matcher resolves the row locally
+            // (the row's opponent is already correct via person-id), avoiding the duplicate-name trap.
+            if (GameService.updateGameEloDelta(playerId, game.opponent, playedAt, eloDelta, game.competition)) {
                 updates++
             }
         }

@@ -175,11 +175,15 @@ class MatchScraper(
         playedAt: java.time.OffsetDateTime?,
     ): UUID? {
         if (knobId == null) {
-            // Doubles player 2 with no gid on the page — look up by name as a best-effort fallback
+            // Doubles player 2 with no gid on the page — best-effort name lookup. Resolve only when the
+            // name is unique; refuse to guess between namesakes rather than link a doubles game + class
+            // to an arbitrary player who happens to share the name.
             name ?: return null
             return Players.select(Players.id)
                 .where { Players.fullName eq name }
-                .firstOrNull()?.get(Players.id)
+                .limit(2)
+                .map { it[Players.id] }
+                .singleOrNull()
                 ?.also { playerId ->
                     PlayerSeasons.insertIgnore {
                         it[PlayerSeasons.playerId] = playerId

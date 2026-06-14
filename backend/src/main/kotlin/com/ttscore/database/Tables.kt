@@ -113,9 +113,10 @@ object PlayerClassifications : Table("player_classification") {
 object PlayerElos : Table("player_elo") {
     val id = uuid("id").autoGenerate()
     val playerId = uuid("player_id").references(Players.id)
-    val seasonId = uuid("season_id").references(Seasons.id)
+    val seasonId = uuid("season_id").references(Seasons.id).nullable()
     val eloValue = integer("elo_value")
     val recordedAt = timestampWithTimeZone("recorded_at")
+    val isProvisional = bool("is_provisional")
     override val primaryKey = PrimaryKey(id)
 }
 

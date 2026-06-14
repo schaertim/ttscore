@@ -171,11 +171,16 @@ class OverallPlayerScraper(
     ): UUID? {
         val clubNameLower = clubName.lowercase()
         return transaction {
-            (PlayerSeasons innerJoin Teams innerJoin Clubs)
-                .select(PlayerSeasons.playerId, Clubs.name)
-                .where { PlayerSeasons.playerId inList playerIds }
-                .firstOrNull { it[Clubs.name].lowercase().contains(clubNameLower) }
-                ?.get(PlayerSeasons.playerId)
+            val atClub =
+                (PlayerSeasons innerJoin Teams innerJoin Clubs)
+                    .select(PlayerSeasons.playerId, Clubs.name)
+                    .where { PlayerSeasons.playerId inList playerIds }
+                    .filter { it[Clubs.name].lowercase().contains(clubNameLower) }
+                    .map { it[PlayerSeasons.playerId] }
+                    .distinct()
+            // Resolve only when the club uniquely identifies one of the namesakes; two distinct players
+            // sharing both name and club can't be told apart here, so refuse rather than mislink a licence.
+            atClub.singleOrNull()
         }
     }
 }

@@ -18,5 +18,5 @@
 	)}
 >
 	<CaretLeftIcon size="16" />
-	<span class="text-xs font-medium tracking-widest uppercase">{$_('common.back')}</span>
+	<span class="text-xs font-semibold tracking-widest uppercase">{$_('common.back')}</span>
 </button>

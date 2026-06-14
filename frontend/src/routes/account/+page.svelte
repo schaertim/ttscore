@@ -5,11 +5,14 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { api, type Player, type FavoriteResponse, type FollowResponse } from '$lib/api';
-	import { StarIcon, BellRingingIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon } from 'phosphor-svelte';
+	import { StarIcon, BellRingingIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon, MagnifyingGlassIcon } from 'phosphor-svelte';
+	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
+	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { _ } from 'svelte-i18n';
 	import { formatName } from '$lib/utils';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import PageTitle from '$lib/components/PageTitle.svelte';
 	import { page } from '$app/state';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import { subscribe, unsubscribe, getSubscription } from '$lib/push';
@@ -92,8 +95,8 @@
 <div class="space-y-6">
 	<header class="space-y-4">
 		<div>
-			<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">{$_("account.subtitle")}</p>
-			<h1 class="text-3xl leading-none font-black tracking-tighter">{$_("account.title")}</h1>
+			<p class="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-1">{$_("account.subtitle")}</p>
+			<PageTitle>{$_("account.title")}</PageTitle>
 		</div>
 	</header>
 
@@ -101,40 +104,49 @@
 		<SectionLabel label={$_("account.my_player")} icon={UserIcon} />
 
 		{#if data.profile.homePlayerId}
-			<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
-				<a
-					href="/players/{data.profile.homePlayerId}"
-					class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-accent"
-				>
-					<span class="font-semibold">{formatName(data.profile.homePlayerName) ?? 'Unknown player'}</span>
-					<form method="POST" action="?/removeHomePlayer" use:enhance>
-						<button
-							type="submit"
-							onclick={(e) => e.stopPropagation()}
-							class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-							aria-label="Remove home player"
-						>
-							<TrashIcon size="18" />
-						</button>
-					</form>
-				</a>
-			</div>
+			<a
+				href="/players/{data.profile.homePlayerId}"
+				class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
+			>
+				<PlayerAvatar fullName={data.profile.homePlayerName ?? ''} size="md" />
+				<div class="min-w-0 flex-1">
+					<div class="flex items-center gap-2">
+						<p class="truncate text-sm font-semibold">{formatName(data.profile.homePlayerName) ?? 'Unknown player'}</p>
+						{#if data.homePlayer?.liveClassification ?? data.homePlayer?.classification}
+							<ClassBadge classification={data.homePlayer.liveClassification ?? data.homePlayer.classification} />
+						{/if}
+					</div>
+					<p class="truncate text-2xs tracking-wide text-muted-foreground">{data.homePlayer?.currentClubName ?? '-'}</p>
+				</div>
+				<form method="POST" action="?/removeHomePlayer" use:enhance>
+					<button
+						type="submit"
+						onclick={(e) => e.stopPropagation()}
+						class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+						aria-label="Remove home player"
+					>
+						<TrashIcon size="18" />
+					</button>
+				</form>
+			</a>
 		{:else}
 			{#if page.form?.error}
 				<p class="text-sm text-destructive">{page.form.error}</p>
 			{/if}
 
-			<div class="space-y-2">
-				<Input
-					type="search"
-					placeholder={$_("account.search_placeholder")}
-					bind:value={query}
-					oninput={onInput}
-				/>
-
-				{#if searching}
-					<p class="px-1 text-xs text-muted-foreground">{$_("account.searching")}</p>
-				{/if}
+			<div class="space-y-3">
+				<div class="relative">
+					<MagnifyingGlassIcon
+						size="16"
+						class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+					/>
+					<Input
+						placeholder={$_("account.search_placeholder")}
+						bind:value={query}
+						oninput={onInput}
+						class="w-full py-4 pl-9 text-base"
+					/>
+				</div>
 
 				{#if results.length > 0}
 					<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
@@ -155,7 +167,7 @@
 									type="submit"
 									class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-accent"
 								>
-									<span class="font-medium">{formatName(player.fullName)}</span>
+									<span class="font-semibold">{formatName(player.fullName)}</span>
 									<span class="text-xs text-muted-foreground">{player.currentClubName ?? ''}</span>
 								</button>
 							</form>
@@ -165,33 +177,6 @@
 			</div>
 		{/if}
 	</section>
-
-	{#if !pushUnsupported}
-		<section class="space-y-3">
-			<SectionLabel label={$_("account.push_notifications")} icon={BellRingingIcon} />
-			<button
-				onclick={togglePush}
-				disabled={pushLoading || pushSubscribed === null}
-				class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent disabled:opacity-50"
-			>
-				<div class="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-					<span class="font-semibold">
-						{$_(pushSubscribed ? 'account.push_enabled' : 'account.push_disabled')}
-					</span>
-					<span class="text-xs text-muted-foreground">
-						{pushSubscribed
-							? $_('account.push_enabled_desc')
-							: $_('account.push_disabled_desc')}
-					</span>
-				</div>
-				<BellRingingIcon
-					size="20"
-					weight={pushSubscribed ? 'fill' : 'regular'}
-					class="m-1 shrink-0 text-muted-foreground"
-				/>
-			</button>
-		</section>
-	{/if}
 
 	{#if favoriteGroups.length > 0}
 		<section class="space-y-3">
@@ -212,7 +197,7 @@
 								<button
 									type="submit"
 									onclick={(e) => e.stopPropagation()}
-									class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+									class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 									aria-label="Remove favorite"
 								>
 									<StarIcon size="18" weight="fill" />
@@ -244,7 +229,7 @@
 								<button
 									type="submit"
 									onclick={(e) => e.stopPropagation()}
-									class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+									class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 									aria-label="Remove notification"
 								>
 									<BellRingingIcon size="18" weight="fill" />
@@ -254,6 +239,33 @@
 					{/each}
 				</div>
 			{/each}
+		</section>
+	{/if}
+
+	{#if !pushUnsupported}
+		<section class="space-y-3">
+			<SectionLabel label={$_("account.push_notifications")} icon={BellRingingIcon} />
+			<button
+				onclick={togglePush}
+				disabled={pushLoading || pushSubscribed === null}
+				class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent disabled:opacity-50"
+			>
+				<div class="flex min-w-0 flex-1 flex-col items-start gap-1">
+					<span class="font-semibold">
+						{$_(pushSubscribed ? 'account.push_enabled' : 'account.push_disabled')}
+					</span>
+					<span class="text-xs text-muted-foreground">
+						{pushSubscribed
+							? $_('account.push_enabled_desc')
+							: $_('account.push_disabled_desc')}
+					</span>
+				</div>
+				<BellRingingIcon
+					size="20"
+					weight={pushSubscribed ? 'fill' : 'regular'}
+					class="m-1 shrink-0 text-muted-foreground"
+				/>
+			</button>
 		</section>
 	{/if}
 

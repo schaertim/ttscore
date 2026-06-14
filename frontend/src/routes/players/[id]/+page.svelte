@@ -3,8 +3,8 @@
 	import { enhance } from '$app/forms';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { LineChart } from 'layerchart';
-	import { scaleUtc } from 'd3-scale';
+	import { AnnotationLine, LineChart, Spline } from 'layerchart';
+	import { scaleLinear, scaleUtc } from 'd3-scale';
 	import * as Chart from '$lib/components/ui/chart/index.js';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
@@ -12,18 +12,18 @@
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import PageTitle from '$lib/components/PageTitle.svelte';
+	import { curveMonotoneX } from 'd3-shape';
+
 	import {
-		StarIcon,
 		ChartLineIcon,
 		ClockCounterClockwiseIcon,
-		UserCirclePlusIcon,
-		TrendUpIcon,
-		TrendDownIcon
+		UserCirclePlusIcon
 	} from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { page } from '$app/state';
 	import { _, locale } from 'svelte-i18n';
-	import { classificationRank, formatName } from '$lib/utils';
+	import { formatName } from '$lib/utils';
 	let { data }: { data: PageData } = $props();
 
 	let settingHomePlayer = $state(false);
@@ -32,6 +32,10 @@
 	let favoriteId = $state(data.favoriteId);
 	let notifying = $state(data.notifying);
 	let notifyId = $state(data.notifyId);
+
+	// Class derived from the player's *current* ELO (live where available). This is what we show on
+	// the profile/home/search surfaces and use to colour the graph — match rows keep historical classes.
+	const currentClass = $derived(data.player.liveClassification ?? data.player.classification);
 
 	function classificationStroke(classification: string | null | undefined): string {
 		if (!classification) return 'var(--color-primary)';
@@ -54,56 +58,23 @@
 
 		<div class="flex items-start justify-between gap-4">
 			<div class="min-w-0">
-				<h1 class="text-3xl mb-1.5 leading-none font-black tracking-tighter wrap-break-word">
-					{formatName(data.player.fullName)}
-				</h1>
+				<div class="flex items-center gap-2 mb-1">
+					<PageTitle class="wrap-break-word">
+						{formatName(data.player.fullName)}
+					</PageTitle>
+					<ClassBadge classification={currentClass} size="lg" />
+				</div>
 				<p class="text-sm text-muted-foreground">
 					{data.player.currentClubName ?? 'No Club'}
 				</p>
 			</div>
 
-			<div class="flex shrink-0 flex-col items-end gap-1.5">
+			<div class="flex shrink-0 flex-col items-end gap-1">
 				{#if data.player.currentElo}
 					{@const displayElo = data.player.liveElo ?? data.player.currentElo}
-					{@const pendingDelta =
-						data.player.liveElo != null ? data.player.liveElo - data.player.currentElo : 0}
 					<span class="text-4xl leading-none font-black tabular-nums">{displayElo}</span>
-					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+					<span class="text-xs tracking-widest text-muted-foreground uppercase">
 						ELO
-					</span>
-					{#if pendingDelta !== 0}
-						<span
-							class="flex items-center gap-0.5 text-[10px] font-bold tabular-nums {pendingDelta > 0
-								? 'text-win'
-								: 'text-loss'}"
-						>
-							{#if pendingDelta > 0}
-								<TrendUpIcon size={11} weight="bold" />
-							{:else}
-								<TrendDownIcon size={11} weight="bold" />
-							{/if}
-							{pendingDelta > 0 ? '+' : ''}{pendingDelta}
-						</span>
-					{/if}
-				{/if}
-				<ClassBadge classification={data.player.classification} />
-				{#if data.player.liveClassification && data.player.liveClassification !== data.player.classification}
-					{@const official = data.player.classification}
-					{@const live = data.player.liveClassification}
-					{@const trendingUp = official ? classificationRank(live) > classificationRank(official) : null}
-					<span
-						class="flex items-center gap-0.5 text-[10px] font-bold {trendingUp === null
-							? 'text-muted-foreground'
-							: trendingUp
-								? 'text-win'
-								: 'text-loss'}"
-					>
-						{#if trendingUp === true}
-							<TrendUpIcon size={11} weight="bold" />
-						{:else if trendingUp === false}
-							<TrendDownIcon size={11} weight="bold" />
-						{/if}
-						{live}
 					</span>
 				{/if}
 			</div>
@@ -119,10 +90,10 @@
 				<UserCirclePlusIcon size="20" class="text-primary" />
 			</div>
 			<div class="min-w-0 flex-1">
-				<p class="text-sm font-bold">{$_("set_player.is_this_you")}</p>
+				<p class="text-sm font-semibold">{$_("set_player.is_this_you")}</p>
 				<p class="text-xs text-muted-foreground">{$_("set_player.sign_in_prompt")}</p>
 			</div>
-			<span class="shrink-0 text-xs font-bold text-primary">{$_("set_player.sign_in_cta")}</span>
+			<span class="shrink-0 text-xs font-semibold text-primary">{$_("set_player.sign_in_cta")}</span>
 		</a>
 	{:else if !data.hasHomePlayer}
 		<form
@@ -147,17 +118,17 @@
 					<UserCirclePlusIcon size="20" class="text-primary" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<p class="text-sm font-bold">{$_("set_player.set_title")}</p>
+					<p class="text-sm font-semibold">{$_("set_player.set_title")}</p>
 					<p class="text-xs text-muted-foreground">{$_("set_player.set_desc")}</p>
 				</div>
-				<span class="shrink-0 text-xs font-bold text-primary">
+				<span class="shrink-0 text-xs font-semibold text-primary">
 					{settingHomePlayer ? $_("set_player.setting") : $_("set_player.set_cta")}
 				</span>
 			</button>
 		</form>
 	{/if}
 
-	<section class="space-y-2">
+	<section class="space-y-3">
 		<SectionLabel label={$_("player.elo_history")} icon={ChartLineIcon} />
 		<Card.Root class="py-4 border-border/50">
 			{#await data.streamed.elo}
@@ -172,7 +143,20 @@
 						date: new Date(e.recordedAt),
 						value: e.eloValue
 					}))}
-					{@const color = classificationStroke(data.player.classification)}
+					{@const minElo = Math.min(...eloPoints.map((p) => p.value))}
+					{@const maxElo = Math.max(...eloPoints.map((p) => p.value))}
+					{@const pad = 30}
+					{@const yMin = minElo - pad}
+					{@const yMax = maxElo + pad}
+					{@const ELO_THRESHOLDS: [number, string][] = [
+						[1990, 'A22'], [1890, 'A21'], [1790, 'A20'], [1680, 'A19'],
+						[1565, 'A18'], [1490, 'A17'], [1435, 'A16'], [1360, 'B15'],
+						[1320, 'B14'], [1280, 'B13'], [1240, 'B12'], [1200, 'B11'],
+						[1150, 'C10'], [1100, 'C9'], [1050, 'C8'], [990, 'C7'],
+						[930, 'C6'], [860, 'D5'], [780, 'D4'], [700, 'D3'], [630, 'D2']
+					]}
+					{@const visibleThresholds = ELO_THRESHOLDS.filter(([elo]) => elo > yMin && elo < yMax)}
+					{@const color = classificationStroke(currentClass)}
 					{@const chartConfig = { value: { label: 'ELO', color } } satisfies Chart.ChartConfig}
 					<div class="h-52 p-4">
 						<Chart.Container config={chartConfig} class="aspect-auto h-full">
@@ -180,10 +164,11 @@
 								data={eloPoints}
 								x="date"
 								xScale={scaleUtc()}
+								yScale={scaleLinear()}
+								yDomain={[yMin, yMax]}
 								axis="x"
 								series={[{ key: 'value', label: 'ELO', color }]}
 								props={{
-									spline: { strokeWidth: 2 },
 									xAxis: {
 										format: (v: Date) =>
 											v.toLocaleDateString($locale ?? 'de', { month: 'short', year: '2-digit' })
@@ -191,6 +176,24 @@
 									highlight: { points: { r: 4 } }
 								}}
 							>
+								{#snippet marks({ context })}
+									{#each context.series.visibleSeries as s (s.key)}
+										<Spline seriesKey={s.key} strokeWidth={2} curve={curveMonotoneX} />
+									{/each}
+									{#each visibleThresholds as [elo, label]}
+										<AnnotationLine
+											y={elo}
+											{label}
+											labelPlacement="right"
+											stroke="white"
+											strokeOpacity={0.2}
+											props={{
+												line: { 'stroke-dasharray': '4 3' },
+												label: { class: 'fill-white/40 text-2xs' }
+											}}
+										/>
+									{/each}
+								{/snippet}
 								{#snippet tooltip()}
 									<Chart.Tooltip hideLabel />
 								{/snippet}
@@ -205,7 +208,7 @@
 	{#await data.streamed.matches}
 		<div class="grid grid-cols-3 gap-3">
 			{#each [1, 2, 3] as _}
-				<Card.Root class="bg-card/50">
+				<Card.Root class="bg-card">
 					<Card.Content class="flex flex-col items-center gap-2 p-4">
 						<Skeleton class="h-3 w-12" />
 						<Skeleton class="h-7 w-8" />
@@ -213,7 +216,7 @@
 				</Card.Root>
 			{/each}
 		</div>
-		<section class="space-y-2">
+		<section class="space-y-3">
 			<Skeleton class="h-3 w-24 rounded" />
 			{#each [1, 2, 3, 4] as _}
 				<Skeleton class="h-16 w-full rounded-2xl" />
@@ -230,28 +233,28 @@
 		{@const winPct = played.length > 0 ? Math.round((wins / played.length) * 100) : 0}
 
 		<div class="grid grid-cols-3 gap-3">
-			<Card.Root class="bg-card/50 py-0">
+			<Card.Root class="bg-card py-0">
 				<Card.Content class="flex flex-col items-center py-4 px-4">
-					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
+					<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
 						>{$_("player.wins")}</span
 					>
-					<span class="text-2xl font-black text-win">{wins}</span>
+					<span class="text-3xl font-black text-win">{wins}</span>
 				</Card.Content>
 			</Card.Root>
-			<Card.Root class="bg-card/50 py-0">
+			<Card.Root class="bg-card py-0">
 				<Card.Content class="flex flex-col items-center py-4 px-4">
-					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
+					<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
 						>{$_("player.losses")}</span
 					>
-					<span class="text-2xl font-black text-loss">{losses}</span>
+					<span class="text-3xl font-black text-loss">{losses}</span>
 				</Card.Content>
 			</Card.Root>
-			<Card.Root class="bg-card/50 py-0">
+			<Card.Root class="bg-card py-0">
 				<Card.Content class="flex flex-col items-center py-4 px-4">
-					<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
+					<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
 						>{$_("player.win_pct")}</span
 					>
-					<span class="text-2xl font-black">{winPct}%</span>
+					<span class="text-3xl font-black">{winPct}%</span>
 				</Card.Content>
 			</Card.Root>
 		</div>
@@ -262,7 +265,7 @@
 			{#if matches.length === 0}
 				<p class="py-8 text-center text-sm text-muted-foreground">{$_("player.no_matches")}</p>
 			{:else}
-				<div class="space-y-3.5">
+				<div class="space-y-3">
 					{#each matches.slice(0, 3) as game (game.gameId)}
 						<GameCard mode="player" {game} />
 					{/each}

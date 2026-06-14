@@ -7,6 +7,7 @@
 	import type { Player, PagedResponse } from '$lib/api';
 	import { CaretLeftIcon, CaretRightIcon, ClockIcon, MagnifyingGlassIcon, StarIcon } from 'phosphor-svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
+	import PageTitle from '$lib/components/PageTitle.svelte';
 	import FavoritePlayerCard from '$lib/components/FavoritePlayerCard.svelte';
 	import RecentPlayerCard from '$lib/components/RecentPlayerCard.svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
@@ -71,10 +72,10 @@
 
 <div class="space-y-6">
 	<header>
-		<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+		<p class="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-1">
 			{$_('search.subtitle')}
 		</p>
-		<h1 class="text-3xl font-black tracking-tight">{$_('search.title')}</h1>
+		<PageTitle>{$_('search.title')}</PageTitle>
 	</header>
 
 	<div class="relative">
@@ -84,7 +85,7 @@
 		/>
 		<Input
 			bind:value={searchQuery}
-			class="w-full py-5 pl-9 text-base"
+			class="w-full py-4 pl-9 text-base"
 			placeholder={$_('search.placeholder')}
 		/>
 	</div>
@@ -115,7 +116,7 @@
 					<FavoritePlayerCard
 						id={player.id}
 						fullName={player.fullName}
-						classification={player.classification}
+						classification={player.liveClassification ?? player.classification}
 						favoriteId={player.favoriteId}
 						onunfavorite={() => {
 							favoritePlayers = favoritePlayers.filter((p) => p.id !== player.id);
@@ -127,22 +128,21 @@
 	{/if}
 
 	{#if searchQuery.length >= 3}
-		<section class="space-y-4">
-			<h2 class="px-1 text-xs font-medium tracking-widest text-muted-foreground uppercase">
-				{$_('search.results_for', { values: { query: searchQuery } })}
+		<section class="space-y-3">
+			<SectionLabel label={$_('search.results_for', { values: { query: searchQuery } })}>
 				{#if response}
 					<span class="ml-1 font-normal tracking-normal text-muted-foreground/60 normal-case">
 						{$_('search.found', { values: { count: response.total } })}
 					</span>
 				{/if}
-			</h2>
+			</SectionLabel>
 
 			{#if isSearching}
-				<div class="space-y-2">
+				<div class="space-y-3">
 					{#each [1, 2, 3] as i (i)}
 						<div class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
 							<Skeleton class="h-9 w-9 shrink-0 rounded-full" />
-							<div class="flex-1 space-y-1.5">
+							<div class="flex-1 space-y-2">
 								<Skeleton class="h-3.5 w-36" />
 								<Skeleton class="h-3 w-24" />
 							</div>
@@ -153,14 +153,14 @@
 			{:else if !response || response.items.length === 0}
 				<p class="py-12 text-center text-sm text-muted-foreground">{$_('search.no_results')}</p>
 			{:else}
-				<div class="space-y-2">
+				<div class="space-y-3">
 					{#each response.items as player (player.id)}
 						<a
 							href="/players/{player.id}"
 							onclick={() => addRecentPlayer({
 								id: player.id,
 								fullName: player.fullName,
-								classification: player.classification ?? null,
+								classification: player.liveClassification ?? player.classification ?? null,
 								currentClubName: player.currentClubName ?? null
 							})}
 							class="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
@@ -168,13 +168,14 @@
 							<PlayerAvatar fullName={player.fullName} size="md" />
 
 							<div class="min-w-0 flex-1">
-								<p class="truncate text-sm font-semibold">{formatName(player.fullName)}</p>
-								<p class="truncate text-[10px] tracking-wide text-muted-foreground">
+								<div class="flex items-center gap-2">
+									<p class="truncate text-sm font-semibold">{formatName(player.fullName)}</p>
+									<ClassBadge classification={player.liveClassification ?? player.classification} />
+								</div>
+								<p class="truncate text-2xs tracking-wide text-muted-foreground">
 									{player.currentClubName ?? '-'}
 								</p>
 							</div>
-
-							<ClassBadge classification={player.classification} />
 						</a>
 					{/each}
 				</div>

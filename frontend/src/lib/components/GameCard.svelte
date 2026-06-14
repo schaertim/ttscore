@@ -31,8 +31,8 @@
 
 	function formatDelta(delta: number | null): string {
 		if (delta == null) return '';
-		const rounded = Math.round(delta);
-		return rounded >= 0 ? `+${rounded}` : String(rounded);
+		const abs = Math.abs(delta).toFixed(1);
+		return delta >= 0 ? `+${abs}` : `-${abs}`;
 	}
 
 	function playerSets(g: PlayerGame): number {
@@ -54,14 +54,14 @@
 		href={pg.matchId ? `/matches/${pg.matchId}` : undefined}
 		class="block"
 	>
-		<Card.Root class="py-3.5 transition-colors {pg.matchId ? 'hover:bg-accent' : ''}">
-			<div class="flex items-stretch gap-3.5 px-5">
+		<Card.Root class="py-3 transition-colors {pg.matchId ? 'hover:bg-accent' : ''}">
+			<div class="flex items-stretch gap-3 px-4">
 				<!-- left: meta + opponent + sets -->
-				<div class="flex min-w-0 flex-1 flex-col gap-1.5">
-					<p class="truncate text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+				<div class="flex min-w-0 flex-1 flex-col gap-2">
+					<p class="truncate text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
 						{formatDate(pg.playedAt)} · {pg.competitionName ?? '—'}
 					</p>
-					<div class="flex min-w-0 items-center gap-1.5">
+					<div class="flex min-w-0 items-center gap-2">
 							{#if pg.opponentId}
 								<a
 									href="/players/{pg.opponentId}"
@@ -81,7 +81,7 @@
 											? set.homePoints > set.awayPoints
 											: set.awayPoints > set.homePoints}
 									<span class={cn(
-										'rounded px-2 py-0.5 text-xs font-medium tabular-nums',
+										'rounded px-2 py-1 text-xs font-semibold tabular-nums',
 										playerWonSet ? 'bg-win/15 text-win' : 'bg-loss/15 text-loss'
 									)}>
 										{pg.playerSide === 'home'
@@ -95,17 +95,17 @@
 				<!-- divider -->
 				<div class="w-px shrink-0 self-stretch bg-border"></div>
 				<!-- right: score + ELO centered as group -->
-				<div class="flex w-11 shrink-0 flex-col items-center justify-center gap-0.5">
-					<p class={cn('text-[1.75rem] font-black leading-none tabular-nums', scoreColor)}>
+				<div class="flex w-11 shrink-0 flex-col items-center justify-center gap-1">
+					<p class={cn('text-3xl font-black leading-none tabular-nums', scoreColor)}>
 						{playerSets(pg)}:{opponentSets(pg)}
 					</p>
 					{#if pg.eloDelta != null}
 						<span
-							class="whitespace-nowrap text-[10px] font-bold text-muted-foreground"
+							class="whitespace-nowrap text-2xs font-semibold text-muted-foreground"
 							class:italic={pg.eloDeltaProvisional}
 							title={pg.eloDeltaProvisional ? 'Provisional — not yet officially rated' : undefined}
 						>
-							{pg.eloDeltaProvisional ? '~' : ''}{formatDelta(pg.eloDelta)} ELO
+							{formatDelta(pg.eloDelta)} ELO
 						</span>
 					{/if}
 				</div>
@@ -116,16 +116,16 @@
 	{@const mg = toGame(game)}
 	{@const homeWon = mg.result === 'HOME'}
 	{@const awayWon = mg.result === 'AWAY'}
-	<Card.Root class="py-3.5">
-		<div class="flex items-stretch gap-3.5 px-5">
+	<Card.Root class="py-3">
+		<div class="flex items-stretch gap-3 px-4">
 			<!-- left: game label + home player + away player + sets -->
-			<div class="flex min-w-0 flex-1 flex-col gap-1.5">
-				<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+			<div class="flex min-w-0 flex-1 flex-col gap-2">
+				<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
 					{$_('match.game_label', { values: { number: mg.orderInMatch } })} · {mg.gameType === 'SINGLES' ? $_('match.singles') : $_('match.doubles')}
 				</p>
 
 				<!-- home -->
-				<div class="flex min-w-0 items-center gap-1.5">
+				<div class="flex min-w-0 items-center gap-2">
 					{#if mg.homePlayer2Name}
 						<div class="flex min-w-0 shrink items-center gap-1">
 							{#if mg.homePlayerId}
@@ -155,7 +155,7 @@
 				</div>
 
 				<!-- away -->
-				<div class="flex min-w-0 items-center gap-1.5">
+				<div class="flex min-w-0 items-center gap-2">
 					{#if mg.awayPlayer2Name}
 						<div class="flex min-w-0 shrink items-center gap-1">
 							{#if mg.awayPlayerId}
@@ -187,7 +187,7 @@
 				{#if mg.sets && mg.sets.length > 0}
 					<div class="flex flex-wrap gap-1">
 						{#each mg.sets as set, i (i)}
-							<span class="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">
+							<span class="rounded bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground tabular-nums">
 								{set.homePoints}:{set.awayPoints}
 							</span>
 						{/each}

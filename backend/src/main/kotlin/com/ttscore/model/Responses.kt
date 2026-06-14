@@ -161,7 +161,6 @@ data class PagedResponse<T>(
 data class EloEntryResponse(
     val eloValue: Int,
     val recordedAt: String,
-    val seasonName: String,
 )
 
 @Serializable

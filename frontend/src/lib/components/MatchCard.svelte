@@ -55,14 +55,14 @@
 	class="group flex items-center justify-between rounded-xl border
 	       border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 >
-	<div class="flex min-w-0 flex-col gap-0.5">
-		<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+	<div class="flex min-w-0 flex-col gap-1">
+		<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
 			{#if match.round}Rd {match.round} ·
 			{/if} {formatDate(match.playedAt)}
 		</span>
 
 		{#if perspectiveTeam}
-			<div class="flex min-w-0 items-center gap-1.5">
+			<div class="flex min-w-0 items-center gap-2">
 				{#if isHome}
 					<HouseLineIcon weight="fill" size="16" class="text-muted-foreground/60" />
 				{:else}
@@ -71,17 +71,17 @@
 				<span class="truncate text-sm font-semibold">{opponent}</span>
 			</div>
 		{:else}
-			<div class="flex min-w-0 items-center gap-1.5 text-sm">
-				<span class="truncate font-medium">{match.homeTeam}</span>
+			<div class="flex min-w-0 items-center gap-2 text-sm">
+				<span class="truncate font-semibold">{match.homeTeam}</span>
 				<span class="shrink-0 text-xs text-muted-foreground">vs</span>
-				<span class="truncate font-medium">{match.awayTeam}</span>
+				<span class="truncate font-semibold">{match.awayTeam}</span>
 			</div>
 		{/if}
 	</div>
 
 	<span
 		class={cn(
-			'min-w-12 shrink-0 rounded-md border px-2.5 py-1 text-center text-sm font-black tabular-nums',
+			'min-w-12 shrink-0 rounded-md border px-2 py-1 text-center text-sm font-black tabular-nums',
 			scoreClass
 		)}
 	>

@@ -59,7 +59,7 @@
 		type="button"
 		onclick={redirectToSignIn}
 		title="Sign in to turn on notifications"
-		class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+		class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 	>
 		<BellIcon size="20" />
 	</button>
@@ -70,7 +70,7 @@
 			type="submit"
 			disabled={loading}
 			title="Turn off notifications"
-			class="flex items-center justify-center rounded-full p-1.5 text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+			class="flex items-center justify-center rounded-full p-2 text-foreground transition-colors hover:bg-muted disabled:opacity-50"
 		>
 			<BellRingingIcon size="20" weight="fill" />
 		</button>
@@ -83,7 +83,7 @@
 			type="submit"
 			disabled={loading}
 			title="Turn on notifications"
-			class="flex items-center justify-center rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+			class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
 		>
 			<BellIcon size="20" />
 		</button>

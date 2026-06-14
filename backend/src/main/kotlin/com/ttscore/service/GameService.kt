@@ -2,10 +2,13 @@
 
 import com.ttscore.database.GameSets
 import com.ttscore.database.Games
+import com.ttscore.database.Players
 import com.ttscore.database.dbQuery
 import com.ttscore.model.GameResult
 import com.ttscore.model.GameType
 import com.ttscore.scraper.clicktt.model.ParsedClickTTSet
+import com.ttscore.util.accentFold
+import com.ttscore.util.clickTtNameToDb
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
@@ -22,64 +25,103 @@ import java.util.*
 object GameService {
     /**
      * Fills a player's ELO delta (and refreshes the competition name) on an existing game — league
-     * OR tournament/cup — for the given Swiss day. Tries the player as home first, then as away,
-     * matching only rows whose delta is still null so that multiple games against the same opponent
-     * on the same day each get rated once.
+     * OR tournament/cup — for the given Swiss day.
+     *
+     * Matching is done *locally*: we load the player's not-yet-rated singles games on the day and map
+     * this Elo-Protokoll line to one of them. The opponent on each row was linked by click-tt
+     * person-id at insert time, so it is already the correct person; the Protokoll only gives the
+     * opponent's *name*, so we identify the right row by comparing that name against the rows'
+     * stored opponents. This sidesteps the duplicate-name problem (e.g. two players both named
+     * "Hess Matthias") that a global name→id lookup hits — a player faces only one same-named
+     * opponent on a given day. Win/loss disambiguates the rare case of two same-named opponents.
      *
      * The Elo-Protokoll is the only page that carries deltas, so this is the sole writer of them and
-     * it never inserts: if no row matches (game unrated, or opponent unresolved) it simply does
-     * nothing. That is what keeps the sync from ever producing duplicate game rows.
+     * it never inserts: if no row can be matched it does nothing rather than guess. That is what
+     * keeps the sync from ever producing duplicate game rows or mis-assigning a delta.
      *
      * Returns true if a row was updated.
      */
     suspend fun updateGameEloDelta(
         playerId: UUID,
-        opponentId: UUID?,
+        opponentName: String,
         dayStart: OffsetDateTime,
         eloDelta: Double,
         competition: String? = null,
     ): Boolean =
         dbQuery {
             val dayEnd = dayStart.plusDays(1)
+            // The delta's sign is authoritative for win/loss (no draws in TT singles); the Protokoll
+            // win-icon is unreliable. Used only to break ties between same-named same-day opponents.
+            val won = eloDelta > 0
 
-            val homeBase =
-                (Games.homePlayer1Id eq playerId) and
-                    (Games.playedAt greaterEq dayStart) and
-                    (Games.playedAt less dayEnd) and
-                    (Games.homePlayer1EloDelta.isNull())
-            val homeCondition =
-                if (opponentId != null) {
-                    homeBase and (Games.awayPlayer1Id eq opponentId)
+            val candidates =
+                Games
+                    .select(Games.id, Games.homePlayer1Id, Games.awayPlayer1Id, Games.result)
+                    .where {
+                        (Games.gameType eq GameType.SINGLES) and
+                            (Games.playedAt greaterEq dayStart) and
+                            (Games.playedAt less dayEnd) and
+                            (
+                                ((Games.homePlayer1Id eq playerId) and Games.homePlayer1EloDelta.isNull()) or
+                                    ((Games.awayPlayer1Id eq playerId) and Games.awayPlayer1EloDelta.isNull())
+                            )
+                    }
+                    .map { row ->
+                        val isHome = row[Games.homePlayer1Id] == playerId
+                        CandidateGame(
+                            gameId = row[Games.id],
+                            playerIsHome = isHome,
+                            opponentId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id],
+                            won = row[Games.result] == (if (isHome) GameResult.HOME else GameResult.AWAY),
+                        )
+                    }
+            if (candidates.isEmpty()) return@dbQuery false
+
+            // Stored names of the candidates' (already correctly linked) opponents, for local matching.
+            val opponentIds = candidates.mapNotNull { it.opponentId }.toSet()
+            val nameById =
+                if (opponentIds.isEmpty()) {
+                    emptyMap()
                 } else {
-                    homeBase
+                    Players
+                        .select(Players.id, Players.fullName)
+                        .where { Players.id inList opponentIds }
+                        .associate { it[Players.id] to accentFold(it[Players.fullName]) }
                 }
 
-            val homeUpdate =
-                Games.update({ homeCondition }) {
-                    it[Games.homePlayer1EloDelta] = eloDelta
+            // Protokoll opponent looks like "Hess, Matthias (C10)" — drop the class, normalise to the
+            // DB's "Lastname Firstname" form, then accent-fold for a robust comparison.
+            val target = accentFold(clickTtNameToDb(opponentName.substringBefore("(").trim()))
+            val byName = candidates.filter { it.opponentId?.let { id -> nameById[id] } == target }
+
+            val chosen =
+                when {
+                    byName.size == 1 -> byName.single()
+                    // Two identically-named same-day opponents (vanishingly rare): break the tie on result.
+                    byName.size > 1 -> byName.singleOrNull { it.won == won }
+                    // No name match (opponent unresolved on the row, or stored under a name variant):
+                    // fall back only when there is a single unrated game that day — never guess between many.
+                    else -> candidates.singleOrNull()
+                } ?: return@dbQuery false
+
+            val updated =
+                Games.update({ Games.id eq chosen.gameId }) {
+                    if (chosen.playerIsHome) {
+                        it[Games.homePlayer1EloDelta] = eloDelta
+                    } else {
+                        it[Games.awayPlayer1EloDelta] = eloDelta
+                    }
                     if (competition != null) it[Games.competitionName] = competition
                 }
-            if (homeUpdate > 0) return@dbQuery true
-
-            val awayBase =
-                (Games.awayPlayer1Id eq playerId) and
-                    (Games.playedAt greaterEq dayStart) and
-                    (Games.playedAt less dayEnd) and
-                    (Games.awayPlayer1EloDelta.isNull())
-            val awayCondition =
-                if (opponentId != null) {
-                    awayBase and (Games.homePlayer1Id eq opponentId)
-                } else {
-                    awayBase
-                }
-
-            val awayUpdate =
-                Games.update({ awayCondition }) {
-                    it[Games.awayPlayer1EloDelta] = eloDelta
-                    if (competition != null) it[Games.competitionName] = competition
-                }
-            awayUpdate > 0
+            updated > 0
         }
+
+    private data class CandidateGame(
+        val gameId: UUID,
+        val playerIsHome: Boolean,
+        val opponentId: UUID?,
+        val won: Boolean,
+    )
 
     suspend fun getPlayerIdsFromMatches(matchIds: Set<UUID>): Set<UUID> =
         dbQuery {

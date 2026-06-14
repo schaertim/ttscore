@@ -51,7 +51,7 @@
 		<button
 			type="submit"
 			onclick={(e) => e.stopPropagation()}
-			class="absolute top-2 right-2 rounded-full p-0.5 text-foreground/60
+			class="absolute top-2 right-2 rounded-full p-1 text-foreground/60
 			       transition-colors hover:text-foreground"
 			aria-label="Remove from favourites"
 		>

@@ -9,7 +9,7 @@
 
 <a
 	{href}
-	class="block pt-1 text-center text-xs font-medium tracking-widest text-muted-foreground uppercase hover:text-foreground"
+	class="block pt-1 text-center text-xs font-semibold tracking-widest text-muted-foreground uppercase hover:text-foreground"
 >
 	{label} →
 </a>

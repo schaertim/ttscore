@@ -68,9 +68,9 @@
 	<form onsubmit={handleSubmit} class="flex flex-col gap-6">
 		<div class="flex flex-col items-center gap-2 text-center">
 			<div class="flex size-8 items-center justify-center rounded-md bg-foreground text-background">
-				<span class="text-sm leading-none font-bold">tt</span>
+				<span class="text-sm leading-none font-semibold">tt</span>
 			</div>
-			<h1 class="text-xl font-bold">
+			<h1 class="text-xl font-semibold">
 				{$_(mode === 'signin' ? 'auth.welcome_back' : 'auth.create_account')}
 			</h1>
 			<p class="text-sm text-muted-foreground">
@@ -116,7 +116,7 @@
 
 		<div class="flex flex-col gap-4">
 			<div class="flex flex-col gap-2">
-				<label class="text-sm font-medium" for="email">{$_('auth.email')}</label>
+				<label class="text-sm font-semibold" for="email">{$_('auth.email')}</label>
 				<Input
 					id="email"
 					type="email"
@@ -128,7 +128,7 @@
 			</div>
 
 			<div class="flex flex-col gap-2">
-				<label class="text-sm font-medium" for="password">{$_('auth.password')}</label>
+				<label class="text-sm font-semibold" for="password">{$_('auth.password')}</label>
 				<Input
 					id="password"
 					type="password"

@@ -7,6 +7,7 @@ data class ClickTTGame(
     val opponentElo: Int?,
     val eloDelta: Double?,
     val isWin: Boolean,
+    val playerMonthlyElo: Int?,
 )
 
 data class ClickTTPlayerPortrait(

@@ -103,21 +103,21 @@
 							{#if current < slideKeys.length - 1}
 								<button
 									onclick={next}
-									class="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-75"
+									class="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-75"
 								>
 									{$_('onboarding.next')}
 								</button>
 							{:else}
 								<button
 									onclick={signUp}
-									class="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-75"
+									class="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 active:opacity-75"
 								>
 									{$_('onboarding.create_account')}
 								</button>
 							{/if}
 							<button
 								onclick={dismiss}
-								class="w-full rounded-xl px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+								class="w-full rounded-xl px-4 py-3 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
 							>
 								{$_('onboarding.skip')}
 							</button>

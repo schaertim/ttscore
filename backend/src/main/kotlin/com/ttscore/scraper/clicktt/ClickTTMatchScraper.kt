@@ -205,11 +205,15 @@ class ClickTTMatchScraper(
         val dbName = name?.let { clickTtNameToDb(it) }
 
         if (personId == null) {
-            // Doubles player with no personId — try name lookup as a best-effort fallback
+            // Doubles player with no personId — best-effort name lookup. Resolve only when the name is
+            // unique; refuse to guess between namesakes (linking a doubles game + class to the wrong
+            // "Hess Matthias" is worse than leaving the slot unlinked).
             dbName ?: return null
             return Players.select(Players.id)
                 .where { Players.fullName eq dbName }
-                .firstOrNull()?.get(Players.id)
+                .limit(2)
+                .map { it[Players.id] }
+                .singleOrNull()
                 ?.also { playerId ->
                     PlayerSeasons.insertIgnore {
                         it[PlayerSeasons.playerId] = playerId

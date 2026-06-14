@@ -5,6 +5,7 @@ import com.ttscore.database.PlayerElos
 import com.ttscore.model.GameResult
 import com.ttscore.model.GameType
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.or
 import java.time.OffsetDateTime
@@ -33,6 +34,7 @@ object LiveEloService {
         val opponentId: UUID?,
         val playerIsHome: Boolean,
         val result: GameResult,
+        val playedAt: OffsetDateTime?,
     )
 
     /** Latest official ELO snapshot per player. Call inside a transaction. */
@@ -40,7 +42,7 @@ object LiveEloService {
         if (playerIds.isEmpty()) return emptyMap()
         return PlayerElos
             .select(PlayerElos.playerId, PlayerElos.eloValue)
-            .where { PlayerElos.playerId inList playerIds }
+            .where { (PlayerElos.playerId inList playerIds) and (PlayerElos.isProvisional eq false) }
             .orderBy(PlayerElos.recordedAt to SortOrder.DESC)
             .toList()
             .groupBy { it[PlayerElos.playerId] }
@@ -54,6 +56,7 @@ object LiveEloService {
                 Games.homePlayer1Id,
                 Games.awayPlayer1Id,
                 Games.result,
+                Games.playedAt,
             )
             .where {
                 (Games.gameType eq GameType.SINGLES) and
@@ -64,12 +67,14 @@ object LiveEloService {
                             ((Games.awayPlayer1Id eq playerId) and Games.awayPlayer1EloDelta.isNull())
                     )
             }
+            .orderBy(Games.playedAt to SortOrder.ASC)
             .map { row ->
                 val isHome = row[Games.homePlayer1Id] == playerId
                 PendingGame(
                     opponentId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id],
                     playerIsHome = isHome,
                     result = row[Games.result],
+                    playedAt = row[Games.playedAt],
                 )
             }
 

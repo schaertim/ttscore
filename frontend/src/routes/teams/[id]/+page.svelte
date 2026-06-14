@@ -6,6 +6,7 @@
 	import MatchCard from '$lib/components/MatchCard.svelte';
 	import { CheckCircleIcon, XCircleIcon, MinusCircleIcon, UsersThreeIcon, PingPongIcon } from 'phosphor-svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import PageTitle from '$lib/components/PageTitle.svelte';
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
@@ -32,7 +33,7 @@
 
 		<div class="flex items-start justify-between gap-4">
 			<div class="min-w-0">
-				<h1 class="mb-1 text-3xl font-black tracking-tight">{data.team.name}</h1>
+				<PageTitle class="mb-1">{data.team.name}</PageTitle>
 				<p class="text-sm text-muted-foreground">{data.team.groupName}</p>
 			</div>
 			{#if data.team.position > 0}
@@ -45,19 +46,19 @@
 
 	<div class="grid grid-cols-2 gap-3">
 		<Card.Root class="gap-3 p-4">
-			<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">{$_("team.record")}</p>
+			<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">{$_("team.record")}</p>
 			<p class="text-xl leading-none font-black">
 				<span class="text-win">{won}</span>
-				<span class="mx-0.5 font-normal text-muted-foreground/40">–</span>
+				<span class="mx-1 font-normal text-muted-foreground/40">–</span>
 				<span class="text-muted-foreground">{drawn}</span>
-				<span class="mx-0.5 font-normal text-muted-foreground/40">–</span>
+				<span class="mx-1 font-normal text-muted-foreground/40">–</span>
 				<span class="text-loss">{lost}</span>
 			</p>
 		</Card.Root>
 
 		{#if data.team.lastResults.length > 0}
 			<Card.Root class="gap-3 p-4">
-				<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+				<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
 					{$_('team.last_5')}
 				</p>
 				<div class="flex flex-wrap">
@@ -75,7 +76,7 @@
 		{/if}
 	</div>
 
-	<section class="space-y-2">
+	<section class="space-y-3">
 		<SectionLabel label={$_("team.roster")} icon={UsersThreeIcon} />
 
 		<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
@@ -83,7 +84,7 @@
 				{#each [1, 2, 3] as i (i)}
 					<div class="flex items-center gap-3 px-4 py-3">
 						<Skeleton class="h-9 w-9 shrink-0 rounded-full" />
-						<div class="flex-1 space-y-1.5">
+						<div class="flex-1 space-y-2">
 							<Skeleton class="h-3.5 w-32" />
 							<Skeleton class="h-3 w-8" />
 						</div>
@@ -104,7 +105,7 @@
 		</div>
 	</section>
 
-	<section class="space-y-2">
+	<section class="space-y-3">
 		<SectionLabel label={$_("team.match_history")} icon={PingPongIcon} />
 
 		{#await data.streamed.matches}
@@ -112,7 +113,7 @@
 			<Skeleton class="h-16 w-full rounded-xl" />
 			<Skeleton class="h-16 w-full rounded-xl" />
 		{:then matches}
-			<div class="space-y-3.5">
+			<div class="space-y-3">
 				{#each matches as match (match.id)}
 					<MatchCard {match} perspectiveTeam={data.team.name} />
 				{/each}

@@ -4,6 +4,7 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
+	import PageTitle from '$lib/components/PageTitle.svelte';
 	import {
 		CaretDownIcon,
 		CaretRightIcon,
@@ -72,10 +73,10 @@
 <div class="space-y-6">
 	<header class="flex items-end justify-between px-1">
 		<div>
-			<p class="text-xs font-medium tracking-widest text-muted-foreground uppercase">
+			<p class="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-1">
 				{$_('leagues.browser_label')}
 			</p>
-			<h1 class="text-3xl font-black tracking-tight">{$_('leagues.title')}</h1>
+			<PageTitle>{$_('leagues.title')}</PageTitle>
 		</div>
 		<Select.Root
 			type="single"
@@ -107,7 +108,7 @@
 		{:else if groupsByFederation.length === 0}
 			<p class="py-12 text-center text-sm text-muted-foreground">{$_('leagues.no_groups')}</p>
 		{:else}
-			<Accordion.Root type="multiple" bind:value={expandedFederations} class="space-y-3.5">
+			<Accordion.Root type="multiple" bind:value={expandedFederations} class="space-y-3">
 				{#each groupsByFederation as fed (fed.id)}
 					{@const isExpanded = expandedFederations.includes(fed.id)}
 					{@const isNational = fed.name === 'STT'}
@@ -124,7 +125,7 @@
 								{:else}
 									<MapTrifoldIcon size="20" class="text-muted-foreground" />
 								{/if}
-								<span class="font-bold">{fed.name}</span>
+								<span class="font-semibold">{fed.name}</span>
 							</div>
 							<CaretDownIcon
 								size="20"
@@ -143,7 +144,7 @@
 											<p class="truncate text-sm font-semibold">{group.name}</p>
 											{#if group.teamCount > 0 || group.totalRounds > 0}
 												<p
-													class="mt-0.5 text-[10px] font-bold tracking-wide text-muted-foreground uppercase"
+													class="mt-1 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
 												>
 													{#if group.teamCount > 0}{$_('leagues.teams', { values: { count: group.teamCount } })}{/if}
 													{#if group.teamCount > 0 && group.totalRounds > 0}
@@ -167,14 +168,14 @@
 		{/if}
 	</section>
 
-	<section class="grid grid-cols-2 gap-3.5">
+	<section class="grid grid-cols-2 gap-3">
 		<StatCard
 			label={$_('leagues.players_registered')}
 			value={loadingStats || !stats ? null : stats.registeredPlayers.toLocaleString()}
 		>
 			{#snippet footer()}
 				<TrendUpIcon size="16" />
-				<span class="text-[10px] font-bold">{selectedSeason?.name ?? ''}</span>
+				<span class="text-2xs font-semibold">{selectedSeason?.name ?? ''}</span>
 			{/snippet}
 		</StatCard>
 
@@ -184,7 +185,7 @@
 		>
 			{#snippet footer()}
 				<ClockIcon size="16" />
-				<span class="text-[10px] font-bold">{$_('leagues.last_24h')}</span>
+				<span class="text-2xs font-semibold">{$_('leagues.last_24h')}</span>
 			{/snippet}
 		</StatCard>
 	</section>

@@ -145,7 +145,7 @@ object FavoriteService {
             val eloByPlayer =
                 PlayerElos
                     .select(PlayerElos.playerId, PlayerElos.eloValue)
-                    .where { PlayerElos.playerId inList playerIds }
+                    .where { (PlayerElos.playerId inList playerIds) and (PlayerElos.isProvisional eq false) }
                     .orderBy(PlayerElos.recordedAt to SortOrder.DESC)
                     .toList()
                     .groupBy { it[PlayerElos.playerId] }

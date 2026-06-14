@@ -28,7 +28,7 @@
 
 	{#if wins !== undefined && losses !== undefined}
 		<div class="shrink-0 text-right">
-			<p class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">{$_('team.games')}</p>
+			<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">{$_('team.games')}</p>
 			<p class="text-sm font-black text-foreground tabular-nums">{wins}:{losses}</p>
 		</div>
 	{/if}

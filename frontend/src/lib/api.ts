@@ -124,7 +124,6 @@ export type Player = {
 export type EloEntry = {
 	eloValue: number;
 	recordedAt: string;
-	seasonName: string;
 };
 
 export type PlayerGame = {

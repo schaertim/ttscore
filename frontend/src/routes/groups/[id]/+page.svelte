@@ -5,6 +5,7 @@
 	import * as Table from '$lib/components/ui/table/index.js';
 	import MatchCard from '$lib/components/MatchCard.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import PageTitle from '$lib/components/PageTitle.svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
@@ -88,11 +89,11 @@
 			</div>
 		</div>
 		<div class="min-w-0">
-			<h1 class="mb-1 text-3xl font-black tracking-tight">{data.group.name}</h1>
+			<PageTitle class="mb-1">{data.group.name}</PageTitle>
 			<p class="text-sm text-muted-foreground">
 				{data.group.season}
 				{#if data.group.totalRounds > 0}
-					· <span class="font-medium">{$_('leagues.round', { values: { played: data.group.roundsPlayed, total: data.group.totalRounds } })}</span>
+					· <span class="font-semibold">{$_('leagues.round', { values: { played: data.group.roundsPlayed, total: data.group.totalRounds } })}</span>
 				{/if}
 			</p>
 		</div>
@@ -110,7 +111,7 @@
 			<Table.Root>
 				<Table.Header>
 					<Table.Row class="border-border hover:bg-transparent">
-						<Table.Head class="w-8 pl-5 text-xs">{$_("group.pos")}</Table.Head>
+						<Table.Head class="w-8 pl-4 text-xs">{$_("group.pos")}</Table.Head>
 						<Table.Head class="text-xs">{$_("group.team")}</Table.Head>
 						<Table.Head class="w-10 text-center text-xs">{$_("group.played")}</Table.Head>
 						<Table.Head class="w-10 text-center text-xs">{$_("group.points")}</Table.Head>
@@ -122,7 +123,7 @@
 						{@const z = zone(row.position)}
 						<Table.Row class="border-border">
 							<Table.Cell
-								class="border-l-2 pl-4 font-bold tabular-nums
+								class="border-l-2 pl-4 font-semibold tabular-nums
 								{z === 'promotion'
 									? 'border-l-win'
 									: z === 'relegation'
@@ -132,7 +133,7 @@
 								{row.position}
 							</Table.Cell>
 
-							<Table.Cell class="text-sm font-medium">
+							<Table.Cell class="text-sm font-semibold">
 								<a href="/teams/{row.teamId}" class="hover:underline">
 									{row.team}
 								</a>
@@ -142,12 +143,12 @@
 								{row.played}
 							</Table.Cell>
 
-							<Table.Cell class="text-center font-bold tabular-nums">
+							<Table.Cell class="text-center font-semibold tabular-nums">
 								{row.points}
 							</Table.Cell>
 
 							<Table.Cell
-								class="pr-4 text-right font-medium tabular-nums
+								class="pr-4 text-right font-semibold tabular-nums
                        {row.gamesWon - row.gamesLost > 0
 									? 'text-win'
 									: row.gamesWon - row.gamesLost < 0
@@ -170,7 +171,7 @@
 		{/if}
 	</Tabs.Content>
 
-	<Tabs.Content value="results" class="mt-4 space-y-3.5">
+	<Tabs.Content value="results" class="mt-4 space-y-3">
 		{#if completedMatches.length === 0}
 			<p class="py-12 text-center text-sm text-muted-foreground">{$_("group.no_results")}</p>
 		{:else}
@@ -180,7 +181,7 @@
 		{/if}
 	</Tabs.Content>
 
-	<Tabs.Content value="schedule" class="mt-4 space-y-3.5">
+	<Tabs.Content value="schedule" class="mt-4 space-y-3">
 		{#if scheduledMatches.length === 0}
 			<p class="py-12 text-center text-sm text-muted-foreground">{$_("group.no_schedule")}</p>
 		{:else}
@@ -189,18 +190,18 @@
 					class="flex items-center justify-between rounded-xl border border-border
                  bg-card px-4 py-3"
 				>
-					<div class="flex min-w-0 flex-col gap-0.5">
-						<span class="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+					<div class="flex min-w-0 flex-col gap-1">
+						<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
 							{$_('group.round_label', { values: { round: match.round } })} · {formatDate(match.playedAt)}
 						</span>
-						<div class="flex min-w-0 items-center gap-1.5 text-sm">
-							<span class="truncate font-medium">{match.homeTeam}</span>
+						<div class="flex min-w-0 items-center gap-2 text-sm">
+							<span class="truncate font-semibold">{match.homeTeam}</span>
 							<span class="shrink-0 text-muted-foreground">vs</span>
-							<span class="truncate font-medium">{match.awayTeam}</span>
+							<span class="truncate font-semibold">{match.awayTeam}</span>
 						</div>
 					</div>
 					<span
-						class="ml-3 shrink-0 rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground"
+						class="ml-3 shrink-0 rounded-full border border-border px-2 py-1 text-xs text-muted-foreground"
 					>
 						{formatDate(match.playedAt)}
 					</span>
