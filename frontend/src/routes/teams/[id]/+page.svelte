@@ -49,9 +49,9 @@
 			<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">{$_("team.record")}</p>
 			<p class="text-xl leading-none font-black">
 				<span class="text-win">{won}</span>
-				<span class="mx-1 font-normal text-muted-foreground/40">–</span>
+				<span class="font-normal text-muted-foreground/40">–</span>
 				<span class="text-muted-foreground">{drawn}</span>
-				<span class="mx-1 font-normal text-muted-foreground/40">–</span>
+				<span class="font-normal text-muted-foreground/40">–</span>
 				<span class="text-loss">{lost}</span>
 			</p>
 		</Card.Root>

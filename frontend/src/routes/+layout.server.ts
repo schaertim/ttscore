@@ -9,13 +9,15 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession }, cooki
 	);
 
 	let hasHomePlayer = false;
+	let homePlayerId: string | null = null;
 	if (session) {
 		const profileRes = await authedKtor(session.access_token)
 			.get('/users/me')
 			.catch(() => null);
 		if (profileRes?.ok) {
 			const profile = await profileRes.json();
-			hasHomePlayer = !!profile.homePlayerId;
+			homePlayerId = profile.homePlayerId ?? null;
+			hasHomePlayer = !!homePlayerId;
 		}
 	}
 
@@ -23,6 +25,7 @@ export const load: LayoutServerLoad = async ({ locals: { safeGetSession }, cooki
 		session,
 		user,
 		hasHomePlayer,
+		homePlayerId,
 		locale,
 		// Pass raw cookies to +layout.ts so it can reconstruct the Supabase client
 		// server-side without a browser environment.

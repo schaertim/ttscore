@@ -91,6 +91,33 @@ fun Route.playerRoutes() {
             }
         }
 
+        get("/{id}/stats") {
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+
+            val stats =
+                PlayerService.getSeasonStats(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
+
+            call.respond(HttpStatusCode.OK, stats)
+        }
+
+        get("/{id}/h2h/{opponentId}") {
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+            val opponentId =
+                call.parameters["opponentId"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing opponent id")
+
+            val h2h =
+                PlayerService.getHeadToHead(id, opponentId)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
+
+            call.respond(HttpStatusCode.OK, h2h)
+        }
+
         get("/{id}/class-history") {
             val id =
                 call.parameters["id"]

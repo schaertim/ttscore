@@ -4,10 +4,17 @@
 	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { theme } from '$lib/theme.svelte';
+	import { h2h } from '$lib/h2h.svelte';
+	import H2HDrawer from '$lib/components/player/H2HDrawer.svelte';
 	import { HouseIcon, TrophyIcon, MagnifyingGlassIcon, UserCircleIcon, SignInIcon } from 'phosphor-svelte';
 	import { _ } from 'svelte-i18n';
 
 	let { children, data } = $props();
+
+	// Drawer open state: set by the h2h store, cleared when the drawer is swiped away.
+	let drawerOpen = $state(false);
+	$effect(() => { if (h2h.opponentId) drawerOpen = true; });
+	$effect(() => { if (!drawerOpen) h2h.opponentId = null; });
 
 	const navItems = $derived(
 		data.hasHomePlayer
@@ -54,6 +61,10 @@
 <main class="mx-auto max-w-2xl px-4 pt-4 pb-24">
 	{@render children()}
 </main>
+
+{#if data.homePlayerId}
+	<H2HDrawer bind:open={drawerOpen} homePlayerId={data.homePlayerId} opponentId={h2h.opponentId} />
+{/if}
 
 <nav
 	class="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card"

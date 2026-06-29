@@ -1,11 +1,19 @@
-﻿<script lang="ts">
+<script lang="ts">
 	import type { PageData } from './$types';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { api } from '$lib/api';
 	import type { Player, PagedResponse } from '$lib/api';
-	import { CaretLeftIcon, CaretRightIcon, ClockIcon, MagnifyingGlassIcon, StarIcon } from 'phosphor-svelte';
+	import {
+		CaretLeftIcon,
+		CaretRightIcon,
+		ClockIcon,
+		MagnifyingGlassIcon,
+		StarIcon,
+		ScalesIcon
+	} from 'phosphor-svelte';
+	import { h2h } from '$lib/h2h.svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import FavoritePlayerCard from '$lib/components/FavoritePlayerCard.svelte';
@@ -28,6 +36,10 @@
 	$effect(() => {
 		recentPlayers = getRecentPlayers();
 	});
+
+	function compareWithMe(playerId: string) {
+		h2h.opponentId = playerId;
+	}
 
 	const PAGE_SIZE = 20;
 
@@ -70,9 +82,22 @@
 	const showRecents = $derived(filteredRecents.length > 0 && searchQuery.length < 3);
 </script>
 
+{#snippet row(player: Player)}
+	<PlayerAvatar fullName={player.fullName} size="md" />
+	<div class="min-w-0 flex-1">
+		<div class="flex items-center gap-2">
+			<p class="truncate text-sm font-semibold">{formatName(player.fullName)}</p>
+			<ClassBadge classification={player.liveClassification ?? player.classification} />
+		</div>
+		<p class="truncate text-2xs tracking-wide text-muted-foreground">
+			{player.currentClubName ?? '-'}
+		</p>
+	</div>
+{/snippet}
+
 <div class="space-y-6">
 	<header>
-		<p class="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-1">
+		<p class="mb-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
 			{$_('search.subtitle')}
 		</p>
 		<PageTitle>{$_('search.title')}</PageTitle>
@@ -155,28 +180,33 @@
 			{:else}
 				<div class="space-y-3">
 					{#each response.items as player (player.id)}
-						<a
-							href="/players/{player.id}"
-							onclick={() => addRecentPlayer({
-								id: player.id,
-								fullName: player.fullName,
-								classification: player.liveClassification ?? player.classification ?? null,
-								currentClubName: player.currentClubName ?? null
-							})}
-							class="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
+						<div
+							class="group flex items-center gap-1 rounded-xl border border-border bg-card pr-2 transition-colors hover:bg-accent"
 						>
-							<PlayerAvatar fullName={player.fullName} size="md" />
-
-							<div class="min-w-0 flex-1">
-								<div class="flex items-center gap-2">
-									<p class="truncate text-sm font-semibold">{formatName(player.fullName)}</p>
-									<ClassBadge classification={player.liveClassification ?? player.classification} />
-								</div>
-								<p class="truncate text-2xs tracking-wide text-muted-foreground">
-									{player.currentClubName ?? '-'}
-								</p>
-							</div>
-						</a>
+							<a
+								href="/players/{player.id}"
+								onclick={() =>
+									addRecentPlayer({
+										id: player.id,
+										fullName: player.fullName,
+										classification: player.liveClassification ?? player.classification ?? null,
+										currentClubName: player.currentClubName ?? null
+									})}
+								class="flex min-w-0 flex-1 items-center gap-3 px-4 py-3"
+							>
+								{@render row(player)}
+							</a>
+							{#if data.homePlayerId && player.id !== data.homePlayerId}
+								<button
+									type="button"
+									onclick={() => compareWithMe(player.id)}
+									class="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+									aria-label={$_('h2h.compare')}
+								>
+									<ScalesIcon size="18" />
+								</button>
+							{/if}
+						</div>
 					{/each}
 				</div>
 

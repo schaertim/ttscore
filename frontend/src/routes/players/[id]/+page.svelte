@@ -1,7 +1,8 @@
-﻿<script lang="ts">
+<script lang="ts">
 	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { AnnotationLine, LineChart, Spline } from 'layerchart';
 	import { scaleLinear, scaleUtc } from 'd3-scale';
@@ -13,17 +14,21 @@
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
+	import StatsTab from '$lib/components/player/StatsTab.svelte';
+	import { h2h } from '$lib/h2h.svelte';
 	import { curveMonotoneX } from 'd3-shape';
 
 	import {
 		ChartLineIcon,
 		ClockCounterClockwiseIcon,
-		UserCirclePlusIcon
+		UserCirclePlusIcon,
+		ScalesIcon,
+		CaretRightIcon
 	} from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { page } from '$app/state';
 	import { _, locale } from 'svelte-i18n';
-	import { formatName } from '$lib/utils';
+	import { ELO_THRESHOLDS, formatName } from '$lib/utils';
 	let { data }: { data: PageData } = $props();
 
 	let settingHomePlayer = $state(false);
@@ -36,6 +41,13 @@
 	// Class derived from the player's *current* ELO (live where available). This is what we show on
 	// the profile/home/search surfaces and use to colour the graph — match rows keep historical classes.
 	const currentClass = $derived(data.player.liveClassification ?? data.player.classification);
+	const displayElo = $derived(data.player.liveElo ?? data.player.currentElo);
+
+	const canCompare = $derived(!!data.homePlayerId && data.homePlayerId !== data.player.id);
+
+	function compareWithMe() {
+		h2h.opponentId = data.player.id;
+	}
 
 	function classificationStroke(classification: string | null | undefined): string {
 		if (!classification) return 'var(--color-primary)';
@@ -51,14 +63,26 @@
 		<div class="flex items-center justify-between">
 			<BackButton class="" />
 			<div class="flex items-center">
-				<FavoriteButton bind:isFavorite bind:favoriteId targetType="player" targetId={data.player.id} authenticated={!!data.user} />
-				<NotifyButton bind:notifying bind:notifyId targetType="player" targetId={data.player.id} authenticated={!!data.user} />
+				<FavoriteButton
+					bind:isFavorite
+					bind:favoriteId
+					targetType="player"
+					targetId={data.player.id}
+					authenticated={!!data.user}
+				/>
+				<NotifyButton
+					bind:notifying
+					bind:notifyId
+					targetType="player"
+					targetId={data.player.id}
+					authenticated={!!data.user}
+				/>
 			</div>
 		</div>
 
 		<div class="flex items-start justify-between gap-4">
 			<div class="min-w-0">
-				<div class="flex items-center gap-2 mb-1">
+				<div class="mb-1 flex items-center gap-2">
 					<PageTitle class="wrap-break-word">
 						{formatName(data.player.fullName)}
 					</PageTitle>
@@ -70,15 +94,24 @@
 			</div>
 
 			<div class="flex shrink-0 flex-col items-end gap-1">
-				{#if data.player.currentElo}
-					{@const displayElo = data.player.liveElo ?? data.player.currentElo}
+				{#if displayElo}
 					<span class="text-4xl leading-none font-black tabular-nums">{displayElo}</span>
-					<span class="text-xs tracking-widest text-muted-foreground uppercase">
-						ELO
-					</span>
+					<span class="text-xs tracking-widest text-muted-foreground uppercase"> ELO </span>
 				{/if}
 			</div>
 		</div>
+
+		{#if canCompare}
+			<button
+				type="button"
+				onclick={compareWithMe}
+				class="flex w-full items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
+			>
+				<ScalesIcon size="16" class="text-primary" />
+				<span class="font-medium">{$_('h2h.compare_with_me')}</span>
+				<CaretRightIcon size="14" class="ml-auto" />
+			</button>
+		{/if}
 	</header>
 
 	{#if !data.user}
@@ -90,10 +123,11 @@
 				<UserCirclePlusIcon size="20" class="text-primary" />
 			</div>
 			<div class="min-w-0 flex-1">
-				<p class="text-sm font-semibold">{$_("set_player.is_this_you")}</p>
-				<p class="text-xs text-muted-foreground">{$_("set_player.sign_in_prompt")}</p>
+				<p class="text-sm font-semibold">{$_('set_player.is_this_you')}</p>
+				<p class="text-xs text-muted-foreground">{$_('set_player.sign_in_prompt')}</p>
 			</div>
-			<span class="shrink-0 text-xs font-semibold text-primary">{$_("set_player.sign_in_cta")}</span>
+			<span class="shrink-0 text-xs font-semibold text-primary">{$_('set_player.sign_in_cta')}</span
+			>
 		</a>
 	{:else if !data.hasHomePlayer}
 		<form
@@ -118,162 +152,143 @@
 					<UserCirclePlusIcon size="20" class="text-primary" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<p class="text-sm font-semibold">{$_("set_player.set_title")}</p>
-					<p class="text-xs text-muted-foreground">{$_("set_player.set_desc")}</p>
+					<p class="text-sm font-semibold">{$_('set_player.set_title')}</p>
+					<p class="text-xs text-muted-foreground">{$_('set_player.set_desc')}</p>
 				</div>
 				<span class="shrink-0 text-xs font-semibold text-primary">
-					{settingHomePlayer ? $_("set_player.setting") : $_("set_player.set_cta")}
+					{settingHomePlayer ? $_('set_player.setting') : $_('set_player.set_cta')}
 				</span>
 			</button>
 		</form>
 	{/if}
 
-	<section class="space-y-3">
-		<SectionLabel label={$_("player.elo_history")} icon={ChartLineIcon} />
-		<Card.Root class="py-4 border-border/50">
-			{#await data.streamed.elo}
-				<Skeleton class="h-52 rounded-none" />
-			{:then eloHistory}
-				{#if eloHistory.length < 2}
-					<div class="flex h-40 items-center justify-center">
-						<p class="text-sm text-muted-foreground">{$_('player.no_elo_data')}</p>
-					</div>
-				{:else}
-					{@const eloPoints = eloHistory.map((e) => ({
-						date: new Date(e.recordedAt),
-						value: e.eloValue
-					}))}
-					{@const minElo = Math.min(...eloPoints.map((p) => p.value))}
-					{@const maxElo = Math.max(...eloPoints.map((p) => p.value))}
-					{@const pad = 30}
-					{@const yMin = minElo - pad}
-					{@const yMax = maxElo + pad}
-					{@const ELO_THRESHOLDS: [number, string][] = [
-						[1990, 'A22'], [1890, 'A21'], [1790, 'A20'], [1680, 'A19'],
-						[1565, 'A18'], [1490, 'A17'], [1435, 'A16'], [1360, 'B15'],
-						[1320, 'B14'], [1280, 'B13'], [1240, 'B12'], [1200, 'B11'],
-						[1150, 'C10'], [1100, 'C9'], [1050, 'C8'], [990, 'C7'],
-						[930, 'C6'], [860, 'D5'], [780, 'D4'], [700, 'D3'], [630, 'D2']
-					]}
-					{@const visibleThresholds = ELO_THRESHOLDS.filter(([elo]) => elo > yMin && elo < yMax)}
-					{@const color = classificationStroke(currentClass)}
-					{@const chartConfig = { value: { label: 'ELO', color } } satisfies Chart.ChartConfig}
-					<div class="h-52 p-4">
-						<Chart.Container config={chartConfig} class="aspect-auto h-full">
-							<LineChart
-								data={eloPoints}
-								x="date"
-								xScale={scaleUtc()}
-								yScale={scaleLinear()}
-								yDomain={[yMin, yMax]}
-								axis="x"
-								series={[{ key: 'value', label: 'ELO', color }]}
-								props={{
-									xAxis: {
-										format: (v: Date) =>
-											v.toLocaleDateString($locale ?? 'de', { month: 'short', year: '2-digit' })
-									},
-									highlight: { points: { r: 4 } }
-								}}
-							>
-								{#snippet marks({ context })}
-									{#each context.series.visibleSeries as s (s.key)}
-										<Spline seriesKey={s.key} strokeWidth={2} curve={curveMonotoneX} />
-									{/each}
-									{#each visibleThresholds as [elo, label]}
-										<AnnotationLine
-											y={elo}
-											{label}
-											labelPlacement="right"
-											stroke="white"
-											strokeOpacity={0.2}
-											props={{
-												line: { 'stroke-dasharray': '4 3' },
-												label: { class: 'fill-white/40 text-2xs' }
-											}}
-										/>
-									{/each}
-								{/snippet}
-								{#snippet tooltip()}
-									<Chart.Tooltip hideLabel />
-								{/snippet}
-							</LineChart>
-						</Chart.Container>
-					</div>
-				{/if}
-			{/await}
-		</Card.Root>
-	</section>
+	<Tabs.Root value="overview">
+		<Tabs.List class="w-full">
+			<Tabs.Trigger value="overview" class="flex-1">{$_('player.tab_overview')}</Tabs.Trigger>
+			<Tabs.Trigger value="stats" class="flex-1">{$_('player.tab_stats')}</Tabs.Trigger>
+			<Tabs.Trigger value="career" class="flex-1">{$_('player.tab_career')}</Tabs.Trigger>
+		</Tabs.List>
 
-	{#await data.streamed.matches}
-		<div class="grid grid-cols-3 gap-3">
-			{#each [1, 2, 3] as _}
-				<Card.Root class="bg-card">
-					<Card.Content class="flex flex-col items-center gap-2 p-4">
-						<Skeleton class="h-3 w-12" />
-						<Skeleton class="h-7 w-8" />
-					</Card.Content>
+		<Tabs.Content value="overview" class="mt-4 space-y-6">
+			<section class="space-y-3">
+				<SectionLabel label={$_('player.elo_history')} icon={ChartLineIcon} />
+				<Card.Root class="border-border/50 py-4">
+					{#await data.streamed.elo}
+						<Skeleton class="h-52 rounded-none" />
+					{:then eloHistory}
+						{#if eloHistory.length < 2}
+							<div class="flex h-40 items-center justify-center">
+								<p class="text-sm text-muted-foreground">{$_('player.no_elo_data')}</p>
+							</div>
+						{:else}
+							{@const eloPoints = eloHistory.map((e) => ({
+								date: new Date(e.recordedAt),
+								value: e.eloValue
+							}))}
+							{@const minElo = Math.min(...eloPoints.map((p) => p.value))}
+							{@const maxElo = Math.max(...eloPoints.map((p) => p.value))}
+							{@const pad = 30}
+							{@const yMin = minElo - pad}
+							{@const yMax = maxElo + pad}
+							{@const visibleThresholds = ELO_THRESHOLDS.filter(
+								([elo]) => elo > yMin && elo < yMax
+							)}
+							{@const color = classificationStroke(currentClass)}
+							{@const chartConfig = { value: { label: 'ELO', color } } satisfies Chart.ChartConfig}
+							<div class="h-52 p-4">
+								<Chart.Container config={chartConfig} class="aspect-auto h-full">
+									<LineChart
+										data={eloPoints}
+										x="date"
+										xScale={scaleUtc()}
+										yScale={scaleLinear()}
+										yDomain={[yMin, yMax]}
+										axis="x"
+										series={[{ key: 'value', label: 'ELO', color }]}
+										props={{
+											xAxis: {
+												format: (v: Date) =>
+													v.toLocaleDateString($locale ?? 'de', { month: 'short', year: '2-digit' })
+											},
+											highlight: { points: { r: 4 } }
+										}}
+									>
+										{#snippet marks({ context })}
+											{#each context.series.visibleSeries as s (s.key)}
+												<Spline seriesKey={s.key} strokeWidth={2} curve={curveMonotoneX} />
+											{/each}
+											{#each visibleThresholds as [elo, label] (elo)}
+												<AnnotationLine
+													y={elo}
+													{label}
+													labelPlacement="right"
+													stroke="white"
+													strokeOpacity={0.2}
+													props={{
+														line: { 'stroke-dasharray': '4 3' },
+														label: { class: 'fill-white/40 text-2xs' }
+													}}
+												/>
+											{/each}
+										{/snippet}
+										{#snippet tooltip()}
+											<Chart.Tooltip hideLabel />
+										{/snippet}
+									</LineChart>
+								</Chart.Container>
+							</div>
+						{/if}
+					{/await}
 				</Card.Root>
-			{/each}
-		</div>
-		<section class="space-y-3">
-			<Skeleton class="h-3 w-24 rounded" />
-			{#each [1, 2, 3, 4] as _}
-				<Skeleton class="h-16 w-full rounded-2xl" />
-			{/each}
-		</section>
-	{:then matches}
-		{@const played = matches.filter((m) => m.result !== 'NOT_PLAYED')}
-		{@const wins = played.filter(
-			(m) =>
-				(m.result === 'HOME' && m.playerSide === 'home') ||
-				(m.result === 'AWAY' && m.playerSide === 'away')
-		).length}
-		{@const losses = played.length - wins}
-		{@const winPct = played.length > 0 ? Math.round((wins / played.length) * 100) : 0}
+			</section>
 
-		<div class="grid grid-cols-3 gap-3">
-			<Card.Root class="bg-card py-0">
-				<Card.Content class="flex flex-col items-center py-4 px-4">
-					<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
-						>{$_("player.wins")}</span
-					>
-					<span class="text-3xl font-black text-win">{wins}</span>
-				</Card.Content>
-			</Card.Root>
-			<Card.Root class="bg-card py-0">
-				<Card.Content class="flex flex-col items-center py-4 px-4">
-					<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
-						>{$_("player.losses")}</span
-					>
-					<span class="text-3xl font-black text-loss">{losses}</span>
-				</Card.Content>
-			</Card.Root>
-			<Card.Root class="bg-card py-0">
-				<Card.Content class="flex flex-col items-center py-4 px-4">
-					<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
-						>{$_("player.win_pct")}</span
-					>
-					<span class="text-3xl font-black">{winPct}%</span>
-				</Card.Content>
-			</Card.Root>
-		</div>
-
-		<section class="space-y-3">
-			<SectionLabel label={$_("player.game_history")} icon={ClockCounterClockwiseIcon} />
-
-			{#if matches.length === 0}
-				<p class="py-8 text-center text-sm text-muted-foreground">{$_("player.no_matches")}</p>
-			{:else}
-				<div class="space-y-3">
-					{#each matches.slice(0, 3) as game (game.gameId)}
-						<GameCard mode="player" {game} />
+			{#await data.streamed.matches}
+				<section class="space-y-3">
+					<Skeleton class="h-3 w-24 rounded" />
+					{#each [1, 2, 3, 4] as n (n)}
+						<Skeleton class="h-16 w-full rounded-2xl" />
 					{/each}
+				</section>
+			{:then matches}
+				<section class="space-y-3">
+					<SectionLabel label={$_('player.game_history')} icon={ClockCounterClockwiseIcon} />
+
+					{#if matches.length === 0}
+						<p class="py-8 text-center text-sm text-muted-foreground">{$_('player.no_matches')}</p>
+					{:else}
+						<div class="space-y-3">
+							{#each matches.slice(0, 3) as game (game.gameId)}
+								<GameCard mode="player" {game} />
+							{/each}
+						</div>
+						{#if matches.length > 3}
+							<ShowAllLink
+								href="/players/{data.player.id}/games"
+								label={$_('player.show_full_history')}
+							/>
+						{/if}
+					{/if}
+				</section>
+			{/await}
+		</Tabs.Content>
+
+		<Tabs.Content value="stats" class="mt-4">
+			{#await data.streamed.seasonStats}
+				<div class="space-y-6">
+					<Skeleton class="h-24 w-full rounded-2xl" />
+					<Skeleton class="h-72 w-full rounded-2xl" />
+					<Skeleton class="h-52 w-full rounded-2xl" />
 				</div>
-				{#if matches.length > 3}
-					<ShowAllLink href="/players/{data.player.id}/games" label={$_("player.show_full_history")} />
-				{/if}
-			{/if}
-		</section>
-	{/await}
+			{:then seasonStats}
+				<StatsTab stats={seasonStats} />
+			{/await}
+		</Tabs.Content>
+
+		<Tabs.Content value="career" class="mt-4">
+			<p class="py-12 text-center text-sm text-muted-foreground">
+				{$_('player.career_coming_soon')}
+			</p>
+		</Tabs.Content>
+	</Tabs.Root>
 </div>
+

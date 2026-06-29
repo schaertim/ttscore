@@ -256,6 +256,115 @@ data class LeagueContextResponse(
 )
 
 @Serializable
+data class WinRateResponse(
+    val wins: Int,
+    val games: Int,
+)
+
+@Serializable
+data class SetScoreBucketResponse(
+    val playerSets: Int,
+    val opponentSets: Int,
+    val count: Int,
+)
+
+@Serializable
+data class OpponentBucketResponse(
+    /** Exact class label (e.g. "B12"), or the sentinel "HIGHER" / "LOWER" for aggregated tiers. */
+    val label: String,
+    val wins: Int,
+    val games: Int,
+    /** For HIGHER/LOWER sentinels: the boundary class closest to the player's own class. */
+    val nearClass: String? = null,
+    /** For HIGHER/LOWER sentinels: the boundary class furthest from the player's own class. */
+    val farClass: String? = null,
+)
+
+@Serializable
+data class MonthlyFormResponse(
+    val month: String,
+    val wins: Int,
+    val losses: Int,
+)
+
+@Serializable
+data class CompetitionStatResponse(
+    val name: String,
+    val wins: Int,
+    val games: Int,
+    val isTournament: Boolean,
+)
+
+/**
+ * Aggregated stats for a player's current season (league + tournament singles). Counts are raw
+ * wins/games pairs — the client renders percentages. Deliberately ELO-free: rating lives on the
+ * Overview tab. Opponent buckets keep classes near the player's own class separate and aggregate
+ * the far-higher / far-lower ones into "HIGHER" / "LOWER".
+ */
+@Serializable
+data class PlayerSeasonStatsResponse(
+    val seasonName: String,
+    val totalGames: Int,
+    val overall: WinRateResponse,
+    /** Last 10 decided games, oldest → newest; true = win. */
+    val recentForm: List<Boolean>,
+    val opponentBuckets: List<OpponentBucketResponse>,
+    val setDistribution: List<SetScoreBucketResponse>,
+    val setsWon: Int,
+    val setsLost: Int,
+    val deuceSetsWon: Int,
+    val deuceSetsTotal: Int,
+    val tightGameWins: Int,
+    val tightGames: Int,
+    val comebackWins: Int,
+    /** Games where the player was trailing in sets at any point (regardless of outcome). */
+    val comeFromBehindGames: Int,
+    /** Subset of [comeFromBehindGames] that the player won. */
+    val comeFromBehindWins: Int,
+    val monthly: List<MonthlyFormResponse>,
+    val longestWinStreak: Int,
+    val currentWinStreak: Int,
+    val bestWinOpponentName: String?,
+    val bestWinOpponentClass: String?,
+    val competitions: List<CompetitionStatResponse>,
+)
+
+/**
+ * Everything needed to render a head-to-head comparison between two players. Both players' season
+ * stats are current-season (mirrors [PlayerSeasonStatsResponse]); the direct [record] and [games]
+ * are all-time, since that is what a "rivalry" means to users.
+ */
+@Serializable
+data class HeadToHeadResponse(
+    val playerA: PlayerResponse,
+    val playerB: PlayerResponse,
+    val statsA: PlayerSeasonStatsResponse,
+    val statsB: PlayerSeasonStatsResponse,
+    val record: H2HRecordResponse,
+    /** Direct encounters, newest first. */
+    val games: List<H2HGameResponse>,
+)
+
+@Serializable
+data class H2HRecordResponse(
+    val aWins: Int,
+    val bWins: Int,
+    val games: Int,
+)
+
+@Serializable
+data class H2HGameResponse(
+    val gameId: String,
+    val matchId: String?,
+    val playedAt: String?,
+    val competitionName: String?,
+    val aSets: Int?,
+    val bSets: Int?,
+    val aWon: Boolean,
+    val sets: List<SetResponse>,
+)
+
+@Serializable
 data class PlayerGameResponse(
     val matchId: String?,
     val gameId: String,

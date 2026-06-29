@@ -48,7 +48,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		isHomePlayer,
 		streamed: {
 			elo: api.players.elo(params.id),
-			matches: api.players.matches(params.id)
+			matches: api.players.matches(params.id),
+			seasonStats: api.players.seasonStats(params.id)
 		}
 	};
 };

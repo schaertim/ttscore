@@ -31,12 +31,24 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 	// On the browser: getSession() is fine â€” we're reading from localStorage/memory,
 	// not untrusted cookie storage.
 	if (!isBrowser()) {
-		return { supabase, session: data.session, user: data.user, hasHomePlayer: data.hasHomePlayer };
+		return {
+			supabase,
+			session: data.session,
+			user: data.user,
+			hasHomePlayer: data.hasHomePlayer,
+			homePlayerId: data.homePlayerId
+		};
 	}
 
 	const {
 		data: { session }
 	} = await supabase.auth.getSession();
 
-	return { supabase, session, user: session?.user ?? null, hasHomePlayer: data.hasHomePlayer };
+	return {
+		supabase,
+		session,
+		user: session?.user ?? null,
+		hasHomePlayer: data.hasHomePlayer,
+		homePlayerId: data.homePlayerId
+	};
 };

@@ -1,8 +1,48 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import type { PlayerSeasonStats } from '$lib/api';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
+}
+
+/** CSS color for a classification — the class-letter brand color, or primary as a fallback. */
+export function classColorVar(cls: string | null | undefined): string {
+	if (!cls) return 'var(--color-primary)';
+	const letter = cls[0].toLowerCase();
+	return ['a', 'b', 'c', 'd', 'e'].includes(letter)
+		? `var(--class-${letter})`
+		: 'var(--color-primary)';
+}
+
+/** The six 0–100 radar scores derived from a player's season stats. */
+export type RadarMetrics = {
+	form: number;
+	clutch: number;
+	fiveSet: number;
+	punch: number;
+	resilience: number;
+	consistency: number;
+};
+
+export function radarMetrics(stats: PlayerSeasonStats): RadarMetrics {
+	const pct = (w: number, g: number) => (g > 0 ? Math.round((w / g) * 100) : 0);
+
+	const same = stats.opponentBuckets.filter((b) => b.label !== 'HIGHER' && b.label !== 'LOWER');
+	const consistency = pct(
+		same.reduce((s, b) => s + b.wins, 0),
+		same.reduce((s, b) => s + b.games, 0)
+	);
+	const higher = stats.opponentBuckets.find((b) => b.label === 'HIGHER');
+
+	return {
+		form: pct(stats.recentForm.filter(Boolean).length, stats.recentForm.length),
+		clutch: pct(stats.deuceSetsWon, stats.deuceSetsTotal),
+		fiveSet: pct(stats.tightGameWins, stats.tightGames),
+		punch: higher ? pct(higher.wins, higher.games) : 0,
+		resilience: pct(stats.comeFromBehindWins, stats.comeFromBehindGames),
+		consistency
+	};
 }
 
 /**
@@ -53,9 +93,7 @@ export function timeAgo(dateStr: string | null | undefined, lang?: string): stri
 
 	// Resolve locale: prefer explicit arg, then browser, then 'de'
 	const locale =
-		lang ??
-		(typeof navigator !== 'undefined' ? navigator.language : undefined) ??
-		'de';
+		lang ?? (typeof navigator !== 'undefined' ? navigator.language : undefined) ?? 'de';
 
 	const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
 
@@ -65,6 +103,34 @@ export function timeAgo(dateStr: string | null | undefined, lang?: string): stri
 	if (weeks < 5) return rtf.format(-weeks, 'week');
 	return rtf.format(-months, 'month');
 }
+
+/**
+ * Swiss TT men's classification ladder — `[minElo, class]`, descending. Each class covers
+ * `[minElo, nextClass.minElo)`. Shared by the ELO chart annotations and the class-progress bar.
+ */
+export const ELO_THRESHOLDS: [number, string][] = [
+	[1990, 'A22'],
+	[1890, 'A21'],
+	[1790, 'A20'],
+	[1680, 'A19'],
+	[1565, 'A18'],
+	[1490, 'A17'],
+	[1435, 'A16'],
+	[1360, 'B15'],
+	[1320, 'B14'],
+	[1280, 'B13'],
+	[1240, 'B12'],
+	[1200, 'B11'],
+	[1150, 'C10'],
+	[1100, 'C9'],
+	[1050, 'C8'],
+	[990, 'C7'],
+	[930, 'C6'],
+	[860, 'D5'],
+	[780, 'D4'],
+	[700, 'D3'],
+	[630, 'D2']
+];
 
 export function ordinal(n: number): string {
 	const s = ['th', 'st', 'nd', 'rd'];

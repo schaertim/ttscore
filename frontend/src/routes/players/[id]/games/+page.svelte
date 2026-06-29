@@ -108,9 +108,9 @@
 									<span class="flex items-center gap-1 rounded-md border border-current px-2 py-1 text-2xs font-semibold tabular-nums {group.totalElo > 0 ? 'text-win' : 'text-loss'}">
 										{group.totalElo > 0 ? `+${group.totalElo}` : group.totalElo} ELO
 										{#if group.totalElo > 0}
-											<TrendUpIcon size="9" weight="bold" />
+											<TrendUpIcon size="10" weight="bold" />
 										{:else}
-											<TrendDownIcon size="9" weight="bold" />
+											<TrendDownIcon size="10" weight="bold" />
 										{/if}
 									</span>
 								{/if}

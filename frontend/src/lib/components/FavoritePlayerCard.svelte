@@ -58,4 +58,5 @@
 			<StarIcon weight="fill" size="16" />
 		</button>
 	</form>
+
 </div>

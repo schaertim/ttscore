@@ -154,6 +154,92 @@ export type SeasonStats = {
 	matchesLast24h: number;
 };
 
+export type WinRate = {
+	wins: number;
+	games: number;
+};
+
+export type SetScoreBucket = {
+	playerSets: number;
+	opponentSets: number;
+	count: number;
+};
+
+export type OpponentBucket = {
+	/** Exact class label (e.g. "B12"), or the sentinel "HIGHER" / "LOWER" for aggregated tiers. */
+	label: string;
+	wins: number;
+	games: number;
+	nearClass?: string;
+	farClass?: string;
+};
+
+export type MonthlyForm = {
+	month: string;
+	wins: number;
+	losses: number;
+};
+
+export type CompetitionStat = {
+	name: string;
+	wins: number;
+	games: number;
+	isTournament: boolean;
+};
+
+export type PlayerSeasonStats = {
+	seasonName: string;
+	totalGames: number;
+	overall: WinRate;
+	/** Last 10 decided games, oldest → newest; true = win. */
+	recentForm: boolean[];
+	opponentBuckets: OpponentBucket[];
+	setDistribution: SetScoreBucket[];
+	setsWon: number;
+	setsLost: number;
+	deuceSetsWon: number;
+	deuceSetsTotal: number;
+	tightGameWins: number;
+	tightGames: number;
+	comebackWins: number;
+	comeFromBehindGames: number;
+	comeFromBehindWins: number;
+	monthly: MonthlyForm[];
+	longestWinStreak: number;
+	currentWinStreak: number;
+	bestWinOpponentName: string | null;
+	bestWinOpponentClass: string | null;
+	competitions: CompetitionStat[];
+};
+
+export type H2HRecord = {
+	aWins: number;
+	bWins: number;
+	games: number;
+};
+
+export type H2HGame = {
+	gameId: string;
+	matchId: string | null;
+	playedAt: string | null;
+	competitionName: string | null;
+	/** Sets won, from player A's perspective. */
+	aSets: number | null;
+	bSets: number | null;
+	aWon: boolean;
+	/** Set points oriented to A (homePoints = A's points). */
+	sets: SetScore[];
+};
+
+export type HeadToHead = {
+	playerA: Player;
+	playerB: Player;
+	statsA: PlayerSeasonStats;
+	statsB: PlayerSeasonStats;
+	record: H2HRecord;
+	games: H2HGame[];
+};
+
 export type PagedResponse<T> = {
 	items: T[];
 	page: number;
@@ -251,6 +337,9 @@ export const api = {
 		elo: (playerId: string) => get<EloEntry[]>(`/players/${playerId}/elo`),
 		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
 		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`),
+		seasonStats: (playerId: string) => get<PlayerSeasonStats>(`/players/${playerId}/stats`),
+		headToHead: (playerId: string, opponentId: string) =>
+			get<HeadToHead>(`/players/${playerId}/h2h/${opponentId}`),
 		leagueContext: (playerId: string) => get<LeagueContext>(`/players/${playerId}/league-context`),
 		classHistory: (playerId: string) =>
 			get<ClassHistoryEntry[]>(`/players/${playerId}/class-history`)
