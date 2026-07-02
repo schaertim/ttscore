@@ -61,6 +61,16 @@ export function formatName(name: string | null | undefined): string {
 	return `${firstName} ${lastName}`;
 }
 
+/** Compact display as "F. Lastname" from stored "Lastname Firstname". */
+export function formatShortName(name: string | null | undefined): string {
+	if (!name?.trim()) return '—';
+	const parts = name.trim().split(/\s+/);
+	if (parts.length === 1) return parts[0];
+	const firstName = parts[parts.length - 1];
+	const lastName = parts.slice(0, -1).join(' ');
+	return `${firstName.charAt(0)}. ${lastName}`;
+}
+
 const CLASSIFICATION_CLASSES: Record<string, string> = {
 	A: 'text-class-a bg-class-a/15',
 	B: 'text-class-b bg-class-b/15',

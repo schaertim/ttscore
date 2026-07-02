@@ -1,6 +1,5 @@
 ﻿<script lang="ts">
 	import type { PageData } from './$types';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import PlayerCard from '$lib/components/PlayerCard.svelte';
 	import MatchCard from '$lib/components/MatchCard.svelte';
@@ -10,6 +9,8 @@
 	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
+	import StatTile from '$lib/components/StatTile.svelte';
+	import ScoreLine from '$lib/components/ScoreLine.svelte';
 	import { _ } from 'svelte-i18n';
 
 	let { data }: { data: PageData } = $props();
@@ -45,22 +46,18 @@
 	</header>
 
 	<div class="grid grid-cols-2 gap-3">
-		<Card.Root class="gap-3 p-4">
-			<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">{$_("team.record")}</p>
-			<p class="text-xl leading-none font-black">
-				<span class="text-win">{won}</span>
-				<span class="font-normal text-muted-foreground/40">–</span>
-				<span class="text-muted-foreground">{drawn}</span>
-				<span class="font-normal text-muted-foreground/40">–</span>
-				<span class="text-loss">{lost}</span>
-			</p>
-		</Card.Root>
+		<StatTile label={$_('team.record')}>
+			<ScoreLine
+				segments={[
+					{ value: won, tone: 'win' },
+					{ value: drawn, tone: 'neutral' },
+					{ value: lost, tone: 'loss' }
+				]}
+			/>
+		</StatTile>
 
 		{#if data.team.lastResults.length > 0}
-			<Card.Root class="gap-3 p-4">
-				<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-					{$_('team.last_5')}
-				</p>
+			<StatTile label={$_('team.last_5')}>
 				<div class="flex flex-wrap">
 					{#each data.team.lastResults.toReversed() as result}
 						{#if result === 'W'}
@@ -72,7 +69,7 @@
 						{/if}
 					{/each}
 				</div>
-			</Card.Root>
+			</StatTile>
 		{/if}
 	</div>
 

@@ -4,9 +4,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { AnnotationLine, LineChart, Spline } from 'layerchart';
-	import { scaleLinear, scaleUtc } from 'd3-scale';
-	import * as Chart from '$lib/components/ui/chart/index.js';
+	import EloChart from '$lib/components/EloChart.svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import GameCard from '$lib/components/GameCard.svelte';
@@ -16,7 +14,6 @@
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import StatsTab from '$lib/components/player/StatsTab.svelte';
 	import { h2h } from '$lib/h2h.svelte';
-	import { curveMonotoneX } from 'd3-shape';
 
 	import {
 		ChartLineIcon,
@@ -27,8 +24,8 @@
 	} from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { page } from '$app/state';
-	import { _, locale } from 'svelte-i18n';
-	import { ELO_THRESHOLDS, formatName } from '$lib/utils';
+	import { _ } from 'svelte-i18n';
+	import { formatName } from '$lib/utils';
 	let { data }: { data: PageData } = $props();
 
 	let settingHomePlayer = $state(false);
@@ -82,11 +79,11 @@
 
 		<div class="flex items-start justify-between gap-4">
 			<div class="min-w-0">
-				<div class="mb-1 flex items-center gap-2">
+				<div class="mb-1 flex items-start gap-2">
 					<PageTitle class="wrap-break-word">
 						{formatName(data.player.fullName)}
 					</PageTitle>
-					<ClassBadge classification={currentClass} size="lg" />
+					<ClassBadge classification={currentClass} size="lg" class="mt-0.5 shrink-0" />
 				</div>
 				<p class="text-sm text-muted-foreground">
 					{data.player.currentClubName ?? 'No Club'}
@@ -172,72 +169,17 @@
 		<Tabs.Content value="overview" class="mt-4 space-y-6">
 			<section class="space-y-3">
 				<SectionLabel label={$_('player.elo_history')} icon={ChartLineIcon} />
-				<Card.Root class="border-border/50 py-4">
+				<Card.Root class="border-border/50 p-4">
 					{#await data.streamed.elo}
 						<Skeleton class="h-52 rounded-none" />
 					{:then eloHistory}
-						{#if eloHistory.length < 2}
-							<div class="flex h-40 items-center justify-center">
-								<p class="text-sm text-muted-foreground">{$_('player.no_elo_data')}</p>
-							</div>
-						{:else}
-							{@const eloPoints = eloHistory.map((e) => ({
-								date: new Date(e.recordedAt),
-								value: e.eloValue
-							}))}
-							{@const minElo = Math.min(...eloPoints.map((p) => p.value))}
-							{@const maxElo = Math.max(...eloPoints.map((p) => p.value))}
-							{@const pad = 30}
-							{@const yMin = minElo - pad}
-							{@const yMax = maxElo + pad}
-							{@const visibleThresholds = ELO_THRESHOLDS.filter(
-								([elo]) => elo > yMin && elo < yMax
-							)}
-							{@const color = classificationStroke(currentClass)}
-							{@const chartConfig = { value: { label: 'ELO', color } } satisfies Chart.ChartConfig}
-							<div class="h-52 p-4">
-								<Chart.Container config={chartConfig} class="aspect-auto h-full">
-									<LineChart
-										data={eloPoints}
-										x="date"
-										xScale={scaleUtc()}
-										yScale={scaleLinear()}
-										yDomain={[yMin, yMax]}
-										axis="x"
-										series={[{ key: 'value', label: 'ELO', color }]}
-										props={{
-											xAxis: {
-												format: (v: Date) =>
-													v.toLocaleDateString($locale ?? 'de', { month: 'short', year: '2-digit' })
-											},
-											highlight: { points: { r: 4 } }
-										}}
-									>
-										{#snippet marks({ context })}
-											{#each context.series.visibleSeries as s (s.key)}
-												<Spline seriesKey={s.key} strokeWidth={2} curve={curveMonotoneX} />
-											{/each}
-											{#each visibleThresholds as [elo, label] (elo)}
-												<AnnotationLine
-													y={elo}
-													{label}
-													labelPlacement="right"
-													stroke="white"
-													strokeOpacity={0.2}
-													props={{
-														line: { 'stroke-dasharray': '4 3' },
-														label: { class: 'fill-white/40 text-2xs' }
-													}}
-												/>
-											{/each}
-										{/snippet}
-										{#snippet tooltip()}
-											<Chart.Tooltip hideLabel />
-										{/snippet}
-									</LineChart>
-								</Chart.Container>
-							</div>
-						{/if}
+						<div class="h-52">
+							<EloChart
+								series={[
+									{ label: 'ELO', color: classificationStroke(currentClass), history: eloHistory }
+								]}
+							/>
+						</div>
 					{/await}
 				</Card.Root>
 			</section>

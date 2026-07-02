@@ -96,7 +96,7 @@
 				<div class="w-px shrink-0 self-stretch bg-border"></div>
 				<!-- right: score + ELO centered as group -->
 				<div class="flex w-11 shrink-0 flex-col items-center justify-center gap-1">
-					<p class={cn('text-3xl font-black leading-none tabular-nums', scoreColor)}>
+					<p class={cn('text-2xl font-black leading-none tabular-nums', scoreColor)}>
 						{playerSets(pg)}:{opponentSets(pg)}
 					</p>
 					{#if pg.eloDelta != null}
