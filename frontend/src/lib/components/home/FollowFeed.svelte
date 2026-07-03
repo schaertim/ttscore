@@ -1,26 +1,26 @@
-﻿<script lang="ts">
-	import type { FavoriteResponse } from '$lib/api';
+<script lang="ts">
+	import type { FollowResponse } from '$lib/api';
 	import { resolveFeed } from '$lib/feed';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import FeedItemCard from '$lib/components/home/FeedItemCard.svelte';
-	import { RssIcon, StarIcon } from 'phosphor-svelte';
+	import { StarIcon } from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { _ } from 'svelte-i18n';
 
 	interface Props {
-		favorites: Promise<FavoriteResponse[]>;
+		follows: Promise<FollowResponse[]>;
 	}
 
-	let { favorites }: Props = $props();
+	let { follows }: Props = $props();
 
 	const PREVIEW_COUNT = 5;
 
-	const feedPromise = favorites.then(resolveFeed);
+	const feedPromise = follows.then(resolveFeed);
 </script>
 
-{#await favorites then favs}
-	{#if favs.length > 0}
+{#await follows then items}
+	{#if items.length > 0}
 		<section class="space-y-3">
 			<SectionLabel label={$_('home.favorite_feed')} icon={StarIcon} />
 			{#await feedPromise}

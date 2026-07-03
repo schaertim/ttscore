@@ -107,11 +107,9 @@
 						y={elo}
 						{label}
 						labelPlacement="right"
-						stroke="white"
-						strokeOpacity={0.2}
 						props={{
-							line: { 'stroke-dasharray': '4 3' },
-							label: { class: 'fill-white/40 text-2xs' }
+							line: { style: 'stroke: var(--foreground); stroke-opacity: 0.3', 'stroke-dasharray': '4 3' },
+							label: { class: 'fill-foreground/30 text-2xs' }
 						}}
 					/>
 				{/each}

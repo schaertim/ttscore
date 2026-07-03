@@ -123,6 +123,10 @@
     "push_disabled": "Attiva notifiche",
     "push_enabled_desc": "Riceverai una notifica quando i giocatori, le squadre o le leghe che segui avranno nuovi risultati.",
     "push_disabled_desc": "Ricevi una notifica quando i giocatori, le squadre o le leghe che segui avranno nuovi risultati.",
+    "pause_all_active": "Notifiche attive",
+    "pause_all_active_desc": "Ricevi avvisi per gli elementi seguiti con la campanella attiva.",
+    "pause_all_paused": "Notifiche in pausa",
+    "pause_all_paused_desc": "Tutte le notifiche push sono silenziate. I tuoi follow e le campanelle restano.",
     "sign_out": "Esci",
     "language": "Lingua"
   },

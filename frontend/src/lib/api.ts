@@ -247,18 +247,13 @@ export type PagedResponse<T> = {
 	total: number;
 };
 
-export type FavoriteResponse = {
-	id: string;
-	targetType: string;
-	targetId: string;
-	targetName: string;
-};
-
 export type FollowResponse = {
 	id: string;
 	targetType: string;
 	targetId: string;
 	targetName: string;
+	/** Whether push notifications (the bell) are on for this follow. */
+	notify: boolean;
 };
 
 export type NextMatch = {

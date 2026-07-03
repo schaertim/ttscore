@@ -16,7 +16,7 @@
 	import { h2h } from '$lib/h2h.svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
-	import FavoritePlayerCard from '$lib/components/FavoritePlayerCard.svelte';
+	import FollowPlayerCard from '$lib/components/FollowPlayerCard.svelte';
 	import RecentPlayerCard from '$lib/components/RecentPlayerCard.svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
@@ -138,12 +138,12 @@
 			<SectionLabel label={$_('search.favourites')} icon={StarIcon} />
 			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
 				{#each favoritePlayers as player (player.id)}
-					<FavoritePlayerCard
+					<FollowPlayerCard
 						id={player.id}
 						fullName={player.fullName}
 						classification={player.liveClassification ?? player.classification}
-						favoriteId={player.favoriteId}
-						onunfavorite={() => {
+						followId={player.followId}
+						onunfollow={() => {
 							favoritePlayers = favoritePlayers.filter((p) => p.id !== player.id);
 						}}
 					/>

@@ -15,7 +15,7 @@
 	let { id, fullName, classification, onremove }: Props = $props();
 
 	const formatted = $derived(formatName(fullName));
-	// Abbreviate to "F. Lastname" for compact display — same as FavoritePlayerCard
+	// Abbreviate to "F. Lastname" for compact display — same as FollowPlayerCard
 	const shortName = $derived(
 		formatted.includes(' ')
 			? `${formatted.split(' ')[0][0]}. ${formatted.split(' ').slice(1).join(' ')}`

@@ -64,7 +64,7 @@ Built for the community, free for everyone.
 | PWA | vite-plugin-pwa + Web Push API |
 | Backend | Ktor (Kotlin) |
 | Database | PostgreSQL (Railway) |
-| Auth | Better Auth (Google OAuth, runs in SvelteKit layer) |
+| Auth | Supabase Auth (Google OAuth + email/password); Ktor verifies the Supabase JWT |
 | Frontend hosting | Vercel |
 | Backend hosting | Railway (also hosts PostgreSQL) |
 

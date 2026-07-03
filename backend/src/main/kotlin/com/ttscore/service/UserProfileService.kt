@@ -22,6 +22,7 @@ object UserProfileService {
                     UserProfileResponse(
                         homePlayerId = row[UserProfiles.homePlayerId]?.toString(),
                         homePlayerName = row.getOrNull(Players.fullName),
+                        notificationsPaused = row[UserProfiles.notificationsPaused],
                     )
                 }
                 ?: UserProfileResponse(homePlayerId = null, homePlayerName = null)
@@ -53,4 +54,23 @@ object UserProfileService {
                 it[homePlayerId] = null
             }
         }
+
+    /** Sets the global "pause all notifications" flag. Creates the profile row if needed. */
+    suspend fun setNotificationsPaused(
+        userId: String,
+        paused: Boolean,
+    ) = dbQuery {
+        val exists = UserProfiles.selectAll().where { UserProfiles.userId eq userId }.any()
+        if (exists) {
+            UserProfiles.update({ UserProfiles.userId eq userId }) {
+                it[notificationsPaused] = paused
+            }
+        } else {
+            UserProfiles.insert {
+                it[UserProfiles.userId] = userId
+                it[notificationsPaused] = paused
+                it[createdAt] = OffsetDateTime.now()
+            }
+        }
+    }
 }

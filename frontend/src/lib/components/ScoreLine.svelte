@@ -20,7 +20,7 @@
 
 <!-- A row of colored, dash-separated numbers (e.g. W–D–L, sets, points).
      Sized to match StatTile's default value so it reads as the card value. -->
-<p class={cn('text-xl leading-none font-black tabular-nums', className)}>
+<p class={cn('inline-flex items-baseline gap-0.5 font-mono text-xl leading-none font-black tabular-nums', className)}>
 	{#each segments as segment, i (i)}
 		{#if i > 0}
 			<span class="font-normal text-muted-foreground/40">–</span>

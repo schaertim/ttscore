@@ -8,24 +8,22 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const ktor = authedKtor(session.access_token);
 
-	const [profileRes, favoritesRes, notificationsRes] = await Promise.all([
+	const [profileRes, followsRes] = await Promise.all([
 		ktor.get('/users/me'),
-		ktor.get('/favorites'),
 		ktor.get('/follows')
 	]);
 
 	const profile = profileRes.ok
 		? await profileRes.json()
-		: { homePlayerId: null, homePlayerName: null };
+		: { homePlayerId: null, homePlayerName: null, notificationsPaused: false };
 
-	const favorites = favoritesRes.ok ? await favoritesRes.json() : [];
-	const notifications = notificationsRes.ok ? await notificationsRes.json() : [];
+	const follows = followsRes.ok ? await followsRes.json() : [];
 
 	const homePlayer = profile.homePlayerId
 		? await ktor.get(`/players/${profile.homePlayerId}`).then(r => r.ok ? r.json() : null)
 		: null;
 
-	return { profile, favorites, notifications, homePlayer };
+	return { profile, follows, homePlayer };
 };
 
 export const actions: Actions = {
@@ -60,21 +58,34 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	removeFavorite: async ({ locals, request }) => {
+	unfollow: async ({ locals, request }) => {
 		const { session } = await locals.safeGetSession();
 		if (!session) redirect(303, '/signin?redirectTo=/account');
 
 		const formData = await request.formData();
-		await authedKtor(session.access_token).delete(`/favorites/${formData.get('favoriteId')}`);
+		await authedKtor(session.access_token).delete(`/follows/${formData.get('followId')}`);
 		return { success: true };
 	},
 
-	removeNotification: async ({ locals, request }) => {
+	setNotify: async ({ locals, request }) => {
 		const { session } = await locals.safeGetSession();
 		if (!session) redirect(303, '/signin?redirectTo=/account');
 
 		const formData = await request.formData();
-		await authedKtor(session.access_token).delete(`/follows/${formData.get('notifyId')}`);
+		await authedKtor(session.access_token).patch(`/follows/${formData.get('followId')}`, {
+			notify: formData.get('notify') === 'true'
+		});
+		return { success: true };
+	},
+
+	setNotificationsPaused: async ({ locals, request }) => {
+		const { session } = await locals.safeGetSession();
+		if (!session) redirect(303, '/signin?redirectTo=/account');
+
+		const formData = await request.formData();
+		await authedKtor(session.access_token).put('/users/me/notifications-paused', {
+			paused: formData.get('paused') === 'true'
+		});
 		return { success: true };
 	}
 };

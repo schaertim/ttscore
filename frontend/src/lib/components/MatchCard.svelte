@@ -29,12 +29,12 @@
 
 	const scoreClass = $derived(
 		result === 'win'
-			? 'text-win bg-win/15'
+			? 'text-win bg-win/15 border-win/30'
 			: result === 'loss'
-				? 'text-loss bg-loss/15'
+				? 'text-loss bg-loss/15 border-loss/30'
 				: result != null
-					? 'text-muted-foreground bg-muted'
-					: 'text-muted-foreground'
+					? 'text-muted-foreground bg-muted border-border'
+					: 'text-muted-foreground border-border'
 	);
 
 	const isHome = $derived(perspectiveTeam === match.homeTeam);
@@ -81,7 +81,7 @@
 
 	<span
 		class={cn(
-			'min-w-12 shrink-0 rounded-md border px-2 py-1 text-center text-sm font-black tabular-nums',
+			'min-w-12 shrink-0 rounded-md border px-1 py-1 text-center font-mono tracking-tight text-sm font-semibold tabular-nums',
 			scoreClass
 		)}
 	>

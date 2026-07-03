@@ -105,7 +105,7 @@
 							</div>
 							<div class="flex shrink-0 items-center gap-3">
 								{#if group.totalElo !== 0}
-									<span class="flex items-center gap-1 rounded-md border border-current px-2 py-1 text-2xs font-semibold tabular-nums {group.totalElo > 0 ? 'text-win' : 'text-loss'}">
+									<span class="flex items-center gap-1 rounded-md border border-current px-2 py-1 font-mono text-2xs font-semibold tabular-nums {group.totalElo > 0 ? 'text-win' : 'text-loss'}">
 										{group.totalElo > 0 ? `+${group.totalElo}` : group.totalElo} ELO
 										{#if group.totalElo > 0}
 											<TrendUpIcon size="10" weight="bold" />

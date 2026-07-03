@@ -35,7 +35,7 @@
 			<div class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
 				<div class={cn('h-full rounded-full', barTone(p))} style="width: {p}%"></div>
 			</div>
-			<span class="w-9 shrink-0 text-right text-sm font-semibold tabular-nums">{p}%</span>
+			<span class="w-9 shrink-0 text-right font-mono font-semibold text-sm tabular-nums">{p}%</span>
 		</div>
 	{/each}
 </Card.Root>

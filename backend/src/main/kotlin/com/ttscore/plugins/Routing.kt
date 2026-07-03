@@ -24,7 +24,6 @@ fun Application.configureRouting() {
             statsRoutes()
             userProfileRoutes()
             followRoutes()
-            favoriteRoutes()
             pushRoutes()
         }
     }

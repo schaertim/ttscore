@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { Player, PlayerGame, EloEntry, LeagueContext, FavoriteResponse } from '$lib/api';
+	import type { Player, PlayerGame, EloEntry, LeagueContext, FollowResponse } from '$lib/api';
 	import HomeHero from '$lib/components/home/HomeHero.svelte';
 	import HomeQuicklinks from '$lib/components/home/HomeQuicklinks.svelte';
-	import FavoritesFeed from '$lib/components/home/FavoritesFeed.svelte';
+	import FollowFeed from '$lib/components/home/FollowFeed.svelte';
 
 	interface Props {
 		player: Player;
@@ -10,7 +10,7 @@
 			recentMatches: Promise<PlayerGame[]>;
 			eloHistory: Promise<EloEntry[]>;
 			leagueContext: Promise<LeagueContext | null>;
-			favorites: Promise<FavoriteResponse[]>;
+			follows: Promise<FollowResponse[]>;
 		};
 	}
 
@@ -23,6 +23,6 @@
 
 	<HomeQuicklinks {player} leagueContext={streamed.leagueContext} />
 
-	<!-- Favorites feed -->
-	<FavoritesFeed favorites={streamed.favorites} />
+	<!-- Follow feed -->
+	<FollowFeed follows={streamed.follows} />
 </div>

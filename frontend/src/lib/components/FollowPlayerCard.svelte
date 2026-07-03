@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
 	import { enhance } from '$app/forms';
 	import { StarIcon } from 'phosphor-svelte';
 	import PlayerAvatar from './PlayerAvatar.svelte';
@@ -9,11 +9,11 @@
 		id: string;
 		fullName: string;
 		classification?: string | null;
-		favoriteId: string;
-		onunfavorite?: () => void;
+		followId: string;
+		onunfollow?: () => void;
 	}
 
-	let { id, fullName, classification, favoriteId, onunfavorite }: Props = $props();
+	let { id, fullName, classification, followId, onunfollow }: Props = $props();
 
 	const formatted = $derived(formatName(fullName));
 	// Abbreviate to "F. Lastname" for compact display
@@ -39,21 +39,21 @@
 
 	<form
 		method="POST"
-		action="?/unfavorite"
+		action="?/unfollow"
 		use:enhance={() => {
-			onunfavorite?.();
+			onunfollow?.();
 			return async ({ update }) => {
 				await update({ reset: false, invalidateAll: false });
 			};
 		}}
 	>
-		<input type="hidden" name="favoriteId" value={favoriteId} />
+		<input type="hidden" name="followId" value={followId} />
 		<button
 			type="submit"
 			onclick={(e) => e.stopPropagation()}
 			class="absolute top-2 right-2 rounded-full p-1 text-foreground/60
 			       transition-colors hover:text-foreground"
-			aria-label="Remove from favourites"
+			aria-label="Unfollow"
 		>
 			<StarIcon weight="fill" size="16" />
 		</button>

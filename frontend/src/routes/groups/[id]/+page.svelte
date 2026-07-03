@@ -7,21 +7,19 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import StatCard from '$lib/components/StatCard.svelte';
-	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
+	import FollowButton from '$lib/components/FollowButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import { _, locale } from 'svelte-i18n';
 
 	let { data }: { data: PageData } = $props();
-	let isFavorite = $state(false);
-	let favoriteId = $state<string | null>(null);
-	let notifying = $state(false);
-	let notifyId = $state<string | null>(null);
+	let following = $state(false);
+	let followId = $state<string | null>(null);
+	let notify = $state(false);
 
 	$effect.pre(() => {
-		isFavorite = data.favorited;
-		favoriteId = data.favoriteId;
-		notifying = data.notifying;
-		notifyId = data.notifyId;
+		following = data.following;
+		followId = data.followId;
+		notify = data.notify;
 	});
 
 	const sorted = $derived([...data.standings].sort((a, b) => a.position - b.position));
@@ -84,8 +82,8 @@
 		<div class="flex items-center justify-between">
 			<BackButton class="" />
 			<div class="flex items-center">
-				<FavoriteButton bind:isFavorite bind:favoriteId targetType="division_group" targetId={data.group.id} authenticated={!!data.user} />
-				<NotifyButton bind:notifying bind:notifyId targetType="division_group" targetId={data.group.id} authenticated={!!data.user} />
+				<FollowButton bind:following bind:followId bind:notify targetType="division_group" targetId={data.group.id} authenticated={!!data.user} />
+				<NotifyButton {following} {followId} bind:notify authenticated={!!data.user} />
 			</div>
 		</div>
 		<div class="min-w-0">
@@ -123,7 +121,7 @@
 						{@const z = zone(row.position)}
 						<Table.Row class="border-border">
 							<Table.Cell
-								class="border-l-2 pl-4 font-semibold tabular-nums
+								class="border-l-2 pl-4 font-mono font-semibold tabular-nums
 								{z === 'promotion'
 									? 'border-l-win'
 									: z === 'relegation'
@@ -139,16 +137,16 @@
 								</a>
 							</Table.Cell>
 
-							<Table.Cell class="text-center tabular-nums">
+							<Table.Cell class="text-center font-mono tabular-nums">
 								{row.played}
 							</Table.Cell>
 
-							<Table.Cell class="text-center font-semibold tabular-nums">
+							<Table.Cell class="text-center font-mono font-semibold tabular-nums">
 								{row.points}
 							</Table.Cell>
 
 							<Table.Cell
-								class="pr-4 text-right font-semibold tabular-nums
+								class="pr-4 text-right font-mono font-semibold tabular-nums
                        {row.gamesWon - row.gamesLost > 0
 									? 'text-win'
 									: row.gamesWon - row.gamesLost < 0

@@ -184,9 +184,9 @@
 
 						<div class="flex flex-col items-center gap-0.5 px-3">
 							<div class="flex items-baseline gap-1.5 leading-none">
-								<span class="text-3xl font-black text-win tabular-nums">{data.record.aWins}</span>
-								<span class="text-base font-normal text-muted-foreground/40">–</span>
-								<span class="text-3xl font-black text-loss tabular-nums">{data.record.bWins}</span>
+								<span class="font-mono text-3xl font-black text-win tabular-nums">{data.record.aWins}</span>
+								<span class="text-3xl font-normal text-muted-foreground/40">–</span>
+								<span class="font-mono text-3xl font-black text-loss tabular-nums">{data.record.bWins}</span>
 							</div>
 							<p class="text-xs text-muted-foreground">
 								{data.record.games}

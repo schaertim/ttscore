@@ -9,29 +9,23 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const { session } = await locals.safeGetSession();
 
-	let favorited = false;
-	let favoriteId: string | null = null;
-	let notifying = false;
-	let notifyId: string | null = null;
+	let following = false;
+	let followId: string | null = null;
+	let notify = false;
 
 	let isHomePlayer = false;
 
 	if (session) {
 		const ktor = authedKtor(session.access_token);
-		const [favRes, followRes, profileRes] = await Promise.allSettled([
-			ktor.get(`/favorites/check?targetType=player&targetId=${params.id}`),
+		const [followRes, profileRes] = await Promise.allSettled([
 			ktor.get(`/follows/check?targetType=player&targetId=${params.id}`),
 			ktor.get('/users/me')
 		]);
-		if (favRes.status === 'fulfilled' && favRes.value.ok) {
-			const d = await favRes.value.json();
-			favorited = d.favorited;
-			favoriteId = d.favoriteId ?? null;
-		}
 		if (followRes.status === 'fulfilled' && followRes.value.ok) {
 			const d = await followRes.value.json();
-			notifying = d.notifying;
-			notifyId = d.notifyId ?? null;
+			following = d.following;
+			followId = d.followId ?? null;
+			notify = d.notify;
 		}
 		if (profileRes.status === 'fulfilled' && profileRes.value.ok) {
 			const profile = await profileRes.value.json();
@@ -41,10 +35,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	return {
 		player,
-		favorited,
-		favoriteId,
-		notifying,
-		notifyId,
+		following,
+		followId,
+		notify,
 		isHomePlayer,
 		streamed: {
 			elo: api.players.elo(params.id),
@@ -55,27 +48,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 };
 
 export const actions: Actions = {
-	favorite: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) return fail(401, { error: 'Not authenticated' });
-		const formData = await request.formData();
-		const res = await authedKtor(session.access_token).post('/favorites', {
-			targetType: formData.get('targetType'),
-			targetId: formData.get('targetId')
-		});
-		if (!res.ok) return fail(500, { error: 'Failed' });
-		const body = await res.json();
-		return { favoriteId: body.id };
-	},
-
-	unfavorite: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) return fail(401, { error: 'Not authenticated' });
-		const formData = await request.formData();
-		await authedKtor(session.access_token).delete(`/favorites/${formData.get('favoriteId')}`);
-		return { success: true };
-	},
-
 	follow: async ({ locals, request }) => {
 		const { session } = await locals.safeGetSession();
 		if (!session) return fail(401, { error: 'Not authenticated' });
@@ -86,14 +58,24 @@ export const actions: Actions = {
 		});
 		if (!res.ok) return fail(500, { error: 'Failed' });
 		const body = await res.json();
-		return { notifyId: body.id };
+		return { followId: body.id };
 	},
 
 	unfollow: async ({ locals, request }) => {
 		const { session } = await locals.safeGetSession();
 		if (!session) return fail(401, { error: 'Not authenticated' });
 		const formData = await request.formData();
-		await authedKtor(session.access_token).delete(`/follows/${formData.get('notifyId')}`);
+		await authedKtor(session.access_token).delete(`/follows/${formData.get('followId')}`);
+		return { success: true };
+	},
+
+	setNotify: async ({ locals, request }) => {
+		const { session } = await locals.safeGetSession();
+		if (!session) return fail(401, { error: 'Not authenticated' });
+		const formData = await request.formData();
+		await authedKtor(session.access_token).patch(`/follows/${formData.get('followId')}`, {
+			notify: formData.get('notify') === 'true'
+		});
 		return { success: true };
 	},
 

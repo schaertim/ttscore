@@ -1,6 +1,7 @@
 ﻿package com.ttscore.routes
 
 import com.ttscore.model.SetHomePlayerRequest
+import com.ttscore.model.SetNotificationsPausedRequest
 import com.ttscore.service.UserProfileService
 import com.ttscore.util.toUuidOrNull
 import com.ttscore.util.userId
@@ -32,6 +33,13 @@ fun Route.userProfileRoutes() {
             /** Clears the home player. */
             delete("/home-player") {
                 UserProfileService.removeHomePlayer(call.userId())
+                call.respond(HttpStatusCode.NoContent)
+            }
+
+            /** Toggles "pause all notifications". Body: { "paused": true|false } */
+            put("/notifications-paused") {
+                val body = call.receive<SetNotificationsPausedRequest>()
+                UserProfileService.setNotificationsPaused(call.userId(), body.paused)
                 call.respond(HttpStatusCode.NoContent)
             }
         }

@@ -8,7 +8,7 @@
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import GameCard from '$lib/components/GameCard.svelte';
-	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
+	import FollowButton from '$lib/components/FollowButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
@@ -30,10 +30,9 @@
 
 	let settingHomePlayer = $state(false);
 
-	let isFavorite = $state(data.favorited);
-	let favoriteId = $state(data.favoriteId);
-	let notifying = $state(data.notifying);
-	let notifyId = $state(data.notifyId);
+	let following = $state(data.following);
+	let followId = $state(data.followId);
+	let notify = $state(data.notify);
 
 	// Class derived from the player's *current* ELO (live where available). This is what we show on
 	// the profile/home/search surfaces and use to colour the graph — match rows keep historical classes.
@@ -60,18 +59,18 @@
 		<div class="flex items-center justify-between">
 			<BackButton class="" />
 			<div class="flex items-center">
-				<FavoriteButton
-					bind:isFavorite
-					bind:favoriteId
+				<FollowButton
+					bind:following
+					bind:followId
+					bind:notify
 					targetType="player"
 					targetId={data.player.id}
 					authenticated={!!data.user}
 				/>
 				<NotifyButton
-					bind:notifying
-					bind:notifyId
-					targetType="player"
-					targetId={data.player.id}
+					{following}
+					{followId}
+					bind:notify
 					authenticated={!!data.user}
 				/>
 			</div>
@@ -92,7 +91,7 @@
 
 			<div class="flex shrink-0 flex-col items-end gap-1">
 				{#if displayElo}
-					<span class="text-4xl leading-none font-black tabular-nums">{displayElo}</span>
+					<span class="font-mono text-4xl leading-none font-black tabular-nums">{displayElo}</span>
 					<span class="text-xs tracking-widest text-muted-foreground uppercase"> ELO </span>
 				{/if}
 			</div>

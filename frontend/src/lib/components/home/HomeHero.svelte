@@ -106,7 +106,7 @@
 					<p class="mb-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
 						{$_('home.elo_rating')}
 					</p>
-					<p class="text-6xl font-black tabular-nums leading-none">{displayElo}</p>
+					<p class="font-mono text-6xl font-black tabular-nums leading-none">{displayElo}</p>
 					{#await recentMatches then matches}
 						{@const delta = monthDelta(matches)}
 						{@const rounded = Math.round(delta)}

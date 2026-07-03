@@ -1,4 +1,4 @@
-import type { FavoriteResponse, Match, PlayerGame } from '$lib/api';
+import type { FollowResponse, Match, PlayerGame } from '$lib/api';
 import type { FeedItem } from '$lib/components/home/feed-types';
 import { api } from '$lib/api';
 import { classificationRank, formatName } from '$lib/utils';
@@ -16,7 +16,7 @@ export type ResolvedEvent = {
 
 // ── Per-entity event fetchers ─────────────────────────────────────────────────
 
-async function fetchPlayerEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]> {
+async function fetchPlayerEvents(fav: FollowResponse): Promise<ResolvedEvent[]> {
 	const [games, history] = await Promise.all([
 		api.players.matches(fav.targetId).catch(() => []),
 		api.players.classHistory(fav.targetId).catch(() => [])
@@ -82,7 +82,7 @@ async function fetchPlayerEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]
 	return events;
 }
 
-async function fetchTeamEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]> {
+async function fetchTeamEvents(fav: FollowResponse): Promise<ResolvedEvent[]> {
 	const matches = await api.teams.matches(fav.targetId).catch((): Match[] => []);
 	return matches
 		.filter((m) => m.status !== 'SCHEDULED')
@@ -115,7 +115,7 @@ async function fetchTeamEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]> 
 		});
 }
 
-async function fetchGroupEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]> {
+async function fetchGroupEvents(fav: FollowResponse): Promise<ResolvedEvent[]> {
 	const matches = await api.groups.matches(fav.targetId).catch((): Match[] => []);
 	return matches
 		.filter((m) => m.status !== 'SCHEDULED' && m.homeScore != null && m.awayScore != null)
@@ -137,10 +137,10 @@ async function fetchGroupEvents(fav: FavoriteResponse): Promise<ResolvedEvent[]>
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export async function resolveFeed(favorites: FavoriteResponse[]): Promise<ResolvedEvent[]> {
-	if (favorites.length === 0) return [];
+export async function resolveFeed(follows: FollowResponse[]): Promise<ResolvedEvent[]> {
+	if (follows.length === 0) return [];
 	const arrays = await Promise.all(
-		favorites.map((fav) => {
+		follows.map((fav) => {
 			if (fav.targetType === 'player') return fetchPlayerEvents(fav);
 			if (fav.targetType === 'team') return fetchTeamEvents(fav);
 			return fetchGroupEvents(fav);

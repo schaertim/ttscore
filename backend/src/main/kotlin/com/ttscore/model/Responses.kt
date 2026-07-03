@@ -6,11 +6,17 @@ import kotlinx.serialization.Serializable
 data class UserProfileResponse(
     val homePlayerId: String?,
     val homePlayerName: String?,
+    val notificationsPaused: Boolean = false,
 )
 
 @Serializable
 data class SetHomePlayerRequest(
     val playerId: String,
+)
+
+@Serializable
+data class SetNotificationsPausedRequest(
+    val paused: Boolean,
 )
 
 @Serializable
@@ -169,19 +175,24 @@ data class StatsResponse(
     val matchesLast24h: Long,
 )
 
-/** A notification subscription (bell). */
+/**
+ * A follow: an entity the user is interested in. [notify] is the bell (push
+ * subscription), off by default.
+ */
 @Serializable
 data class FollowResponse(
     val id: String,
     val targetType: String,
     val targetId: String,
     val targetName: String,
+    val notify: Boolean,
 )
 
 @Serializable
 data class FollowCheckResponse(
-    val notifying: Boolean,
-    val notifyId: String?,
+    val following: Boolean,
+    val followId: String?,
+    val notify: Boolean,
 )
 
 @Serializable
@@ -190,25 +201,10 @@ data class FollowRequest(
     val targetId: String,
 )
 
-/** A starred bookmark (star). */
+/** Body for PATCH /follows/{id} — toggles the notify (bell) flag. */
 @Serializable
-data class FavoriteResponse(
-    val id: String,
-    val targetType: String,
-    val targetId: String,
-    val targetName: String,
-)
-
-@Serializable
-data class FavoriteCheckResponse(
-    val favorited: Boolean,
-    val favoriteId: String?,
-)
-
-@Serializable
-data class FavoriteRequest(
-    val targetType: String,
-    val targetId: String,
+data class FollowNotifyRequest(
+    val notify: Boolean,
 )
 
 @Serializable

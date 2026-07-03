@@ -77,11 +77,14 @@ class MatchPollJob(
             }
         }
 
-        // Send push notifications for newly completed matches
-        sendMatchPushNotifications(newlyCompletedMatchIds)
-
-        // Enqueue players from newly completed matches for ELO sync
+        // Players who took part in the newly completed matches.
         val playerIds = GameService.getPlayerIdsFromMatches(newlyCompletedMatchIds)
+
+        // Send push notifications for newly completed matches — to followers of the
+        // teams, the division group, and the players who played in them.
+        sendMatchPushNotifications(newlyCompletedMatchIds, playerIds)
+
+        // Enqueue those players for ELO sync
         logger.info("MatchPollJob: syncing ELO for ${playerIds.size} players from completed matches")
         for (playerId in playerIds) {
             try {
@@ -92,15 +95,15 @@ class MatchPollJob(
             delay(500L)
         }
 
-        // Send push notifications for affected players
-        sendPlayerPushNotifications(playerIds)
-
         logger.info(
             "MatchPollJob: complete — ${newlyCompletedMatchIds.size} new matches, ${playerIds.size} players synced",
         )
     }
 
-    private suspend fun sendMatchPushNotifications(matchIds: Set<UUID>) {
+    private suspend fun sendMatchPushNotifications(
+        matchIds: Set<UUID>,
+        playerIds: Set<UUID>,
+    ) {
         data class MatchInfo(
             val id: UUID,
             val homeScore: Short?,
@@ -154,9 +157,8 @@ class MatchPollJob(
                 logger.warn("MatchPollJob: push notification failed for match ${m.id}: ${e.message}")
             }
         }
-    }
 
-    private suspend fun sendPlayerPushNotifications(playerIds: Collection<UUID>) {
+        // Notify followers of the players who took part in these matches.
         val playerNames =
             transaction {
                 Players.select(Players.id, Players.fullName)

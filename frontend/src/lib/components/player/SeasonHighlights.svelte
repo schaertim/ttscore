@@ -16,7 +16,7 @@
 <div class="space-y-3">
 	{#if stats.bestWinOpponentName}
 		<StatTile label={$_('stats.best_win')}>
-			<p class="flex items-center gap-1.5 truncate text-base font-semibold">
+			<p class="flex items-center gap-1.5 text-base font-semibold">
 				<span class="truncate">{formatName(stats.bestWinOpponentName)}</span>
 				<ClassBadge classification={stats.bestWinOpponentClass} />
 			</p>

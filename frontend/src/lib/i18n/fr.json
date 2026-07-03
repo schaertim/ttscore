@@ -123,6 +123,10 @@
     "push_disabled": "Activer les notifications",
     "push_enabled_desc": "Vous serez notifié lorsque les joueurs, équipes ou ligues que vous suivez auront de nouveaux résultats.",
     "push_disabled_desc": "Soyez notifié lorsque les joueurs, équipes ou ligues que vous suivez auront de nouveaux résultats.",
+    "pause_all_active": "Notifications activées",
+    "pause_all_active_desc": "Vous recevez des alertes pour les éléments suivis avec la cloche activée.",
+    "pause_all_paused": "Notifications en pause",
+    "pause_all_paused_desc": "Toutes les notifications push sont coupées. Vos suivis et cloches sont conservés.",
     "sign_out": "Se déconnecter",
     "language": "Langue"
   },

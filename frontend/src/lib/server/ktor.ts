@@ -43,6 +43,11 @@ export function authedKtor(accessToken: string) {
 				method: 'PUT',
 				body: JSON.stringify(body)
 			}),
+		patch: (path: string, body: unknown) =>
+			authedFetch(path, accessToken, {
+				method: 'PATCH',
+				body: JSON.stringify(body)
+			}),
 		delete: (path: string) => authedFetch(path, accessToken, { method: 'DELETE' })
 	};
 }

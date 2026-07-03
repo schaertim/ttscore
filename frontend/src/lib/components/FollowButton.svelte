@@ -6,16 +6,19 @@
 	import { StarIcon } from 'phosphor-svelte';
 
 	interface Props {
-		isFavorite: boolean;
-		favoriteId: string | null;
+		following: boolean;
+		followId: string | null;
+		/** Reset to false whenever the follow is created or removed. */
+		notify: boolean;
 		targetType: string;
 		targetId: string;
 		authenticated?: boolean;
 	}
 
 	let {
-		isFavorite = $bindable(),
-		favoriteId = $bindable(),
+		following = $bindable(),
+		followId = $bindable(),
+		notify = $bindable(),
 		targetType,
 		targetId,
 		authenticated = true
@@ -27,26 +30,28 @@
 
 	let loading = $state(false);
 
-	function unfavoriteEnhance() {
+	function unfollowEnhance() {
 		loading = true;
 		return async ({ result, update }: { result: ActionResult; update(): Promise<void> }) => {
 			loading = false;
 			if (result.type === 'success') {
-				isFavorite = false;
-				favoriteId = null;
+				following = false;
+				followId = null;
+				notify = false;
 			} else {
 				await update();
 			}
 		};
 	}
 
-	function favoriteEnhance() {
+	function followEnhance() {
 		loading = true;
 		return async ({ result, update }: { result: ActionResult; update(): Promise<void> }) => {
 			loading = false;
 			if (result.type === 'success' && result.data) {
-				isFavorite = true;
-				favoriteId = result.data.favoriteId as unknown as string;
+				following = true;
+				followId = result.data.followId as unknown as string;
+				notify = false;
 			} else {
 				await update();
 			}
@@ -58,31 +63,31 @@
 	<button
 		type="button"
 		onclick={redirectToSignIn}
-		title="Sign in to add to favorites"
+		title="Sign in to follow"
 		class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 	>
 		<StarIcon size="20" />
 	</button>
-{:else if isFavorite}
-	<form method="POST" action="?/unfavorite" use:enhance={unfavoriteEnhance}>
-		<input type="hidden" name="favoriteId" value={favoriteId} />
+{:else if following}
+	<form method="POST" action="?/unfollow" use:enhance={unfollowEnhance}>
+		<input type="hidden" name="followId" value={followId} />
 		<button
 			type="submit"
 			disabled={loading}
-			title="Remove from favorites"
+			title="Unfollow"
 			class="flex items-center justify-center rounded-full p-2 text-foreground transition-colors hover:bg-muted disabled:opacity-50"
 		>
 			<StarIcon size="20" weight="fill" />
 		</button>
 	</form>
 {:else}
-	<form method="POST" action="?/favorite" use:enhance={favoriteEnhance}>
+	<form method="POST" action="?/follow" use:enhance={followEnhance}>
 		<input type="hidden" name="targetType" value={targetType} />
 		<input type="hidden" name="targetId" value={targetId} />
 		<button
 			type="submit"
 			disabled={loading}
-			title="Add to favorites"
+			title="Follow"
 			class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
 		>
 			<StarIcon size="20" />

@@ -87,7 +87,7 @@ The feature that turns a casual visitor into a retained user. Solves the core pa
 **Identity approach:**
 - "Set as my player" on any player profile triggers Google Sign In immediately — no anonymous/local-store state
 - Account is the entry point from the first personalisation action, keeping the experience consistent across devices
-- Sign in with Google, Apple, or other OAuth providers (Better Auth) — one tap on mobile
+- Sign in with Google, Apple, or other OAuth providers (Supabase Auth) — one tap on mobile
 - Email + password as a fallback for users who prefer not to use OAuth
 
 **Scope:**
@@ -98,7 +98,7 @@ The feature that turns a casual visitor into a retained user. Solves the core pa
 - Notification preferences — mute, pause, manage follows
 - Personal dashboard on login — your ELO badge, rank, classification, recent results
 
-**Auth stack:** Better Auth in SvelteKit layer, users stored in Railway PostgreSQL, Ktor verifies signed tokens from SvelteKit.
+**Auth stack:** Supabase Auth (users + JWT signing in Supabase); SvelteKit holds the session and forwards the Supabase access token to Ktor, which verifies the JWT (ES256) on protected routes.
 
 ---
 

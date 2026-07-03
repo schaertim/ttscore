@@ -31,7 +31,7 @@
 		return result;
 	}
 
-	const feedPromise = $derived(data.favorites.then(resolveFeed));
+	const feedPromise = $derived(data.follows.then(resolveFeed));
 </script>
 
 <div class="space-y-6">

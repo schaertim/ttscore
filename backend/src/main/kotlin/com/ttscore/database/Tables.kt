@@ -181,22 +181,17 @@ private fun targetTypeColumn(table: Table) =
         },
     )
 
-/** Notification subscriptions (bell). */
+/**
+ * A follow: the user is interested in this entity (drives the home feed + search).
+ * [notify] is the opt-in push subscription (the bell) — off by default, so a follow
+ * without notify is a silent bookmark. Enforces the invariant notify ⊆ follow.
+ */
 object Follows : Table("follow") {
     val id = uuid("id").autoGenerate()
     val userId = text("user_id")
     val targetType = targetTypeColumn(this)
     val targetId = uuid("target_id")
-    val createdAt = timestampWithTimeZone("created_at")
-    override val primaryKey = PrimaryKey(id)
-}
-
-/** Starred bookmarks (star). */
-object Favorites : Table("favorite") {
-    val id = uuid("id").autoGenerate()
-    val userId = text("user_id")
-    val targetType = targetTypeColumn(this)
-    val targetId = uuid("target_id")
+    val notify = bool("notify").default(false)
     val createdAt = timestampWithTimeZone("created_at")
     override val primaryKey = PrimaryKey(id)
 }
@@ -204,6 +199,9 @@ object Favorites : Table("favorite") {
 object UserProfiles : Table("user_profile") {
     val userId = text("user_id")
     val homePlayerId = uuid("home_player_id").references(Players.id).nullable()
+
+    /** Global mute: when true the push job skips this user entirely. */
+    val notificationsPaused = bool("notifications_paused").default(false)
     val createdAt = timestampWithTimeZone("created_at")
     override val primaryKey = PrimaryKey(userId)
 }

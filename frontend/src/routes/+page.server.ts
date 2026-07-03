@@ -28,8 +28,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 			recentMatches: api.players.matches(homePlayerId),
 			eloHistory: api.players.elo(homePlayerId),
 			leagueContext: api.players.leagueContext(homePlayerId).catch(() => null),
-			favorites: ktor
-				.get('/favorites')
+			follows: ktor
+				.get('/follows')
 				.then((res) => (res.ok ? res.json() : []))
 				.catch(() => [])
 		}

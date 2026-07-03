@@ -10,10 +10,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	const ktor = authedKtor(session.access_token);
-	const favorites = ktor
-		.get('/favorites')
+	const follows = ktor
+		.get('/follows')
 		.then((res) => (res.ok ? res.json() : []))
 		.catch(() => []);
 
-	return { favorites };
+	return { follows };
 };

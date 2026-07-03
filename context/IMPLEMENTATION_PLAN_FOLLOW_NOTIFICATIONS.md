@@ -8,36 +8,39 @@ All development happens locally (Docker PostgreSQL). Railway deployment is the f
 
 ---
 
+> **Status:** Steps 1–6 are implemented. The original plan called for Better Auth; the
+> project shipped on **Supabase Auth** instead, so the auth details below have been
+> corrected. Step 7 (Railway deployment) is the remaining work. Notification preferences
+> (per-entity mute / pause-all) are still deferred — see the end of this doc.
+
 ## Auth approach
 
-Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway PostgreSQL (same DB as app data).
+**Implemented with Supabase Auth** (the "Better Auth" references in earlier drafts are obsolete). Supabase hosts the auth users and issues JWTs. The SvelteKit layer holds the session and forwards the Supabase access token to Ktor as a `Bearer` token.
 
 **Sign-in options:**
 - Google OAuth
-- Email + password (no email verification initially â€” add Resend-based verification later as a follow-up)
-- Apple OAuth â€” deferred until an Apple Developer account is available ($99/year)
-- Other providers (GitHub etc.) â€” easy to add later, Better Auth supports them all with minimal config
+- Email + password (no email verification initially — add verification later as a follow-up)
+- Apple OAuth — deferred until an Apple Developer account is available ($99/year)
+- Other providers (GitHub etc.) — easy to add later via Supabase Auth providers
 
-**Ktor integration:** SvelteKit signs a short-lived token (HMAC-SHA256, shared secret) after verifying the Better Auth session. Ktor verifies this token on protected routes. No direct DB access from Ktor for auth.
+**Ktor integration:** Ktor verifies the Supabase JWT directly on protected routes (the `auth-jwt` realm) — ES256 / EC P-256, issuer `<supabase-url>/auth/v1`, with the `sub` claim used as the user id. No shared HMAC secret and no direct DB access from Ktor for auth. See `plugins/Authentication.kt`.
 
 ---
 
 ## Steps
 
-### Step 1 â€” Better Auth setup
+### Step 1 — Supabase Auth setup ✅ done
 
-**What:** Google, Apple, and email+password sign-in working end-to-end in SvelteKit on localhost.
+**What:** Google and email+password sign-in working end-to-end in SvelteKit.
 
-**How:**
-- Install `better-auth` in the SvelteKit project
+**How (as built):**
+- Supabase project provides auth + JWT signing
 - Configure OAuth apps:
-  - Google: Google Cloud Console â†’ OAuth 2.0 credentials
-  - Apple: deferred â€” no Apple Developer account yet
-  - Additional providers can be added later with minimal config
-- Add Better Auth config (`src/lib/auth.ts`) â€” define providers, point at local PostgreSQL
-- Run Better Auth's schema migration to create `users`, `sessions`, `accounts` tables
-- Add the catch-all server route (`src/routes/api/auth/[...all]/+server.ts`)
-- Add `hooks.server.ts` to attach session to `event.locals` on every request
+  - Google: Google Cloud Console → OAuth 2.0 credentials, wired into Supabase
+  - Apple: deferred — no Apple Developer account yet
+  - Additional providers can be added later via the Supabase dashboard
+- Supabase client + session helpers in SvelteKit (`locals.safeGetSession()` / `supabase:auth` invalidation)
+- Sign-in page at `/signin` (with `redirectTo`) and sign-out via `supabase.auth.signOut()`
 - Build sign-in UI: modal or dedicated `/signin` page with Google button and email+password form
 - Build sign-out â€” single button, clears session cookie
 
@@ -45,17 +48,16 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 ---
 
-### Step 2 â€” Ktor token verification
+### Step 2 — Ktor JWT verification ✅ done
 
-**What:** Ktor can identify which authenticated user is making a request from SvelteKit.
+**What:** Ktor can identify which authenticated user is making a request.
 
-**How:**
-- Generate a shared secret, store in env vars on both SvelteKit (Vercel) and Ktor (Railway)
-- In SvelteKit server-side API calls to Ktor, attach a signed header: `X-Auth-User: <user_id>` signed with HMAC-SHA256
-- In Ktor, add middleware that verifies the HMAC signature and extracts `user_id` for protected routes
-- Unauthenticated routes (all existing endpoints) are unchanged
+**How (as built):**
+- SvelteKit forwards the Supabase access token to Ktor as `Authorization: Bearer <jwt>` (see `lib/server/ktor.ts`)
+- Ktor's `auth-jwt` realm verifies the token: ES256 / EC P-256, issuer `<supabase-url>/auth/v1`, `sub` claim required (`plugins/Authentication.kt`). The public key coordinates come from Supabase → Project Settings → API → JWT Keys.
+- `call.userId()` extracts `sub` for protected routes; unauthenticated routes (all existing endpoints) are unchanged
 
-**Done when:** Ktor can trust the `user_id` in requests from SvelteKit. Protected routes reject requests with missing or invalid tokens.
+**Done when:** Ktor trusts the `user_id` (`sub`) in the JWT. Protected routes reject requests with missing or invalid tokens.
 
 ---
 
@@ -94,7 +96,7 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 ---
 
-### Step 5 â€” Push notifications
+### Step 5 — Push notifications ✅ core done (preferences deferred)
 
 **What:** Users receive a push notification when a result lands for any entity they follow.
 
@@ -112,18 +114,18 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 - DB table: `push_subscriptions (id, user_id, endpoint, p256dh, auth, created_at)`
 - PWA install prompt shown alongside the notification enable prompt (required on iOS Safari â€” notifications only work from installed PWA on iOS)
 
-**Sending notifications:**
-- Ktor background job: after each match result is scraped and saved, query `follows` to find users who follow any participant (player, team, or division)
-- Fire notifications immediately â€” no batching needed since match results are always entered fully at once
-- For each affected user, look up their `push_subscriptions` and send a Web Push notification
-- Notification payload: e.g. "Concordia Basel 6:4 Carouge 1 â€” followed match result"
-- Handle expired/invalid subscriptions gracefully (remove from DB on 410 Gone)
+**Sending notifications (as built — `jobs/MatchPollJob.kt`):**
+- `MatchPollJob` runs every 5 minutes. It scrapes groups with past-due scheduled matches; for each newly completed match it fires notifications in a single pass (`sendMatchPushNotifications`).
+- One match-completion pass notifies followers of: the **home team**, the **away team**, the **division group**, and every **player who took part** in the match (participants resolved from the match's games). There is **no separate profile/ELO-update trigger** — player notifications are driven purely by match participation.
+- `PushService.sendToFollowers(targetType, targetId, …)` resolves followers → their `push_subscription` rows → sends a Web Push notification each. The payload is JSON `{ title, body, url }`; e.g. team/group: `"<Home> vs <Away>" / "Result: 6:4"` → `/matches/{id}`; player: `"<Player name>" / "New match result available"` → `/players/{id}`.
+- Fired immediately — no batching, since results are entered fully at once.
 
 **Notification preferences:**
-- Per-entity mute (soft delete the specific follow's notification flag)
-- "Pause all" toggle on the user account
+- ✅ **Per-entity mute is built.** The `follow` and `favorite` tables were merged into a single `follow` table with a `notify` flag (default **off**) — see the DB schema section. Following an entity (⭐) is separate from being notified about it (🔔): you can follow silently, or toggle the bell without unfollowing. `MatchPollJob`/`PushService.sendToFollowers` only push to followers with `notify = true`.
+- ✅ **"Pause all" is built.** `user_profile.notifications_paused` (default off, toggled from the account page via `PUT /users/me/notifications-paused`) is a global mute: `PushService.sendToFollowers` skips paused users entirely, leaving their follows and per-entity bells untouched.
+- ✅ **Dead-subscription cleanup is built.** `sendToFollowers` inspects the push response status; on `404`/`410 Gone` it prunes the `push_subscription` row by endpoint, so dead endpoints don't accumulate. Transient errors (timeouts, 5xx) are still just logged and left in place.
 
-**Done when:** Following a team and having notifications enabled results in a push notification on your phone when their match result is scraped.
+**Done when:** Following a team and having notifications enabled results in a push notification on your phone when their match result is scraped. ✅
 
 ---
 
@@ -157,10 +159,10 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 **How:**
 - Provision PostgreSQL service on Railway
-- Run Flyway migrations + Better Auth schema migrations against Railway PostgreSQL
-- Deploy Ktor backend to Railway, wire env vars (DB connection, shared auth secret, VAPID private key)
-- Update SvelteKit env vars on Vercel (API base URL, Better Auth config pointing at Railway DB, VAPID public key)
-- Configure OAuth redirect URIs in Google/Apple consoles to point at production domain
+- Run Flyway migrations against the production PostgreSQL (auth users live in Supabase, no schema migration needed there)
+- Deploy Ktor backend to Railway, wire env vars (DB connection, `SUPABASE_URL` + `SUPABASE_JWT_KEY_X/Y` for JWT verification, `VAPID_PRIVATE_KEY`)
+- Update SvelteKit env vars on Vercel (API base URL, Supabase URL + anon key, `PUBLIC_API_URL`; VAPID public key is served by Ktor at `/push/vapid-public-key`)
+- Configure OAuth redirect URIs in Google (and Supabase) to point at production domain
 - Smoke test all flows on production: sign in, set home player, follow, enable notifications, trigger a notification
 
 **Done when:** Everything works on the production domain. Push notifications fire on real match results.
@@ -169,32 +171,39 @@ Better Auth runs in the SvelteKit layer (Vercel). Users are stored in Railway Po
 
 ## DB schema additions (summary)
 
+Auth users live in **Supabase** (not app-managed tables). `user_id` throughout is the
+Supabase user UUID, stored as `TEXT`. All app IDs are `UUID`, not serial ints.
+
+**Follow/favorite history:** V7 split the original `follow` table into `follow` (🔔) and
+`favorite` (⭐). V12 **merged them back** into a single `follow` table with a `notify`
+flag: a follow (⭐) drives the feed + search, and `notify` (🔔, default off) is the push
+subscription. This enforces the invariant *notify ⊆ follow* — you can only be notified
+about something you follow — and makes "mute without unfollowing" a single flag flip.
+
 ```sql
--- Better Auth managed
-users (id, email, name, created_at, ...)
-sessions (id, user_id, expires_at, ...)
-accounts (id, user_id, provider, provider_account_id, ...)
+-- App-managed profile (home player, global mute), keyed by Supabase user id
+user_profile (user_id TEXT PRIMARY KEY, home_player_id UUID REFERENCES players(id),
+              notifications_paused BOOLEAN NOT NULL DEFAULT false, ...)
 
--- App managed
-ALTER TABLE users ADD COLUMN home_player_id INT REFERENCES players(id);
+-- follow_target_type ENUM: 'player' | 'team' | 'division_group'
 
-CREATE TABLE follows (
-  id SERIAL PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
-  entity_type TEXT NOT NULL CHECK (entity_type IN ('player', 'team', 'division')),
-  entity_id INT NOT NULL,
-  notify BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (user_id, entity_type, entity_id)
+CREATE TABLE follow (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     TEXT NOT NULL,
+  target_type follow_target_type NOT NULL,
+  target_id   UUID NOT NULL,
+  notify      BOOLEAN NOT NULL DEFAULT false,   -- 🔔 the bell; ⭐ = row exists
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, target_type, target_id)
 );
 
-CREATE TABLE push_subscriptions (
-  id SERIAL PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id),
-  endpoint TEXT NOT NULL UNIQUE,
-  p256dh TEXT NOT NULL,
-  auth TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE push_subscription (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    TEXT NOT NULL,
+  endpoint   TEXT NOT NULL UNIQUE,
+  p256dh     TEXT NOT NULL,
+  auth       TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
 
@@ -204,4 +213,4 @@ CREATE TABLE push_subscriptions (
 
 - **Apple Sign In** â€” add once an Apple Developer account is available
 - **Email verification** â€” add via Resend once the basic flow is stable
-- **Additional OAuth providers** â€” GitHub etc. trivial to add via Better Auth when needed
+- **Additional OAuth providers** — GitHub etc. trivial to add via Supabase Auth when needed

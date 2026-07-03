@@ -180,6 +180,10 @@
 		"push_disabled": "Benachrichtigungen aktivieren",
 		"push_enabled_desc": "Du wirst benachrichtigt, wenn Spieler, Teams oder Ligen, denen du folgst, neue Ergebnisse haben.",
 		"push_disabled_desc": "Werde benachrichtigt, wenn Spieler, Teams oder Ligen, denen du folgst, neue Ergebnisse haben.",
+		"pause_all_active": "Benachrichtigungen an",
+		"pause_all_active_desc": "Du erhältst Hinweise für gefolgte Einträge mit aktivierter Glocke.",
+		"pause_all_paused": "Benachrichtigungen pausiert",
+		"pause_all_paused_desc": "Alle Push-Benachrichtigungen sind stumm. Deine Follows und Glocken bleiben erhalten.",
 		"sign_out": "Abmelden",
 		"language": "Sprache"
 	},

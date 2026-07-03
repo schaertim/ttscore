@@ -33,6 +33,6 @@
 	{#if children}
 		{@render children()}
 	{:else if value != null}
-		<p class="text-xl leading-none font-black tabular-nums">{value}</p>
+		<p class="font-mono text-xl leading-none font-black tabular-nums">{value}</p>
 	{/if}
 {/snippet}

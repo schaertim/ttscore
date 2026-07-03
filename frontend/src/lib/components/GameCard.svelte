@@ -81,7 +81,7 @@
 											? set.homePoints > set.awayPoints
 											: set.awayPoints > set.homePoints}
 									<span class={cn(
-										'rounded px-2 py-1 text-xs font-semibold tabular-nums',
+										'rounded px-2 py-1 font-mono text-2xs tracking-tight font-semibold tabular-nums',
 										playerWonSet ? 'bg-win/15 text-win' : 'bg-loss/15 text-loss'
 									)}>
 										{pg.playerSide === 'home'
@@ -96,12 +96,12 @@
 				<div class="w-px shrink-0 self-stretch bg-border"></div>
 				<!-- right: score + ELO centered as group -->
 				<div class="flex w-11 shrink-0 flex-col items-center justify-center gap-1">
-					<p class={cn('text-2xl font-black leading-none tabular-nums', scoreColor)}>
+					<p class={cn('font-mono text-2xl font-black tracking-tighter leading-none tabular-nums', scoreColor)}>
 						{playerSets(pg)}:{opponentSets(pg)}
 					</p>
 					{#if pg.eloDelta != null}
 						<span
-							class="whitespace-nowrap text-2xs font-semibold text-muted-foreground"
+							class="whitespace-nowrap font-mono text-2xs font-semibold text-muted-foreground"
 							class:italic={pg.eloDeltaProvisional}
 							title={pg.eloDeltaProvisional ? 'Provisional — not yet officially rated' : undefined}
 						>
@@ -187,7 +187,7 @@
 				{#if mg.sets && mg.sets.length > 0}
 					<div class="flex flex-wrap gap-1">
 						{#each mg.sets as set, i (i)}
-							<span class="rounded bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground tabular-nums">
+							<span class="rounded bg-muted px-2 py-1 font-mono text-xs tracking-tight font-semibold text-muted-foreground tabular-nums">
 								{set.homePoints}:{set.awayPoints}
 							</span>
 						{/each}
@@ -198,7 +198,7 @@
 			<div class="w-px shrink-0 self-stretch bg-border"></div>
 			<!-- right: score, vertically centered -->
 			<div class="flex w-11 shrink-0 flex-col items-center justify-center">
-				<p class="text-3xl font-black tabular-nums text-muted-foreground">
+				<p class="font-mono text-3xl font-black tracking-tighter tabular-nums text-muted-foreground">
 					{mg.homeSets ?? 0}:{mg.awaySets ?? 0}
 				</p>
 			</div>

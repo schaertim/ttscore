@@ -6,7 +6,7 @@
 	import { CheckCircleIcon, XCircleIcon, MinusCircleIcon, UsersThreeIcon, PingPongIcon } from 'phosphor-svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
-	import FavoriteButton from '$lib/components/FavoriteButton.svelte';
+	import FollowButton from '$lib/components/FollowButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import StatTile from '$lib/components/StatTile.svelte';
@@ -16,10 +16,9 @@
 	let { data }: { data: PageData } = $props();
 
 	const [won, drawn, lost] = data.team.record.split('-').map(Number);
-	let isFavorite = $state(data.favorited);
-	let favoriteId = $state(data.favoriteId);
-	let notifying = $state(data.notifying);
-	let notifyId = $state(data.notifyId);
+	let following = $state(data.following);
+	let followId = $state(data.followId);
+	let notify = $state(data.notify);
 </script>
 
 <div class="space-y-6">
@@ -27,8 +26,8 @@
 		<div class="flex items-center justify-between">
 			<BackButton class="" />
 			<div class="flex items-center">
-				<FavoriteButton bind:isFavorite bind:favoriteId targetType="team" targetId={data.team.id} authenticated={!!data.user} />
-				<NotifyButton bind:notifying bind:notifyId targetType="team" targetId={data.team.id} authenticated={!!data.user} />
+				<FollowButton bind:following bind:followId bind:notify targetType="team" targetId={data.team.id} authenticated={!!data.user} />
+				<NotifyButton {following} {followId} bind:notify authenticated={!!data.user} />
 			</div>
 		</div>
 
@@ -38,7 +37,7 @@
 				<p class="text-sm text-muted-foreground">{data.team.groupName}</p>
 			</div>
 			{#if data.team.position > 0}
-				<span class="shrink-0 text-6xl leading-none font-black text-muted-foreground/15 tabular-nums">
+				<span class="shrink-0 font-mono text-6xl leading-none font-black text-muted-foreground/15 tabular-nums">
 					#{data.team.position}
 				</span>
 			{/if}

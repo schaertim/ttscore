@@ -4,8 +4,8 @@
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { api, type Player, type FavoriteResponse, type FollowResponse } from '$lib/api';
-	import { StarIcon, BellRingingIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon, MagnifyingGlassIcon } from 'phosphor-svelte';
+	import { api, type Player, type FollowResponse } from '$lib/api';
+	import { StarIcon, BellIcon, BellRingingIcon, BellSlashIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon, MagnifyingGlassIcon } from 'phosphor-svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import { theme } from '$lib/theme.svelte';
@@ -24,16 +24,10 @@
 	let searching = $state(false);
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
-	const favoriteGroups = $derived([
-		{ label: $_('common.leagues_label'), icon: TrophyIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'division_group') },
-		{ label: $_('common.teams_label'), icon: UsersThreeIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'team') },
-		{ label: $_('common.players_label'), icon: UserIcon, items: data.favorites.filter((f: FavoriteResponse) => f.targetType === 'player') },
-	].filter(g => g.items.length > 0));
-
-	const notificationGroups = $derived([
-		{ label: 'Leagues', icon: TrophyIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'division_group') },
-		{ label: $_('common.teams_label'), icon: UsersThreeIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'team') },
-		{ label: $_('common.players_label'), icon: UserIcon, items: data.notifications.filter((n: FollowResponse) => n.targetType === 'player') },
+	const followGroups = $derived([
+		{ label: $_('common.leagues_label'), icon: TrophyIcon, items: data.follows.filter((f: FollowResponse) => f.targetType === 'division_group') },
+		{ label: $_('common.teams_label'), icon: UsersThreeIcon, items: data.follows.filter((f: FollowResponse) => f.targetType === 'team') },
+		{ label: $_('common.players_label'), icon: UserIcon, items: data.follows.filter((f: FollowResponse) => f.targetType === 'player') },
 	].filter(g => g.items.length > 0));
 
 	function onInput() {
@@ -178,69 +172,78 @@
 		{/if}
 	</section>
 
-	{#if favoriteGroups.length > 0}
+	{#if followGroups.length > 0}
 		<section class="space-y-3">
 			<SectionLabel label={$_("account.favorites")} icon={StarIcon} />
-			{#each favoriteGroups as group (group.label)}
+			{#each followGroups as group (group.label)}
 				<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 					{#each group.items as item (item.id)}
-						<a
-							href={entityHref(item.targetType, item.targetId)}
-							class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-accent"
-						>
-							<div class="flex min-w-0 items-center gap-3">
+						<div class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-accent">
+							<a
+								href={entityHref(item.targetType, item.targetId)}
+								class="flex min-w-0 flex-1 items-center gap-3"
+							>
 								<group.icon size="18" class="shrink-0 text-muted-foreground" />
 								<span class="truncate font-semibold">{item.targetType === 'player' ? formatName(item.targetName) : item.targetName}</span>
+							</a>
+							<div class="flex shrink-0 items-center gap-1 pl-2">
+								<form method="POST" action="?/setNotify" use:enhance>
+									<input type="hidden" name="followId" value={item.id} />
+									<input type="hidden" name="notify" value={String(!item.notify)} />
+									<button
+										type="submit"
+										class="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted {item.notify ? 'text-foreground' : 'text-muted-foreground'}"
+										aria-label={item.notify ? 'Turn off notifications' : 'Turn on notifications'}
+									>
+										{#if item.notify}
+											<BellRingingIcon size="18" weight="fill" />
+										{:else}
+											<BellIcon size="18" />
+										{/if}
+									</button>
+								</form>
+								<form method="POST" action="?/unfollow" use:enhance>
+									<input type="hidden" name="followId" value={item.id} />
+									<button
+										type="submit"
+										class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+										aria-label="Unfollow"
+									>
+										<TrashIcon size="18" />
+									</button>
+								</form>
 							</div>
-							<form method="POST" action="?/removeFavorite" use:enhance>
-								<input type="hidden" name="favoriteId" value={item.id} />
-								<button
-									type="submit"
-									onclick={(e) => e.stopPropagation()}
-									class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-									aria-label="Remove favorite"
-								>
-									<StarIcon size="18" weight="fill" />
-								</button>
-							</form>
-						</a>
+						</div>
 					{/each}
 				</div>
 			{/each}
 		</section>
 	{/if}
 
-	{#if notificationGroups.length > 0}
-		<section class="space-y-3">
-			<SectionLabel label={$_("account.notifications")} icon={BellRingingIcon} />
-			{#each notificationGroups as group (group.label)}
-				<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
-					{#each group.items as item (item.id)}
-						<a
-							href={entityHref(item.targetType, item.targetId)}
-							class="flex items-center justify-between px-4 py-3 transition-colors hover:bg-accent"
-						>
-							<div class="flex min-w-0 items-center gap-3">
-								<group.icon size="18" class="shrink-0 text-muted-foreground" />
-								<span class="truncate font-semibold">{item.targetType === 'player' ? formatName(item.targetName) : item.targetName}</span>
-							</div>
-							<form method="POST" action="?/removeNotification" use:enhance>
-								<input type="hidden" name="notifyId" value={item.id} />
-								<button
-									type="submit"
-									onclick={(e) => e.stopPropagation()}
-									class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-									aria-label="Remove notification"
-								>
-									<BellRingingIcon size="18" weight="fill" />
-								</button>
-							</form>
-						</a>
-					{/each}
+	<section class="space-y-3">
+		<SectionLabel label={$_("account.notifications")} icon={BellRingingIcon} />
+		<form method="POST" action="?/setNotificationsPaused" use:enhance>
+			<input type="hidden" name="paused" value={String(!data.profile.notificationsPaused)} />
+			<button
+				type="submit"
+				class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
+			>
+				<div class="flex min-w-0 flex-1 flex-col items-start gap-1">
+					<span class="font-semibold">
+						{$_(data.profile.notificationsPaused ? 'account.pause_all_paused' : 'account.pause_all_active')}
+					</span>
+					<span class="text-xs text-muted-foreground">
+						{$_(data.profile.notificationsPaused ? 'account.pause_all_paused_desc' : 'account.pause_all_active_desc')}
+					</span>
 				</div>
-			{/each}
-		</section>
-	{/if}
+				{#if data.profile.notificationsPaused}
+					<BellSlashIcon size="20" class="m-1 shrink-0 text-destructive" />
+				{:else}
+					<BellRingingIcon size="20" weight="fill" class="m-1 shrink-0 text-muted-foreground" />
+				{/if}
+			</button>
+		</form>
+	</section>
 
 	{#if !pushUnsupported}
 		<section class="space-y-3">

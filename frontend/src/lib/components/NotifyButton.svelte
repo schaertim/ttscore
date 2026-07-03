@@ -6,20 +6,14 @@
 	import { BellIcon, BellRingingIcon } from 'phosphor-svelte';
 
 	interface Props {
-		notifying: boolean;
-		notifyId: string | null;
-		targetType: string;
-		targetId: string;
+		/** Notifications require an existing follow — the bell is disabled otherwise. */
+		following: boolean;
+		followId: string | null;
+		notify: boolean;
 		authenticated?: boolean;
 	}
 
-	let {
-		notifying = $bindable(),
-		notifyId = $bindable(),
-		targetType,
-		targetId,
-		authenticated = true
-	}: Props = $props();
+	let { following, followId, notify = $bindable(), authenticated = true }: Props = $props();
 
 	function redirectToSignIn() {
 		goto(`/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`);
@@ -27,26 +21,12 @@
 
 	let loading = $state(false);
 
-	function unfollowEnhance() {
+	function toggleEnhance() {
 		loading = true;
 		return async ({ result, update }: { result: ActionResult; update(): Promise<void> }) => {
 			loading = false;
 			if (result.type === 'success') {
-				notifying = false;
-				notifyId = null;
-			} else {
-				await update();
-			}
-		};
-	}
-
-	function followEnhance() {
-		loading = true;
-		return async ({ result, update }: { result: ActionResult; update(): Promise<void> }) => {
-			loading = false;
-			if (result.type === 'success' && result.data) {
-				notifying = true;
-				notifyId = result.data.notifyId as unknown as string;
+				notify = !notify;
 			} else {
 				await update();
 			}
@@ -63,29 +43,30 @@
 	>
 		<BellIcon size="20" />
 	</button>
-{:else if notifying}
-	<form method="POST" action="?/unfollow" use:enhance={unfollowEnhance}>
-		<input type="hidden" name="notifyId" value={notifyId} />
+{:else if !following}
+	<button
+		type="button"
+		disabled
+		title="Follow to enable notifications"
+		class="flex items-center justify-center rounded-full p-2 text-muted-foreground opacity-40"
+	>
+		<BellIcon size="20" />
+	</button>
+{:else}
+	<form method="POST" action="?/setNotify" use:enhance={toggleEnhance}>
+		<input type="hidden" name="followId" value={followId} />
+		<input type="hidden" name="notify" value={String(!notify)} />
 		<button
 			type="submit"
 			disabled={loading}
-			title="Turn off notifications"
+			title={notify ? 'Turn off notifications' : 'Turn on notifications'}
 			class="flex items-center justify-center rounded-full p-2 text-foreground transition-colors hover:bg-muted disabled:opacity-50"
 		>
-			<BellRingingIcon size="20" weight="fill" />
-		</button>
-	</form>
-{:else}
-	<form method="POST" action="?/follow" use:enhance={followEnhance}>
-		<input type="hidden" name="targetType" value={targetType} />
-		<input type="hidden" name="targetId" value={targetId} />
-		<button
-			type="submit"
-			disabled={loading}
-			title="Turn on notifications"
-			class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-		>
-			<BellIcon size="20" />
+			{#if notify}
+				<BellRingingIcon size="20" weight="fill" />
+			{:else}
+				<BellIcon size="20" />
+			{/if}
 		</button>
 	</form>
 {/if}

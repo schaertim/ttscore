@@ -180,6 +180,10 @@
 		"push_disabled": "Enable notifications",
 		"push_enabled_desc": "You'll be notified when followed players, teams, or leagues have new results.",
 		"push_disabled_desc": "Get notified when followed players, teams, or leagues have new results.",
+		"pause_all_active": "Notifications on",
+		"pause_all_active_desc": "You're getting alerts for followed items with the bell on.",
+		"pause_all_paused": "Notifications paused",
+		"pause_all_paused_desc": "All push notifications are muted. Your follows and bells are kept.",
 		"sign_out": "Sign out",
 		"language": "Language"
 	},

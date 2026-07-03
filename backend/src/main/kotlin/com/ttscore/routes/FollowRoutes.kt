@@ -1,5 +1,6 @@
-﻿package com.ttscore.routes
+package com.ttscore.routes
 
+import com.ttscore.model.FollowNotifyRequest
 import com.ttscore.model.FollowRequest
 import com.ttscore.model.FollowTargetType
 import com.ttscore.service.FollowService
@@ -14,13 +15,21 @@ import io.ktor.server.routing.*
 fun Route.followRoutes() {
     authenticate("auth-jwt") {
         route("/follows") {
-            /** Returns all notification subscriptions for the current user. */
+            /** Returns everything the current user follows (each with its notify flag). */
             get {
                 call.respond(FollowService.getFollows(call.userId()))
             }
 
             /**
-             * Subscribes to notifications for a target.
+             * Returns full player details for all followed players.
+             * GET /follows/players
+             */
+            get("/players") {
+                call.respond(FollowService.getFollowedPlayers(call.userId()))
+            }
+
+            /**
+             * Follows a target (notify defaults off).
              * Body: { "targetType": "player"|"team"|"division_group", "targetId": "<uuid>" }
              */
             post {
@@ -39,7 +48,7 @@ fun Route.followRoutes() {
                 call.respond(HttpStatusCode.Created, follow)
             }
 
-            /** Unsubscribes. DELETE /follows/{id} */
+            /** Unfollows. DELETE /follows/{id} */
             delete("/{id}") {
                 val followId =
                     call.parameters["id"]?.toUuidOrNull()
@@ -53,8 +62,26 @@ fun Route.followRoutes() {
             }
 
             /**
-             * Checks notification status for a target.
-             * Returns { notifying, notifyId }
+             * Toggles the notify (bell) flag on a follow.
+             * Body: { "notify": true|false }
+             * PATCH /follows/{id}
+             */
+            patch("/{id}") {
+                val followId =
+                    call.parameters["id"]?.toUuidOrNull()
+                        ?: return@patch call.respond(HttpStatusCode.BadRequest, "Invalid follow ID")
+                val body = call.receive<FollowNotifyRequest>()
+
+                if (FollowService.setNotify(call.userId(), followId, body.notify)) {
+                    call.respond(HttpStatusCode.NoContent)
+                } else {
+                    call.respond(HttpStatusCode.NotFound, "Follow not found")
+                }
+            }
+
+            /**
+             * Checks follow status for a target.
+             * Returns { following, followId, notify }
              * GET /follows/check?targetType=player&targetId=<uuid>
              */
             get("/check") {
