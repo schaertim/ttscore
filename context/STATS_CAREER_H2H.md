@@ -16,8 +16,9 @@ These constraints decide what each feature can compute and how it must be scoped
 | Result (W/L), set score (e.g. 3:1), opponent, date, home/away | **All games** (knob + click-tt, league + tournament) |
 | Point-by-point set scores (11:8, 9:11…) | **All games** |
 | Opponent classification at time of game | **All games** (derived via `ClassificationService`) |
-| Per-game **ELO delta** | **All click-tt matches** (league + tournament). Missing only on knob-only games. |
-| Monthly official ELO value (the time series) | **Full history** via `PlayerElos` — independent of per-game deltas |
+| Player **classification** history (per half-season) | **Full history back to 1989** via `PlayerClassifications` — the historical rating signal |
+| Per-game **ELO delta** | **click-tt matches only** (recent). Missing on all knob / historical games. |
+| Official **ELO** value (the time series) | **Recent seasons only** (click-tt era). **Not available historically** — knob gives points + class, never ELO. |
 | Tournament games | **Current season only** |
 
 Two scoping rules follow directly and are non-negotiable for these features:
@@ -25,8 +26,8 @@ Two scoping rules follow directly and are non-negotiable for these features:
 - **Season Stats** → include **all games of the current season** (league + tournament).
 - **Career Arc** → include **league games only**, **all-time** — tournament games are excluded
   because we only have them for the current season and they would bias historical records.
-  The all-time **ELO progression chart** is the exception: it uses the full monthly `PlayerElos`
-  series, which spans the player's whole history regardless of per-game data.
+  The career arc is built on **classification** (full history back to 1989), **not ELO** —
+  ELO exists only for recent (click-tt) seasons, so an all-time ELO curve is impossible.
 
 ---
 
@@ -116,36 +117,39 @@ Beyond the TT-Stats-inspired set above, add where they carry signal:
 
 ## §2 — Career tab (all-time · league games only)
 
-Scope: **league games only**, across the player's entire history. ELO chart uses the full
-monthly series. The story this tab tells is **where a player has been** — clubs, leagues, the
-long arc of their rating — which is exactly the data depth competitors lack.
+> **Implemented (2026-07-04):** Pro-gated, classification-based (no historical ELO).
+> Endpoint `GET /players/{id}/career` (`PlayerService.getCareer`) → `CareerResponse`, loaded
+> **server-side via `authedKtor`** (the endpoint is Pro-gated and the public api client sends no
+> token). UI: `player/CareerTab.svelte` composing `ClassArc` / `CareerClubs` / `CareerRivals`;
+> non-Pro users see `PaywallTeaser`.
 
-### 2.1 Clubs & leagues played (the highlight)
-- **Clubs timeline** — every club the player has represented, with the seasons for each.
-- **Leagues/divisions timeline** — the divisions they've played in across seasons (e.g. rose from
-  4. Liga to 2. Liga, or NLB years).
-- **Value:** the emotional core of a career page and the clearest expression of our historical moat.
-  Make these visually prominent, not a footnote.
+Scope: **league singles only**, across the player's entire history. The story this tab tells is
+**where a player has been** — clubs, leagues, and the long arc of their **classification** —
+which is exactly the data depth competitors lack. (The activity-heatmap idea was dropped as too
+busy.)
 
-### 2.2 All-time ELO progression
-- Full monthly `PlayerElos` series, all seasons, with classification thresholds annotated
-  (reuse the Overview chart, extended to the full history range).
-- **Peak ELO** badge + when it was reached.
-- **Value:** the 35-year arc no one else has.
+### 2.1 Classification arc (the hero) — `ClassArc.svelte`
+- Stepped line of the player's class as ladder rank (1–22) across the whole timeline, one point per
+  half-season (`PlayerClassifications` first/second half). Y-axis ticks render class labels
+  (`classLabelForRank`), stroke coloured by the latest class.
+- The historical rating signal — **not ELO**, which we lack that far back.
 
-### 2.3 Career totals (league only)
-- Total matches, wins, losses, **overall career win rate**.
-- Optionally: career sets won/lost, best-ever win.
-- All computed from **league games only** per the scoping rule.
+### 2.2 Career at a glance — lifetime totals (C)
+- League-singles all-time: matches, W–L, win rate, seasons played, opponents faced, clubs, and the
+  active-years span. Computed in `getCareer` from one results query.
 
-### 2.4 Season-by-season table
-One row per season the player has data for:
-- Season · Club · Division/League · Record (W–L) · Win rate · End/Peak ELO · Class.
-- **Value:** the scannable career ledger — drives "look how far they've come" sharing.
+### 2.3 Milestones (F — folded into the totals block)
+- Peak class (+ season), longest career win streak, **best win = highest-class opponent beaten**
+  (class-based, not ELO), best season (most wins), and debut season.
 
-### 2.5 Milestones _(optional / future)_
-Auto-surfaced: class promotions, Nth season played, longest career win streak. Low priority;
-include only if cheap once the table exists.
+### 2.4 Clubs & leagues (E) — `CareerClubs.svelte`
+- Consecutive same-club seasons collapsed into tenures on a timeline rail, each with its year span
+  and the leagues played. No automatic promotion/relegation detection (no clean division-level
+  field); per-club win records deferred.
+
+### 2.5 Rivalries (G) — `CareerRivals.svelte`
+- Most-played opponents all-time (top 6 by meetings) with career W–L and current class; each row
+  links to the opponent's profile. (H2H-drawer integration deferred — the drawer is viewer-centric.)
 
 ---
 

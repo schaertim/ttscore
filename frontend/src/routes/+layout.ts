@@ -36,7 +36,8 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 			session: data.session,
 			user: data.user,
 			hasHomePlayer: data.hasHomePlayer,
-			homePlayerId: data.homePlayerId
+			homePlayerId: data.homePlayerId,
+			isPro: data.isPro
 		};
 	}
 
@@ -49,6 +50,7 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 		session,
 		user: session?.user ?? null,
 		hasHomePlayer: data.hasHomePlayer,
-		homePlayerId: data.homePlayerId
+		homePlayerId: data.homePlayerId,
+		isPro: data.isPro
 	};
 };

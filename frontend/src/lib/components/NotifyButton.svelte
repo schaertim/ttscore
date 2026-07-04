@@ -4,6 +4,9 @@
 	import { page } from '$app/state';
 	import type { ActionResult } from '@sveltejs/kit';
 	import { BellIcon, BellRingingIcon } from 'phosphor-svelte';
+	import { toast } from 'svelte-sonner';
+	import { _ } from 'svelte-i18n';
+	import { get } from 'svelte/store';
 
 	interface Props {
 		/** Notifications require an existing follow — the bell is disabled otherwise. */
@@ -28,6 +31,12 @@
 			if (result.type === 'success') {
 				notify = !notify;
 			} else {
+				if (result.type === 'failure' && result.data?.reason === 'notify_pro') {
+					toast.error(get(_)('pro.notify_title'), {
+						description: get(_)('pro.notify_desc'),
+						action: { label: get(_)('pro.unlock'), onClick: () => goto('/pro') }
+					});
+				}
 				await update();
 			}
 		};

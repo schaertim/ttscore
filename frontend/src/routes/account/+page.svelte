@@ -5,7 +5,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { api, type Player, type FollowResponse } from '$lib/api';
-	import { StarIcon, BellIcon, BellRingingIcon, BellSlashIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon, MagnifyingGlassIcon } from 'phosphor-svelte';
+	import { StarIcon, BellIcon, BellRingingIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon, MagnifyingGlassIcon } from 'phosphor-svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import { theme } from '$lib/theme.svelte';
@@ -219,31 +219,6 @@
 			{/each}
 		</section>
 	{/if}
-
-	<section class="space-y-3">
-		<SectionLabel label={$_("account.notifications")} icon={BellRingingIcon} />
-		<form method="POST" action="?/setNotificationsPaused" use:enhance>
-			<input type="hidden" name="paused" value={String(!data.profile.notificationsPaused)} />
-			<button
-				type="submit"
-				class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
-			>
-				<div class="flex min-w-0 flex-1 flex-col items-start gap-1">
-					<span class="font-semibold">
-						{$_(data.profile.notificationsPaused ? 'account.pause_all_paused' : 'account.pause_all_active')}
-					</span>
-					<span class="text-xs text-muted-foreground">
-						{$_(data.profile.notificationsPaused ? 'account.pause_all_paused_desc' : 'account.pause_all_active_desc')}
-					</span>
-				</div>
-				{#if data.profile.notificationsPaused}
-					<BellSlashIcon size="20" class="m-1 shrink-0 text-destructive" />
-				{:else}
-					<BellRingingIcon size="20" weight="fill" class="m-1 shrink-0 text-muted-foreground" />
-				{/if}
-			</button>
-		</form>
-	</section>
 
 	{#if !pushUnsupported}
 		<section class="space-y-3">

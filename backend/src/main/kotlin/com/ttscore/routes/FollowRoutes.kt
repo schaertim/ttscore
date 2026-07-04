@@ -3,7 +3,11 @@ package com.ttscore.routes
 import com.ttscore.model.FollowNotifyRequest
 import com.ttscore.model.FollowRequest
 import com.ttscore.model.FollowTargetType
+import com.ttscore.model.ReasonResponse
+import com.ttscore.service.FollowResult
 import com.ttscore.service.FollowService
+import com.ttscore.service.UserProfileService
+import com.ttscore.util.isPro
 import com.ttscore.util.toUuidOrNull
 import com.ttscore.util.userId
 import io.ktor.http.*
@@ -41,11 +45,15 @@ fun Route.followRoutes() {
                     body.targetId.toUuidOrNull()
                         ?: return@post call.respond(HttpStatusCode.BadRequest, "Invalid targetId")
 
-                val follow =
-                    FollowService.follow(call.userId(), targetType, targetId)
-                        ?: return@post call.respond(HttpStatusCode.NotFound, "Target not found")
-
-                call.respond(HttpStatusCode.Created, follow)
+                val userId = call.userId()
+                val homePlayerId = UserProfileService.getHomePlayerId(userId)
+                when (val result = FollowService.follow(userId, targetType, targetId, call.isPro(), homePlayerId)) {
+                    is FollowResult.Ok -> call.respond(HttpStatusCode.Created, result.follow)
+                    FollowResult.TargetNotFound ->
+                        call.respond(HttpStatusCode.NotFound, "Target not found")
+                    FollowResult.LimitReached ->
+                        call.respond(HttpStatusCode.Forbidden, ReasonResponse("follow_limit"))
+                }
             }
 
             /** Unfollows. DELETE /follows/{id} */
@@ -71,11 +79,15 @@ fun Route.followRoutes() {
                     call.parameters["id"]?.toUuidOrNull()
                         ?: return@patch call.respond(HttpStatusCode.BadRequest, "Invalid follow ID")
                 val body = call.receive<FollowNotifyRequest>()
+                val userId = call.userId()
+                val homePlayerId = UserProfileService.getHomePlayerId(userId)
 
-                if (FollowService.setNotify(call.userId(), followId, body.notify)) {
-                    call.respond(HttpStatusCode.NoContent)
-                } else {
-                    call.respond(HttpStatusCode.NotFound, "Follow not found")
+                when (FollowService.setNotify(userId, followId, body.notify, call.isPro(), homePlayerId)) {
+                    FollowService.SetNotifyResult.OK -> call.respond(HttpStatusCode.NoContent)
+                    FollowService.SetNotifyResult.NOT_FOUND ->
+                        call.respond(HttpStatusCode.NotFound, "Follow not found")
+                    FollowService.SetNotifyResult.PRO_REQUIRED ->
+                        call.respond(HttpStatusCode.Forbidden, ReasonResponse("notify_pro"))
                 }
             }
 

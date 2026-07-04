@@ -6,6 +6,7 @@
 	import { theme } from '$lib/theme.svelte';
 	import { h2h } from '$lib/h2h.svelte';
 	import H2HDrawer from '$lib/components/player/H2HDrawer.svelte';
+	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { HouseIcon, TrophyIcon, MagnifyingGlassIcon, UserCircleIcon, SignInIcon } from 'phosphor-svelte';
 	import { _ } from 'svelte-i18n';
 
@@ -63,7 +64,12 @@
 </main>
 
 {#if data.homePlayerId}
-	<H2HDrawer bind:open={drawerOpen} homePlayerId={data.homePlayerId} opponentId={h2h.opponentId} />
+	<H2HDrawer
+		bind:open={drawerOpen}
+		homePlayerId={data.homePlayerId}
+		opponentId={h2h.opponentId}
+		isPro={data.isPro}
+	/>
 {/if}
 
 <nav
@@ -104,3 +110,5 @@
 		</button>
 	</div>
 </nav>
+
+<Toaster position="top-center" />

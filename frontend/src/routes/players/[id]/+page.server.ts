@@ -2,6 +2,7 @@ import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { api } from '$lib/api';
 import { authedKtor } from '$lib/server/ktor';
+import { followAction, unfollowAction, setNotifyAction } from '$lib/server/followActions';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const player = await api.players.get(params.id).catch(() => null);
@@ -14,6 +15,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	let notify = false;
 
 	let isHomePlayer = false;
+	let isPro = false;
 
 	if (session) {
 		const ktor = authedKtor(session.access_token);
@@ -30,8 +32,19 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		if (profileRes.status === 'fulfilled' && profileRes.value.ok) {
 			const profile = await profileRes.value.json();
 			isHomePlayer = profile.homePlayerId === params.id;
+			isPro = profile.isPro ?? false;
 		}
 	}
+
+	// Career is a Pro feature — fetch it authenticated (server-side) only for Pro users,
+	// since the Ktor endpoint is Pro-gated and the public api client sends no token.
+	const career =
+		session && isPro
+			? authedKtor(session.access_token)
+					.get(`/players/${params.id}/career`)
+					.then((r) => (r.ok ? r.json() : null))
+					.catch(() => null)
+			: Promise.resolve(null);
 
 	return {
 		player,
@@ -42,42 +55,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		streamed: {
 			elo: api.players.elo(params.id),
 			matches: api.players.matches(params.id),
-			seasonStats: api.players.seasonStats(params.id)
+			seasonStats: api.players.seasonStats(params.id),
+			career
 		}
 	};
 };
 
 export const actions: Actions = {
-	follow: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) return fail(401, { error: 'Not authenticated' });
-		const formData = await request.formData();
-		const res = await authedKtor(session.access_token).post('/follows', {
-			targetType: formData.get('targetType'),
-			targetId: formData.get('targetId')
-		});
-		if (!res.ok) return fail(500, { error: 'Failed' });
-		const body = await res.json();
-		return { followId: body.id };
-	},
-
-	unfollow: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) return fail(401, { error: 'Not authenticated' });
-		const formData = await request.formData();
-		await authedKtor(session.access_token).delete(`/follows/${formData.get('followId')}`);
-		return { success: true };
-	},
-
-	setNotify: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) return fail(401, { error: 'Not authenticated' });
-		const formData = await request.formData();
-		await authedKtor(session.access_token).patch(`/follows/${formData.get('followId')}`, {
-			notify: formData.get('notify') === 'true'
-		});
-		return { success: true };
-	},
+	follow: followAction,
+	unfollow: unfollowAction,
+	setNotify: setNotifyAction,
 
 	setHomePlayer: async ({ locals, params }) => {
 		const { session } = await locals.safeGetSession();

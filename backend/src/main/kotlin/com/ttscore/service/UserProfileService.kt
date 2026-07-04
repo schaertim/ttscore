@@ -19,14 +19,30 @@ object UserProfileService {
                 .where { UserProfiles.userId eq userId }
                 .firstOrNull()
                 ?.let { row ->
+                    val proUntil = row[UserProfiles.proUntil]
                     UserProfileResponse(
                         homePlayerId = row[UserProfiles.homePlayerId]?.toString(),
                         homePlayerName = row.getOrNull(Players.fullName),
-                        notificationsPaused = row[UserProfiles.notificationsPaused],
+                        isPro = isProAt(proUntil),
+                        proUntil = proUntil?.toString(),
                     )
                 }
                 ?: UserProfileResponse(homePlayerId = null, homePlayerName = null)
         }
+
+    /** True if the user currently holds an active Pro entitlement (`pro_until` in the future). */
+    suspend fun isPro(userId: String): Boolean =
+        dbQuery {
+            val until =
+                UserProfiles.select(UserProfiles.proUntil)
+                    .where { UserProfiles.userId eq userId }
+                    .firstOrNull()
+                    ?.get(UserProfiles.proUntil)
+            isProAt(until)
+        }
+
+    private fun isProAt(proUntil: OffsetDateTime?): Boolean =
+        proUntil != null && proUntil.isAfter(OffsetDateTime.now())
 
     /** Sets (or replaces) the home player for a user. Creates the profile row if needed. */
     suspend fun setHomePlayer(
@@ -47,6 +63,15 @@ object UserProfileService {
         }
     }
 
+    /** Returns the user's home player id, or null if none is set / no profile exists. */
+    suspend fun getHomePlayerId(userId: String): UUID? =
+        dbQuery {
+            UserProfiles.select(UserProfiles.homePlayerId)
+                .where { UserProfiles.userId eq userId }
+                .firstOrNull()
+                ?.get(UserProfiles.homePlayerId)
+        }
+
     /** Clears the home player for a user. No-op if no profile exists. */
     suspend fun removeHomePlayer(userId: String) =
         dbQuery {
@@ -54,23 +79,4 @@ object UserProfileService {
                 it[homePlayerId] = null
             }
         }
-
-    /** Sets the global "pause all notifications" flag. Creates the profile row if needed. */
-    suspend fun setNotificationsPaused(
-        userId: String,
-        paused: Boolean,
-    ) = dbQuery {
-        val exists = UserProfiles.selectAll().where { UserProfiles.userId eq userId }.any()
-        if (exists) {
-            UserProfiles.update({ UserProfiles.userId eq userId }) {
-                it[notificationsPaused] = paused
-            }
-        } else {
-            UserProfiles.insert {
-                it[UserProfiles.userId] = userId
-                it[notificationsPaused] = paused
-                it[createdAt] = OffsetDateTime.now()
-            }
-        }
-    }
 }

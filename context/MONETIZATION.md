@@ -37,7 +37,7 @@ Everything below stays free forever.
 - Match detail + **individual set scores** (the unique hook)
 
 **Player profile**
-- **Overview tab:** current ELO, classification, club, **full ELO graph** (history back to 1989) with class thresholds, recent + full game history with ELO deltas, next match, league context
+- **Overview tab:** current ELO, classification, club, **full ELO graph** (recent seasons — ELO is not available historically) with class thresholds, recent + full game history with ELO deltas, next match, league context
 - **Stats tab:** all current-season analytics — win/loss + win rate, radar, monthly form, set-score distribution, opponent breakdown, win-rate splits
 
 **Personalisation & discovery**
@@ -70,7 +70,7 @@ Everything below stays free forever.
 
 | Lever | Free | Pro |
 |---|---|---|
-| Follows | Own player + 3 entities (4 total) | Unlimited |
+| Follows | Own player + 3 other entities (home player is exempt from the cap) | Unlimited |
 | Push notifications | Own player only | Any followed entity |
 | H2H drawer / records | Locked (teaser) | Full |
 | Career tab | Locked (teaser) | Full |
@@ -87,17 +87,16 @@ hit the limit, then upsell in place.
 
 ## Trial approach (decided)
 
-No classic card-required trial (corporate feel, wrong for a low-price community brand).
-Instead: **permanent teaser paywalls** + a **season-timed reverse trial** (new users get
-Pro on by default for their first stretch of the season, then drop to free — loss
-aversion converts better than an offered trial). Details in the Phase-1 spec.
+**No trial** (no card-required trial, no reverse trial). Instead: a **low monthly
+buy-in** lowers the risk of trying Pro, backed by **permanent teaser paywalls** that
+upsell at the moment of intent (H2H drawer, Career tab, follow cap, notify bell).
 
-## Pricing (working assumption)
+## Pricing (decided)
 
-Anchor **yearly** (~CHF 20–29/yr ≈ CHF 2/mo) to match the season rhythm and avoid
-monthly churn. Consider "name your price above the floor." Stripe (TWINT + cards, no
-monthly fee) — Payment Link for Phase 0, webhook → `pro_until` on `user_profile` for
-Phase 1.
+**CHF 3/month or CHF 25/year** — both offered. The cheap monthly option is the
+deliberate low buy-in that stands in for a trial: a player can try Pro for one month at
+minimal risk. Yearly (~2/mo effective) rewards commitment and matches the season rhythm.
+Stripe (TWINT + cards, no monthly fee); webhook → `pro_until` on `user_profile`.
 
 ---
 

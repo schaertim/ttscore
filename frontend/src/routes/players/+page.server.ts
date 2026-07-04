@@ -1,7 +1,7 @@
-import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { authedKtor } from '$lib/server/ktor';
 import type { Player, FollowResponse } from '$lib/api';
+import { unfollowAction } from '$lib/server/followActions';
 
 export type FollowedPlayer = Player & { followId: string };
 
@@ -37,21 +37,5 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	unfollow: async ({ request, locals }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) return fail(401, { message: 'Not authenticated' });
-
-		const data = await request.formData();
-		const followId = data.get('followId') as string;
-		if (!followId) return fail(400, { message: 'Missing followId' });
-
-		try {
-			const res = await authedKtor(session.access_token).delete(`/follows/${followId}`);
-			if (!res.ok) return fail(res.status, { message: 'Failed to unfollow' });
-		} catch {
-			return fail(500, { message: 'Server error' });
-		}
-
-		return { success: true };
-	}
+	unfollow: unfollowAction
 };

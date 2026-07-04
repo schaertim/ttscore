@@ -46,8 +46,8 @@
 	);
 </script>
 
-<Card.Root class="flex flex-col">
-	<Card.Content class="flex-1">
+<Card.Root class="flex flex-col p-5">
+	<Card.Content class="flex-1 px-0">
 		<Chart.Container config={chartConfig} class="mx-auto aspect-square max-h-[250px]">
 			<PieChart
 				data={segments}

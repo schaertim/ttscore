@@ -14,14 +14,14 @@ A single **Pro** entitlement (paid, yearly) that unlocks:
 - **Unlimited follows** — beyond the free cap of own player + 3
 
 Everything else stays free (all browsing, set scores, Overview + Stats tabs, ELO
-history back to 1989, search, favorites, dashboard).
+history (recent seasons), classification history back to 1989, search, favorites, dashboard).
 
 ## What already exists (leaned on, not rebuilt)
 
 - Follows carry a per-follow **`notify` (bell)** flag distinct from the **star**;
   `PushService.sendToFollowers` already filters on `notify = true`, skips globally
   paused users, and prunes dead 404/410 subscriptions.
-- `user_profile` already has `home_player_id` + `notifications_paused`.
+- `user_profile` already has `home_player_id`.
 - `call.userId()` extracts the Supabase `sub`; JWT auth realm `auth-jwt` is in place.
 - Player profile already has **Overview / Stats / Career** tabs; Career is a
   "coming soon" placeholder. H2H drawer driven by `frontend/src/lib/h2h.svelte.ts`.
@@ -50,13 +50,17 @@ Make the app *aware* of Pro. No gates enforced yet; grant Pro by hand for testin
 
 ## Phase 2 — Enforce the gates
 
+> **Status:** 2a, 2b, 2c, 2e ✅ built. 2d (Career) ⏳ deferred until the Career feature
+> itself is built (it's still a placeholder — nothing to gate yet).
+
 The core freemium mechanics. Enforce server-side (source of truth) + client-side
 (UX/upsell).
 
-### 2a. Follow cap (own player + 3)
-- **Backend** `POST /follows`: if not Pro and the user already has **4** follows,
-  return `403` with a `{ reason: "follow_limit" }` body. *(Default: 4 total incl. home
-  player — see Decision 1.)*
+### 2a. Follow cap (own player + 3 others; home player exempt)
+- **Backend** `POST /follows`: if not Pro, count the user's follows **excluding** the
+  one whose target is their `home_player_id`; if that count is already **3**, return
+  `403` with a `{ reason: "follow_limit" }` body. (Following/unfollowing the home
+  player never consumes a slot.)
 - **Frontend** `FollowButton.svelte`: on `403 follow_limit`, show the upsell
   (modal/toast → `/pro`) instead of a generic error.
 
@@ -78,10 +82,12 @@ The core freemium mechanics. Enforce server-side (source of truth) + client-side
   **teaser** for free users — blurred preview + "Unlock with Pro" CTA — instead of the
   data.
 
-### 2d. Career tab paywall
+### 2d. Career tab paywall ⏳ deferred
+- **Prerequisite (not yet done):** the Career tab is built as a normal feature *first*
+  (it's currently a "coming soon" placeholder), then gated here — so free users see a
+  real, blurred teaser rather than an empty promise. Deferred until that feature exists.
 - **Frontend** `players/[id]/+page.svelte`: the `career` tab renders a teaser +
-  "Unlock with Pro" for free users. (Career content itself is built later / as Pro —
-  see Decision 2.) Any future `/career` endpoint requires Pro.
+  "Unlock with Pro" for free users. The `/players/{id}/career` endpoint requires Pro.
 
 ### 2e. Shared paywall UI
 - `PaywallTeaser.svelte` (blur + lock + CTA overlay) and an upsell dialog/`/pro`
@@ -94,8 +100,11 @@ and sees teasers on H2H + Career; a Pro account has everything unlocked.
 
 ## Phase 3 — Payments (Stripe)
 
-- **`/pro` pricing page**: explain Free vs Pro, yearly price, checkout button.
-- **Checkout**: Stripe Checkout Session (or Payment Link to start). TWINT + cards.
+- **`/pro` pricing page**: explain Free vs Pro; offer both **CHF 3/month** and
+  **CHF 25/year**; checkout button. The cheap monthly is the low buy-in that replaces a
+  trial.
+- **Checkout**: Stripe Checkout Session (or Payment Link to start), with a monthly and
+  a yearly price. TWINT + cards.
 - **Webhook** (`POST /stripe/webhook`, signature-verified): on
   `checkout.session.completed` / subscription events, set `pro_until` on the user's
   profile. Map Stripe customer ↔ Supabase `user_id` (store `stripe_customer_id` on
@@ -103,31 +112,25 @@ and sees teasers on H2H + Career; a Pro account has everything unlocked.
 - **Account page**: show Pro status + renewal date; link to Stripe billing portal to
   manage/cancel.
 
-**Done when:** a real payment sets `pro_until` and unlocks Pro end-to-end.
+**Done when:** a real payment (monthly or yearly) sets `pro_until` and unlocks Pro
+end-to-end.
 
 ---
 
-## Phase 4 — Reverse trial + docs
+## Phase 4 — Docs
 
-- **Reverse trial**: new users get `pro_until = signup + N weeks` (or season-aligned)
-  so they experience Pro, then drop to free (loss-aversion conversion). No card
-  required. Length/timing = Decision 3.
-- **Docs**: soften the "no paywall, ever" language in `PROJECT_DESCRIPTION.md` and
-  `ROADMAP.md` to reflect the free-core + Pro model honestly. Flip `MONETIZATION.md`
-  status to "live."
+- Soften the "no paywall, ever" language in `PROJECT_DESCRIPTION.md` and `ROADMAP.md`
+  to reflect the free-core + Pro model honestly. Flip `MONETIZATION.md` status to "live."
 
 ---
 
-## Decisions to confirm before building
+## Resolved decisions
 
-1. **Does the home player count toward the 4-follow cap?** Plan assumes **yes** (cap =
-   4 total, simplest). Alternative: home-player follow is exempt (own player + 3
-   others = up to 4 *additional*). Small change either way.
-2. **Career tab**: it's currently unbuilt. Ship Phase 2 with a "Career — coming soon
-   for Pro" teaser and **build the career feature as the first true Pro deliverable**?
-   Or build career content first, then gate it?
-3. **Reverse trial** length/timing (e.g. 30 days, or "first month of the season").
-4. **Price** confirmation (working assumption CHF ~20–29/yr).
+1. **Follow cap:** own player + **3 other** follows; the home-player follow is exempt.
+2. **Career tab:** build the career feature first, then gate it (real teaser, not a
+   placeholder).
+3. **Trial:** none — the CHF 3/month option is the deliberate low buy-in instead.
+4. **Price:** CHF 3/month or CHF 25/year (both offered).
 
 ## Suggested sequencing
 

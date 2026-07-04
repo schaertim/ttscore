@@ -648,6 +648,192 @@ object PlayerService {
         }
     }
 
+    /**
+     * All-time career summary (league singles only) — the Pro "Career" tab. Built on
+     * classification history (full depth back to 1989) and league match results. There is no
+     * historical ELO, so the rating arc is classification-based.
+     */
+    suspend fun getCareer(playerId: String): CareerResponse? {
+        val uuid = playerId.toUuidOrNull() ?: return null
+        return dbQuery {
+            Players.select(Players.id).where { Players.id eq uuid }.firstOrNull() ?: return@dbQuery null
+
+            // ── Classification progression: both halves of every recorded season ──
+            val classProgression =
+                (PlayerClassifications innerJoin Seasons)
+                    .select(
+                        Seasons.name,
+                        PlayerClassifications.firstHalfClass,
+                        PlayerClassifications.secondHalfClass,
+                    )
+                    .where { PlayerClassifications.playerId eq uuid }
+                    .orderBy(Seasons.name to SortOrder.ASC)
+                    .flatMap { row ->
+                        val season = row[Seasons.name]
+                        listOfNotNull(
+                            row[PlayerClassifications.firstHalfClass]?.let { CareerClassPoint(season, "first", it) },
+                            row[PlayerClassifications.secondHalfClass]?.let { CareerClassPoint(season, "second", it) },
+                        )
+                    }
+            val peak = classProgression.maxByOrNull { classRank(it.classification) ?: Int.MIN_VALUE }
+
+            // ── Club + league per season ──
+            val seasonRows =
+                PlayerSeasons
+                    .join(Seasons, JoinType.INNER, PlayerSeasons.seasonId, Seasons.id)
+                    .join(Teams, JoinType.INNER, PlayerSeasons.teamId, Teams.id)
+                    .join(Clubs, JoinType.INNER, Teams.clubId, Clubs.id)
+                    .join(Groups, JoinType.INNER, Teams.groupId, Groups.id)
+                    .select(Seasons.name, Clubs.name, Groups.name)
+                    .where { PlayerSeasons.playerId eq uuid }
+                    .toList()
+            val seasons =
+                seasonRows
+                    .groupBy { it[Seasons.name] }
+                    .toSortedMap()
+                    .map { (seasonName, rows) ->
+                        CareerSeasonEntry(
+                            seasonName = seasonName,
+                            clubName = rows.first()[Clubs.name],
+                            leagueName = rows.first()[Groups.name],
+                        )
+                    }
+
+            // ── League singles results (all-time) → totals, milestones, rivalries ──
+            val gameRows =
+                Games
+                    .select(Games.homePlayer1Id, Games.awayPlayer1Id, Games.result, Games.playedAt)
+                    .where {
+                        ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
+                            (Games.gameType eq GameType.SINGLES) and
+                            (Games.result neq GameResult.NOT_PLAYED) and
+                            Games.matchId.isNotNull()
+                    }
+                    .orderBy(Games.playedAt to SortOrder.ASC_NULLS_LAST)
+                    .toList()
+
+            val opponentIds =
+                gameRows.mapNotNull { row ->
+                    if (row[Games.homePlayer1Id] == uuid) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
+                }.toSet()
+            val opponentNames =
+                if (opponentIds.isEmpty()) {
+                    emptyMap()
+                } else {
+                    Players.select(Players.id, Players.fullName)
+                        .where { Players.id inList opponentIds }
+                        .associate { it[Players.id] to it[Players.fullName] }
+                }
+            val seasonNames =
+                gameRows.mapNotNull { row ->
+                    row[Games.playedAt]?.let {
+                        ClassificationService.seasonNameOf(ClassificationService.localDateOf(it))
+                    }
+                }.toSet()
+            val oppBadges = ClassificationService.classBadges(opponentIds, seasonNames)
+            val oppCurrentClass = ClassificationService.currentClasses(opponentIds)
+
+            var wins = 0
+            var losses = 0
+            val chronological = mutableListOf<Boolean>()
+            val perOpponent = linkedMapOf<UUID, WinAcc>()
+            val perSeason = linkedMapOf<String, IntArray>() // [wins, games]
+            var debutSeason: String? = null
+            var debutOpponentName: String? = null
+            var scalpRank: Int? = null
+            var scalpName: String? = null
+            var scalpClass: String? = null
+
+            for (row in gameRows) {
+                val isHome = row[Games.homePlayer1Id] == uuid
+                val oppId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
+                val won =
+                    (row[Games.result] == GameResult.HOME && isHome) ||
+                        (row[Games.result] == GameResult.AWAY && !isHome)
+                if (won) wins++ else losses++
+                chronological.add(won)
+                if (oppId != null) perOpponent.getOrPut(oppId) { WinAcc() }.add(won)
+
+                val playedAt = row[Games.playedAt] ?: continue
+                val date = ClassificationService.localDateOf(playedAt)
+                val season = ClassificationService.seasonNameOf(date)
+                val s = perSeason.getOrPut(season) { IntArray(2) }
+                if (won) s[0]++
+                s[1]++
+                if (debutSeason == null) {
+                    debutSeason = season
+                    debutOpponentName = oppId?.let { opponentNames[it] }
+                }
+                if (won && oppId != null) {
+                    val oppClass = ClassificationService.classOf(oppBadges, oppId, date)
+                    val r = classRank(oppClass)
+                    if (oppClass != null && r != null && (scalpRank == null || r > scalpRank)) {
+                        scalpRank = r
+                        scalpName = opponentNames[oppId]
+                        scalpClass = oppClass
+                    }
+                }
+            }
+
+            var longestStreak = 0
+            var run = 0
+            for (w in chronological) {
+                run = if (w) run + 1 else 0
+                if (run > longestStreak) longestStreak = run
+            }
+
+            val bestSeason = perSeason.maxByOrNull { it.value[0] }
+            val datedYears =
+                gameRows.mapNotNull { row ->
+                    row[Games.playedAt]?.let { ClassificationService.localDateOf(it).year }
+                }
+            val rivalries =
+                perOpponent.entries
+                    .sortedByDescending { it.value.games }
+                    .take(6)
+                    .map { (oppId, acc) ->
+                        CareerRival(
+                            opponentId = oppId.toString(),
+                            opponentName = opponentNames[oppId] ?: "—",
+                            opponentClass = oppCurrentClass[oppId],
+                            meetings = acc.games,
+                            wins = acc.wins,
+                            losses = acc.games - acc.wins,
+                        )
+                    }
+
+            CareerResponse(
+                classProgression = classProgression,
+                seasons = seasons,
+                totals =
+                    CareerTotals(
+                        matches = wins + losses,
+                        wins = wins,
+                        losses = losses,
+                        seasonsPlayed = seasons.size,
+                        firstYear = datedYears.minOrNull(),
+                        lastYear = datedYears.maxOrNull(),
+                        opponentsFaced = opponentIds.size,
+                        clubsCount = seasons.mapNotNull { it.clubName }.distinct().size,
+                    ),
+                milestones =
+                    CareerMilestones(
+                        debutSeason = debutSeason,
+                        debutOpponentName = debutOpponentName,
+                        peakClass = peak?.classification,
+                        peakClassSeason = peak?.seasonName,
+                        longestWinStreak = longestStreak,
+                        bestWinOpponentName = scalpName,
+                        bestWinOpponentClass = scalpClass,
+                        bestSeasonName = bestSeason?.key,
+                        bestSeasonWins = bestSeason?.value?.get(0) ?: 0,
+                        bestSeasonGames = bestSeason?.value?.get(1) ?: 0,
+                    ),
+                rivalries = rivalries,
+            )
+        }
+    }
+
     suspend fun getPlayerLeagueContext(playerId: String): LeagueContextResponse? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {

@@ -240,6 +240,61 @@ export type HeadToHead = {
 	games: H2HGame[];
 };
 
+// ── Career tab (Pro) ──
+
+export type CareerClassPoint = {
+	seasonName: string;
+	half: 'first' | 'second';
+	classification: string;
+};
+
+export type CareerSeasonEntry = {
+	seasonName: string;
+	clubName: string | null;
+	leagueName: string | null;
+};
+
+export type CareerTotals = {
+	matches: number;
+	wins: number;
+	losses: number;
+	seasonsPlayed: number;
+	firstYear: number | null;
+	lastYear: number | null;
+	opponentsFaced: number;
+	clubsCount: number;
+};
+
+export type CareerMilestones = {
+	debutSeason: string | null;
+	debutOpponentName: string | null;
+	peakClass: string | null;
+	peakClassSeason: string | null;
+	longestWinStreak: number;
+	bestWinOpponentName: string | null;
+	bestWinOpponentClass: string | null;
+	bestSeasonName: string | null;
+	bestSeasonWins: number;
+	bestSeasonGames: number;
+};
+
+export type CareerRival = {
+	opponentId: string;
+	opponentName: string;
+	opponentClass: string | null;
+	meetings: number;
+	wins: number;
+	losses: number;
+};
+
+export type Career = {
+	classProgression: CareerClassPoint[];
+	seasons: CareerSeasonEntry[];
+	totals: CareerTotals;
+	milestones: CareerMilestones;
+	rivalries: CareerRival[];
+};
+
 export type PagedResponse<T> = {
 	items: T[];
 	page: number;

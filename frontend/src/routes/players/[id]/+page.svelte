@@ -13,6 +13,8 @@
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import StatsTab from '$lib/components/player/StatsTab.svelte';
+	import CareerTab from '$lib/components/player/CareerTab.svelte';
+	import PaywallTeaser from '$lib/components/PaywallTeaser.svelte';
 	import { h2h } from '$lib/h2h.svelte';
 
 	import {
@@ -226,9 +228,26 @@
 		</Tabs.Content>
 
 		<Tabs.Content value="career" class="mt-4">
-			<p class="py-12 text-center text-sm text-muted-foreground">
-				{$_('player.career_coming_soon')}
-			</p>
+			{#if data.isPro}
+				{#await data.streamed.career}
+					<div class="space-y-6">
+						<Skeleton class="h-56 w-full rounded-2xl" />
+						<Skeleton class="h-24 w-full rounded-2xl" />
+						<Skeleton class="h-40 w-full rounded-2xl" />
+					</div>
+				{:then career}
+					{#if career}
+						<CareerTab {career} />
+					{:else}
+						<p class="py-12 text-center text-sm text-muted-foreground">{$_('career.no_data')}</p>
+					{/if}
+				{/await}
+			{:else}
+				<PaywallTeaser
+					title={$_('career.paywall_title')}
+					description={$_('career.paywall_desc')}
+				/>
+			{/if}
 		</Tabs.Content>
 	</Tabs.Root>
 </div>

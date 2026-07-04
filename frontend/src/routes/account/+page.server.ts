@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { authedKtor } from '$lib/server/ktor';
+import { unfollowAction, setNotifyAction } from '$lib/server/followActions';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const { session } = await locals.safeGetSession();
@@ -15,7 +16,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	const profile = profileRes.ok
 		? await profileRes.json()
-		: { homePlayerId: null, homePlayerName: null, notificationsPaused: false };
+		: { homePlayerId: null, homePlayerName: null };
 
 	const follows = followsRes.ok ? await followsRes.json() : [];
 
@@ -58,34 +59,7 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	unfollow: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) redirect(303, '/signin?redirectTo=/account');
+	unfollow: unfollowAction,
 
-		const formData = await request.formData();
-		await authedKtor(session.access_token).delete(`/follows/${formData.get('followId')}`);
-		return { success: true };
-	},
-
-	setNotify: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) redirect(303, '/signin?redirectTo=/account');
-
-		const formData = await request.formData();
-		await authedKtor(session.access_token).patch(`/follows/${formData.get('followId')}`, {
-			notify: formData.get('notify') === 'true'
-		});
-		return { success: true };
-	},
-
-	setNotificationsPaused: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) redirect(303, '/signin?redirectTo=/account');
-
-		const formData = await request.formData();
-		await authedKtor(session.access_token).put('/users/me/notifications-paused', {
-			paused: formData.get('paused') === 'true'
-		});
-		return { success: true };
-	}
+	setNotify: setNotifyAction
 };

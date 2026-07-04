@@ -11,6 +11,7 @@
 	import StatTile from '$lib/components/StatTile.svelte';
 	import ScoreLine from '$lib/components/ScoreLine.svelte';
 	import PlayerRadar from './PlayerRadar.svelte';
+	import PaywallTeaser from '$lib/components/PaywallTeaser.svelte';
 	import { classColorVar, formatName, formatShortName } from '$lib/utils';
 	import { TargetIcon, ClockCounterClockwiseIcon, ChartLineIcon } from 'phosphor-svelte';
 
@@ -20,9 +21,11 @@
 		homePlayerId: string;
 		/** The opponent to compare against. Changing this triggers a re-fetch. */
 		opponentId: string | null;
+		/** H2H is a Pro feature — non-Pro users see a paywall instead of the data. */
+		isPro: boolean;
 	}
 
-	let { open = $bindable(), homePlayerId, opponentId }: Props = $props();
+	let { open = $bindable(), homePlayerId, opponentId, isPro }: Props = $props();
 
 	let data = $state<HeadToHead | null>(null);
 	let loading = $state(false);
@@ -34,7 +37,7 @@
 
 	let loadedKey = $state('');
 	$effect(() => {
-		if (!open || !opponentId) return;
+		if (!open || !opponentId || !isPro) return;
 		const key = `${homePlayerId}:${opponentId}`;
 		if (key === loadedKey) return;
 		loadedKey = key;
@@ -157,7 +160,11 @@
 
 <Drawer.Root bind:open>
 	<Drawer.Content class="max-h-[88vh]">
-		{#if loading}
+		{#if !isPro}
+			<div class="p-5">
+				<PaywallTeaser title={$_('pro.h2h_title')} description={$_('pro.h2h_desc')} />
+			</div>
+		{:else if loading}
 			<div class="space-y-4 p-5">
 				<Skeleton class="h-10 w-full rounded-lg" />
 				<Skeleton class="h-16 w-full rounded-lg" />

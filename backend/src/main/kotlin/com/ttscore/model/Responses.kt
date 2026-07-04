@@ -6,7 +6,16 @@ import kotlinx.serialization.Serializable
 data class UserProfileResponse(
     val homePlayerId: String?,
     val homePlayerName: String?,
-    val notificationsPaused: Boolean = false,
+    /** True when [proUntil] is in the future — the frontend renders gates off this. */
+    val isPro: Boolean = false,
+    /** ISO-8601 expiry of the current Pro entitlement, or null if never Pro. */
+    val proUntil: String? = null,
+)
+
+/** Machine-readable reason for a 403, so the frontend can show the right upsell. */
+@Serializable
+data class ReasonResponse(
+    val reason: String,
 )
 
 @Serializable
@@ -14,9 +23,68 @@ data class SetHomePlayerRequest(
     val playerId: String,
 )
 
+// ── Career tab (Pro) ── all-time, league singles, classification-based (no historical ELO) ──
+
+/** One classification observation: a (season, half) and the class in effect then. */
 @Serializable
-data class SetNotificationsPausedRequest(
-    val paused: Boolean,
+data class CareerClassPoint(
+    val seasonName: String,
+    val half: String, // "first" | "second"
+    val classification: String,
+)
+
+/** Club + league the player was registered in for a given season. */
+@Serializable
+data class CareerSeasonEntry(
+    val seasonName: String,
+    val clubName: String?,
+    val leagueName: String?,
+)
+
+@Serializable
+data class CareerTotals(
+    val matches: Int,
+    val wins: Int,
+    val losses: Int,
+    val seasonsPlayed: Int,
+    val firstYear: Int?,
+    val lastYear: Int?,
+    val opponentsFaced: Int,
+    val clubsCount: Int,
+)
+
+@Serializable
+data class CareerMilestones(
+    val debutSeason: String?,
+    val debutOpponentName: String?,
+    val peakClass: String?,
+    val peakClassSeason: String?,
+    val longestWinStreak: Int,
+    val bestWinOpponentName: String?,
+    val bestWinOpponentClass: String?,
+    val bestSeasonName: String?,
+    val bestSeasonWins: Int,
+    val bestSeasonGames: Int,
+)
+
+/** A frequent opponent across the whole career (drives the rivalries list). */
+@Serializable
+data class CareerRival(
+    val opponentId: String,
+    val opponentName: String,
+    val opponentClass: String?,
+    val meetings: Int,
+    val wins: Int,
+    val losses: Int,
+)
+
+@Serializable
+data class CareerResponse(
+    val classProgression: List<CareerClassPoint>,
+    val seasons: List<CareerSeasonEntry>,
+    val totals: CareerTotals,
+    val milestones: CareerMilestones,
+    val rivalries: List<CareerRival>,
 )
 
 @Serializable

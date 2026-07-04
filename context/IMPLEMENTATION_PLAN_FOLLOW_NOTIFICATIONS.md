@@ -122,7 +122,7 @@ All development happens locally (Docker PostgreSQL). Railway deployment is the f
 
 **Notification preferences:**
 - ✅ **Per-entity mute is built.** The `follow` and `favorite` tables were merged into a single `follow` table with a `notify` flag (default **off**) — see the DB schema section. Following an entity (⭐) is separate from being notified about it (🔔): you can follow silently, or toggle the bell without unfollowing. `MatchPollJob`/`PushService.sendToFollowers` only push to followers with `notify = true`.
-- ✅ **"Pause all" is built.** `user_profile.notifications_paused` (default off, toggled from the account page via `PUT /users/me/notifications-paused`) is a global mute: `PushService.sendToFollowers` skips paused users entirely, leaving their follows and per-entity bells untouched.
+- ❌ **"Pause all" was removed.** A `user_profile.notifications_paused` global mute existed briefly but was dropped (migration V15) as redundant — the single Push Notifications subscribe/unsubscribe toggle already stops every notification. Per-entity bells + unsubscribing cover the use case.
 - ✅ **Dead-subscription cleanup is built.** `sendToFollowers` inspects the push response status; on `404`/`410 Gone` it prunes the `push_subscription` row by endpoint, so dead endpoints don't accumulate. Transient errors (timeouts, 5xx) are still just logged and left in place.
 
 **Done when:** Following a team and having notifications enabled results in a push notification on your phone when their match result is scraped. ✅
@@ -181,9 +181,9 @@ subscription. This enforces the invariant *notify ⊆ follow* — you can only b
 about something you follow — and makes "mute without unfollowing" a single flag flip.
 
 ```sql
--- App-managed profile (home player, global mute), keyed by Supabase user id
+-- App-managed profile (home player, pro entitlement), keyed by Supabase user id
 user_profile (user_id TEXT PRIMARY KEY, home_player_id UUID REFERENCES players(id),
-              notifications_paused BOOLEAN NOT NULL DEFAULT false, ...)
+              pro_until TIMESTAMPTZ, ...)
 
 -- follow_target_type ENUM: 'player' | 'team' | 'division_group'
 

@@ -107,7 +107,7 @@ The feature that turns a casual visitor into a retained user. Solves the core pa
 The moat. No competitor has 35 years of data. Make it count.
 
 - Full career stats going back to 1989/1990 on the player profile
-- Season-by-season breakdown — every season a player has played, club, record, ELO
+- Season-by-season breakdown — every season a player has played, club, record, classification (no historical ELO)
 - Head-to-head record vs any specific opponent across all seasons
 - Career milestones surfaced inline — 100th match, first win vs higher-ranked, longest streak
 
@@ -130,7 +130,7 @@ High-engagement features that drive organic sharing and return visits. Added one
 
 - **Most improved leaderboard** — monthly ELO delta rankings, filterable by club
 - **Top players / top clubs** — monthly snapshot rankings
-- **All-time records** — most wins ever, longest streak, highest ELO in Swiss TT history (only possible with 35 years of data)
+- **All-time records** — most wins ever, longest streak, highest classification reached in Swiss TT history (only possible with 35 years of data)
 - **Rivalry detection** — recurring player matchups surfaced automatically across seasons
 - **Dramatic match finder** — algorithmically surface the most exciting matches (upsets, comebacks, 10:9 results)
 - **Head-to-head previews** — before a fixture, show h2h stats for likely player matchups (opponent scouting)

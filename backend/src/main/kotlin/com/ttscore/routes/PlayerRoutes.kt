@@ -1,10 +1,13 @@
 ﻿package com.ttscore.routes
 
+import com.ttscore.model.ReasonResponse
 import com.ttscore.scraper.clicktt.ClickTTSyncService
 import com.ttscore.service.PlayerService
 import com.ttscore.service.SeasonService
+import com.ttscore.util.isPro
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
@@ -103,19 +106,44 @@ fun Route.playerRoutes() {
             call.respond(HttpStatusCode.OK, stats)
         }
 
-        get("/{id}/h2h/{opponentId}") {
-            val id =
-                call.parameters["id"]
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
-            val opponentId =
-                call.parameters["opponentId"]
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing opponent id")
+        // H2H is a Pro feature. Optional auth so anonymous callers resolve to "not Pro"
+        // (403) rather than a 401 challenge — the frontend gates the UI ahead of this.
+        authenticate("auth-jwt", optional = true) {
+            get("/{id}/h2h/{opponentId}") {
+                if (!call.isPro()) {
+                    return@get call.respond(HttpStatusCode.Forbidden, ReasonResponse("pro_required"))
+                }
 
-            val h2h =
-                PlayerService.getHeadToHead(id, opponentId)
-                    ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
+                val id =
+                    call.parameters["id"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+                val opponentId =
+                    call.parameters["opponentId"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing opponent id")
 
-            call.respond(HttpStatusCode.OK, h2h)
+                val h2h =
+                    PlayerService.getHeadToHead(id, opponentId)
+                        ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
+
+                call.respond(HttpStatusCode.OK, h2h)
+            }
+
+            // Career tab is a Pro feature — same optional-auth / 403 pattern as H2H.
+            get("/{id}/career") {
+                if (!call.isPro()) {
+                    return@get call.respond(HttpStatusCode.Forbidden, ReasonResponse("pro_required"))
+                }
+
+                val id =
+                    call.parameters["id"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+
+                val career =
+                    PlayerService.getCareer(id)
+                        ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
+
+                call.respond(HttpStatusCode.OK, career)
+            }
         }
 
         get("/{id}/class-history") {

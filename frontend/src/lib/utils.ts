@@ -142,6 +142,22 @@ export const ELO_THRESHOLDS: [number, string][] = [
 	[630, 'D2']
 ];
 
+/**
+ * The Swiss classification ladder ordered weakest → strongest. The index+1 equals the
+ * `classificationRank` (numeric suffix), so this is the inverse of that: `CLASS_LADDER[rank-1]`.
+ */
+export const CLASS_LADDER: string[] = [
+	'D1', 'D2', 'D3', 'D4', 'D5',
+	'C6', 'C7', 'C8', 'C9', 'C10',
+	'B11', 'B12', 'B13', 'B14', 'B15',
+	'A16', 'A17', 'A18', 'A19', 'A20', 'A21', 'A22'
+];
+
+/** Class label for a ladder rank (1 → "D1" … 22 → "A22"). Empty string out of range. */
+export function classLabelForRank(rank: number): string {
+	return CLASS_LADDER[Math.round(rank) - 1] ?? '';
+}
+
 export function ordinal(n: number): string {
 	const s = ['th', 'st', 'nd', 'rd'];
 	const v = n % 100;

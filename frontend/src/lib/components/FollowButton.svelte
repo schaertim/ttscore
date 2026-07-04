@@ -4,6 +4,9 @@
 	import { page } from '$app/state';
 	import type { ActionResult } from '@sveltejs/kit';
 	import { StarIcon } from 'phosphor-svelte';
+	import { toast } from 'svelte-sonner';
+	import { _ } from 'svelte-i18n';
+	import { get } from 'svelte/store';
 
 	interface Props {
 		following: boolean;
@@ -53,6 +56,12 @@
 				followId = result.data.followId as unknown as string;
 				notify = false;
 			} else {
+				if (result.type === 'failure' && result.data?.reason === 'follow_limit') {
+					toast.error(get(_)('pro.follow_limit_title'), {
+						description: get(_)('pro.follow_limit_desc'),
+						action: { label: get(_)('pro.unlock'), onClick: () => goto('/pro') }
+					});
+				}
 				await update();
 			}
 		};

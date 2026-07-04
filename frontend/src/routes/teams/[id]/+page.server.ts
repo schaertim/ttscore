@@ -1,7 +1,8 @@
-import { error, fail } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { api } from '$lib/api';
 import { authedKtor } from '$lib/server/ktor';
+import { followAction, unfollowAction, setNotifyAction } from '$lib/server/followActions';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	try {
@@ -43,34 +44,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 };
 
 export const actions: Actions = {
-	follow: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) return fail(401, { error: 'Not authenticated' });
-		const formData = await request.formData();
-		const res = await authedKtor(session.access_token).post('/follows', {
-			targetType: formData.get('targetType'),
-			targetId: formData.get('targetId')
-		});
-		if (!res.ok) return fail(500, { error: 'Failed' });
-		const body = await res.json();
-		return { followId: body.id };
-	},
-
-	unfollow: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) return fail(401, { error: 'Not authenticated' });
-		const formData = await request.formData();
-		await authedKtor(session.access_token).delete(`/follows/${formData.get('followId')}`);
-		return { success: true };
-	},
-
-	setNotify: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) return fail(401, { error: 'Not authenticated' });
-		const formData = await request.formData();
-		await authedKtor(session.access_token).patch(`/follows/${formData.get('followId')}`, {
-			notify: formData.get('notify') === 'true'
-		});
-		return { success: true };
-	}
+	follow: followAction,
+	unfollow: unfollowAction,
+	setNotify: setNotifyAction
 };

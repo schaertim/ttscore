@@ -99,18 +99,32 @@ object PushService {
             }
         if (userIds.isEmpty()) return
 
-        // Drop users who have globally paused notifications.
-        val pausedUserIds =
+        // Fetch each candidate follower's gating info in one query: home player (for the
+        // own-player exemption) and Pro expiry.
+        val gates =
             dbQuery {
-                UserProfiles.selectAll()
-                    .where {
-                        (UserProfiles.userId inList userIds) and
-                            (UserProfiles.notificationsPaused eq true)
+                UserProfiles
+                    .select(
+                        UserProfiles.userId,
+                        UserProfiles.homePlayerId,
+                        UserProfiles.proUntil,
+                    )
+                    .where { UserProfiles.userId inList userIds }
+                    .associate {
+                        it[UserProfiles.userId] to
+                            (it[UserProfiles.homePlayerId] to it[UserProfiles.proUntil])
                     }
-                    .map { it[UserProfiles.userId] }
-                    .toSet()
             }
-        val activeUserIds = userIds.filterNot { it in pausedUserIds }
+        val now = OffsetDateTime.now()
+        // Free users are only notified about their own player; Pro users get every follow.
+        // (No profile row ⇒ free & non-own ⇒ excluded.)
+        val activeUserIds =
+            userIds.filter { uid ->
+                val gate = gates[uid]
+                val isPro = gate?.second?.isAfter(now) == true
+                val isOwnPlayer = targetType == FollowTargetType.PLAYER && gate?.first == targetId
+                isPro || isOwnPlayer
+            }
         if (activeUserIds.isEmpty()) return
 
         val subscriptions =

@@ -200,8 +200,8 @@ object UserProfiles : Table("user_profile") {
     val userId = text("user_id")
     val homePlayerId = uuid("home_player_id").references(Players.id).nullable()
 
-    /** Global mute: when true the push job skips this user entirely. */
-    val notificationsPaused = bool("notifications_paused").default(false)
+    /** Pro entitlement expiry. Null or past = free; a future timestamp = active Pro. */
+    val proUntil = timestampWithTimeZone("pro_until").nullable()
     val createdAt = timestampWithTimeZone("created_at")
     override val primaryKey = PrimaryKey(userId)
 }
