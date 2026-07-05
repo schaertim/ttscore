@@ -1,0 +1,6 @@
+# Keep the Docker build context small and reproducible — build artifacts are
+# regenerated inside the image, local ones must not leak in.
+build/
+.gradle/
+.idea/
+*.log

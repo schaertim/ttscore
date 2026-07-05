@@ -4,6 +4,7 @@ import com.ttscore.routes.*
 import com.ttscore.service.PushService
 import com.ttscore.service.StripeService
 import io.ktor.server.application.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
@@ -24,6 +25,11 @@ fun Application.configureRouting() {
     )
 
     routing {
+        // Liveness probe for Railway healthchecks.
+        get("/health") {
+            call.respondText("OK")
+        }
+
         route("/api/v1") {
             seasonRoutes()
             federationRoutes()
