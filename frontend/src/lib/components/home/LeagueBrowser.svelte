@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import type { Group, Season, SeasonStats, Federation } from '$lib/api';
 	import { api } from '$lib/api';
-	import * as Select from '$lib/components/ui/select/index.js';
+	import SeasonSelect from '$lib/components/SeasonSelect.svelte';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import PageTitle from '$lib/components/PageTitle.svelte';
@@ -81,22 +81,10 @@
 			</p>
 			<PageTitle>{$_('leagues.title')}</PageTitle>
 		</div>
-		<Select.Root
-			type="single"
-			value={selectedSeasonId}
-			onValueChange={(v) => {
-				if (v) selectedSeasonId = v;
-			}}
-		>
-			<Select.Trigger class="w-32">
-				{selectedSeason?.name ?? $_('leagues.season')}
-			</Select.Trigger>
-			<Select.Content>
-				{#each seasons as season (season.id)}
-					<Select.Item value={season.id}>{season.name}</Select.Item>
-				{/each}
-			</Select.Content>
-		</Select.Root>
+		<SeasonSelect
+			bind:value={selectedSeasonId}
+			seasons={seasons.map((s) => ({ value: s.id, label: s.name }))}
+		/>
 	</header>
 
 	{@render banner?.()}

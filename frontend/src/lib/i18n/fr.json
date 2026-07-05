@@ -61,13 +61,15 @@
     "elo_history": "Historique ELO",
     "no_elo_data": "Pas assez de données ELO pour l'instant.",
     "game_history": "Historique des matchs",
+    "syncing": "Mise à jour",
     "no_matches": "Aucun match trouvé.",
     "wins": "Victoires",
     "losses": "Défaites",
     "win_pct": "% victoires",
     "show_full_history": "Voir tout l'historique",
     "games_count": "{count, number} {count, plural, one {Match} other {Matchs}}",
-    "no_games": "Aucun match trouvé."
+    "no_games": "Aucun match trouvé.",
+    "undated_games": "Sans date"
   },
   "feed": {
     "won": "Gagné",

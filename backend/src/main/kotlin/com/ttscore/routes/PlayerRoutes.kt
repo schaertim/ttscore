@@ -10,8 +10,6 @@ import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.util.*
 
 fun Route.playerRoutes() {
@@ -39,22 +37,39 @@ fun Route.playerRoutes() {
                 PlayerService.getById(id)
                     ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
 
-            val shouldSync = player.licenceNr != null
-            if (shouldSync) {
-                // Scoped to the application lifecycle — cancelled cleanly on shutdown
-                call.application.launch(Dispatchers.IO) {
-                    try {
-                        val currentSeasonId = SeasonService.getCurrentSeasonId()
-                        if (currentSeasonId != null) {
-                            ClickTTSyncService.syncPlayer(UUID.fromString(id), currentSeasonId)
-                        }
-                    } catch (e: Exception) {
-                        application.environment.log.error("Background sync failed for player $id", e)
-                    }
+            // Pure read. The scrape is triggered separately by the client via GET /{id}/sync so it can
+            // await completion and refresh in place. `isSyncing` advertises whether a sync will actually
+            // run — a syncable player that is still within the cooldown window reports false, so the
+            // client neither re-triggers nor shows a misleading "updating" indicator.
+            val shouldSync =
+                player.licenceNr != null && !ClickTTSyncService.isWithinCooldown(UUID.fromString(id))
+            call.respond(HttpStatusCode.OK, player.copy(isSyncing = shouldSync))
+        }
+
+        // On-demand click-tt sync. Runs synchronously (respecting the per-player cooldown) so the caller
+        // can await it and then refetch the freshly-updated profile data — no manual page refresh needed.
+        get("/{id}/sync") {
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+            val uuid =
+                try {
+                    UUID.fromString(id)
+                } catch (e: IllegalArgumentException) {
+                    return@get call.respond(HttpStatusCode.BadRequest, "Invalid player id")
                 }
+
+            try {
+                val currentSeasonId = SeasonService.getCurrentSeasonId()
+                if (currentSeasonId != null) {
+                    ClickTTSyncService.syncPlayer(uuid, currentSeasonId)
+                }
+            } catch (e: Exception) {
+                application.environment.log.error("On-demand sync failed for player $id", e)
+                return@get call.respond(HttpStatusCode.InternalServerError, "Sync failed")
             }
 
-            call.respond(HttpStatusCode.OK, player.copy(isSyncing = shouldSync))
+            call.respond(HttpStatusCode.OK)
         }
 
         get("/{id}/elo") {

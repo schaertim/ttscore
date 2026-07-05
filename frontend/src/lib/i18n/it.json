@@ -61,13 +61,15 @@
     "elo_history": "Storico ELO",
     "no_elo_data": "Dati ELO insufficienti.",
     "game_history": "Storico partite",
+    "syncing": "Aggiornamento",
     "no_matches": "Nessuna partita trovata.",
     "wins": "Vittorie",
     "losses": "Sconfitte",
     "win_pct": "% vittorie",
     "show_full_history": "Mostra storico completo",
     "games_count": "{count, number} {count, plural, one {Partita} other {Partite}}",
-    "no_games": "Nessuna partita trovata."
+    "no_games": "Nessuna partita trovata.",
+    "undated_games": "Senza data"
   },
   "feed": {
     "won": "Vinto",

@@ -10,11 +10,15 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
+import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.util.*
 import kotlin.math.abs
 
 object PlayerService {
+    private val swissZone = ZoneId.of("Europe/Zurich")
+
     suspend fun getById(playerId: String): PlayerResponse? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
@@ -50,10 +54,11 @@ object PlayerService {
 
     suspend fun getEloHistory(playerId: String): List<EloEntryResponse>? {
         val uuid = playerId.toUuidOrNull() ?: return null
+        val cutoff = OffsetDateTime.now(swissZone).minusYears(1)
         return dbQuery {
             PlayerElos
                 .select(PlayerElos.eloValue, PlayerElos.recordedAt)
-                .where { PlayerElos.playerId eq uuid }
+                .where { (PlayerElos.playerId eq uuid) and (PlayerElos.recordedAt greaterEq cutoff) }
                 .orderBy(PlayerElos.recordedAt to SortOrder.DESC)
                 .toList()
                 .distinctBy { it[PlayerElos.recordedAt].toLocalDate() }
@@ -261,19 +266,29 @@ object PlayerService {
         return dbQuery {
             Players.select(Players.id).where { Players.id eq uuid }.firstOrNull() ?: return@dbQuery null
 
-            val currentSeason =
+            // Newest two seasons: we default to the current one, but fall back to the previous season
+            // when the player has no games yet in the current one (e.g. right after a season rollover).
+            val recentSeasons =
                 Seasons.select(Seasons.id, Seasons.name)
                     .orderBy(Seasons.name to SortOrder.DESC)
-                    .limit(1)
-                    .firstOrNull() ?: return@dbQuery emptyStats("")
-            val currentSeasonId = currentSeason[Seasons.id]
-            val seasonName = currentSeason[Seasons.name]
+                    .limit(2)
+                    .toList()
+            if (recentSeasons.isEmpty()) return@dbQuery emptyStats("")
 
             val homePlayer = Players.alias("home_player")
             val awayPlayer = Players.alias("away_player")
 
-            val rows =
-                Games
+            // Games for [seasonId]/[name]. A Swiss season "YYYY/YYYY+1" runs Jul 1 → Jun 30; non-league
+            // games carry no season link, so we bound them by that date window instead of including them all.
+            fun seasonRows(seasonId: UUID, name: String): List<ResultRow> {
+                val startYear = name.substringBefore("/").trim().toIntOrNull()
+                val start = startYear?.let {
+                    LocalDate.of(it, 7, 1).atStartOfDay(swissZone).toOffsetDateTime()
+                }
+                val end = startYear?.let {
+                    LocalDate.of(it + 1, 7, 1).atStartOfDay(swissZone).toOffsetDateTime()
+                }
+                return Games
                     .join(Matches, JoinType.LEFT, Games.matchId, Matches.id)
                     .join(Groups, JoinType.LEFT, Matches.groupId, Groups.id)
                     .join(homePlayer, JoinType.LEFT, Games.homePlayer1Id, homePlayer[Players.id])
@@ -293,12 +308,29 @@ object PlayerService {
                         awayPlayer[Players.fullName],
                     )
                     .where {
+                        val nonLeagueInSeason =
+                            if (start != null && end != null) {
+                                Games.matchId.isNull() and
+                                    (Games.playedAt greaterEq start) and
+                                    (Games.playedAt less end)
+                            } else {
+                                Games.matchId.isNull()
+                            }
                         ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
                             (Games.gameType eq GameType.SINGLES) and
-                            ((Groups.seasonId eq currentSeasonId) or Games.matchId.isNull())
+                            ((Groups.seasonId eq seasonId) or nonLeagueInSeason)
                     }
                     .orderBy(Games.playedAt to SortOrder.ASC_NULLS_LAST)
                     .toList()
+            }
+
+            var chosenSeason = recentSeasons[0]
+            var rows = seasonRows(chosenSeason[Seasons.id], chosenSeason[Seasons.name])
+            if (rows.isEmpty() && recentSeasons.size > 1) {
+                chosenSeason = recentSeasons[1]
+                rows = seasonRows(chosenSeason[Seasons.id], chosenSeason[Seasons.name])
+            }
+            val seasonName = chosenSeason[Seasons.name]
 
             if (rows.isEmpty()) return@dbQuery emptyStats(seasonName)
 
@@ -947,35 +979,51 @@ object PlayerService {
         return dbQuery {
             val tokens = name.trim().lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }
 
-            // DB stores "Lastname Firstname". Match every token independently (AND) so that both
-            // "Tim Schär" and "Schär Tim" find the same player — regardless of the order typed and
-            // regardless of whether each token is a full word or a partial prefix ("tim s" → finds
-            // "Schär Tim" because "schär tim" contains both "tim" and "s" somewhere in the string).
+            // DB stores "Lastname Firstname". Every token must prefix-match a *word* of the name —
+            // the start of the string, or right after a space or hyphen. This keeps order-independent
+            // matching ("Tim Schär" and "Schär Tim" both find the same player) while rejecting matches
+            // that only land mid-word: "tim s" no longer surfaces "Akcasayar Timur" via the stray 's'
+            // inside "Akcasayar". Tokens are ANDed; within a token each word-start option is ORed.
             val nameCondition: Op<Boolean> =
                 tokens
-                    .map<String, Op<Boolean>> { Players.fullName.lowerCase() like LikePattern("%$it%") }
+                    .map<String, Op<Boolean>> { token ->
+                        val lower = Players.fullName.lowerCase()
+                        (lower like LikePattern("$token%")) or
+                            (lower like LikePattern("% $token%")) or
+                            (lower like LikePattern("%-$token%"))
+                    }
                     .reduce { acc, op -> acc and op }
 
-            val total =
-                Players.select(Players.id)
-                    .where { nameCondition }
-                    .count()
-
-            // Step 1 — fetch paged core player rows
-            val basePlayers =
+            // Fetch *all* matches (name-search result sets are small) so we can rank by class before
+            // paging — class isn't a plain column, so it can't be an ORDER BY on the SQL side.
+            val matches =
                 Players.select(Players.id, Players.fullName, Players.licenceNr)
                     .where { nameCondition }
-                    .orderBy(Players.fullName to SortOrder.ASC)
-                    .limit(size).offset(start = (page * size).toLong())
                     .toList()
 
-            val playerIds = basePlayers.map { it[Players.id] }
+            val total = matches.size.toLong()
 
-            if (playerIds.isEmpty()) {
+            if (matches.isEmpty()) {
                 return@dbQuery PagedResponse(emptyList(), page, size, total)
             }
 
-            // Step 2 — current club (most recent season) and current class for the found players
+            val classByPlayer = ClassificationService.currentClasses(matches.map { it[Players.id] })
+
+            // Order by current class strength (strongest first; unranked players last), tie-broken
+            // alphabetically, then page in memory.
+            val pageRows =
+                matches
+                    .sortedWith(
+                        compareByDescending<ResultRow> {
+                            classRank(classByPlayer[it[Players.id]]) ?: Int.MIN_VALUE
+                        }.thenBy { it[Players.fullName] },
+                    )
+                    .drop(page * size)
+                    .take(size)
+
+            val playerIds = pageRows.map { it[Players.id] }
+
+            // Current club (most recent season) for just the players on this page.
             val clubByPlayer =
                 (PlayerSeasons innerJoin Teams innerJoin Clubs innerJoin Seasons)
                     .select(PlayerSeasons.playerId, Clubs.name)
@@ -985,11 +1033,8 @@ object PlayerService {
                     .groupBy { it[PlayerSeasons.playerId] }
                     .mapValues { it.value.first()[Clubs.name] }
 
-            val classByPlayer = ClassificationService.currentClasses(playerIds)
-
-            // Step 3 — merge results
             val items =
-                basePlayers.map { row ->
+                pageRows.map { row ->
                     val id = row[Players.id]
                     row.toPlayerResponse(
                         currentClubName = clubByPlayer[id],

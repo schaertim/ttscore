@@ -28,6 +28,12 @@ object ClickTTSyncService {
     private val syncCooldowns = ConcurrentHashMap<UUID, Instant>()
     private val COOLDOWN = Duration.ofMinutes(5)
 
+    /** True when [playerId] was synced within the cooldown window — a fresh sync would be a no-op. */
+    fun isWithinCooldown(playerId: UUID): Boolean {
+        val lastSync = syncCooldowns[playerId] ?: return false
+        return Instant.now().isBefore(lastSync.plus(COOLDOWN))
+    }
+
     /** Syncs ELO and game history for all players with a click-tt ID. Intended for backfill. */
     suspend fun runPortraitBackfill(seasonId: UUID) {
         val players = PlayerService.getAllPlayersWithClickTtId()
@@ -72,12 +78,9 @@ object ClickTTSyncService {
         seasonId: UUID,
         ignoreCooldown: Boolean = false,
     ) {
-        if (!ignoreCooldown) {
-            val lastSync = syncCooldowns[playerId]
-            if (lastSync != null && Instant.now().isBefore(lastSync.plus(COOLDOWN))) {
-                logger.debug("Skipping sync for player $playerId — within cooldown window")
-                return
-            }
+        if (!ignoreCooldown && isWithinCooldown(playerId)) {
+            logger.debug("Skipping sync for player $playerId — within cooldown window")
+            return
         }
         syncCooldowns[playerId] = Instant.now()
         syncPlayerDetailed(playerId, seasonId)

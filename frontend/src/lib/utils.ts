@@ -6,6 +6,18 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
+/**
+ * Canonical "YYYY/YYYY+1" name of the Swiss season containing [date]. A season runs Jul 1 → Jun 30,
+ * mirroring the backend's `ClassificationService.seasonNameOf`. Returns null for a missing date.
+ */
+export function seasonNameOf(playedAt: string | null | undefined): string | null {
+	if (!playedAt) return null;
+	const date = new Date(playedAt);
+	if (Number.isNaN(date.getTime())) return null;
+	const year = date.getFullYear();
+	return date.getMonth() >= 6 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
+}
+
 /** CSS color for a classification — the class-letter brand color, or primary as a fallback. */
 export function classColorVar(cls: string | null | undefined): string {
 	if (!cls) return 'var(--color-primary)';

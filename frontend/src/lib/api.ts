@@ -393,6 +393,10 @@ export const api = {
 				`/players/search?name=${encodeURIComponent(name)}&page=${page}&size=${size}`
 			),
 		get: (playerId: string) => get<Player>(`/players/${playerId}`),
+		/** Triggers an on-demand click-tt sync and resolves once it has finished (or been skipped). */
+		sync: async (playerId: string): Promise<void> => {
+			await fetch(`${BASE}/players/${playerId}/sync`).catch(() => {});
+		},
 		elo: (playerId: string) => get<EloEntry[]>(`/players/${playerId}/elo`),
 		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
 		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`),
