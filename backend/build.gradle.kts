@@ -47,10 +47,13 @@ dependencies {
 // Otherwise Flyway's ServiceLoader plugin discovery (ResourceTypeProvider) is wiped out
 // when duplicate service files from flyway-core + flyway-database-postgresql overwrite each
 // other, and every migration is rejected as "Unrecognised migration name format".
-// See flyway/flyway#3757 and KTOR-8987. duplicatesStrategy is required with Shadow 9.x.
+// See flyway/flyway#3757 and KTOR-8987.
+//
+// NOTE: do not set duplicatesStrategy = INCLUDE here. That applies globally (not just to
+// service files) and let mismatched Netty class versions from different dependencies both
+// land in the jar, causing NoSuchMethodError on DefaultHeadersImpl at runtime.
 tasks {
     shadowJar {
         mergeServiceFiles()
-        duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
 }
