@@ -49,11 +49,16 @@ dependencies {
 // other, and every migration is rejected as "Unrecognised migration name format".
 // See flyway/flyway#3757 and KTOR-8987.
 //
-// NOTE: do not set duplicatesStrategy = INCLUDE here. That applies globally (not just to
-// service files) and let mismatched Netty class versions from different dependencies both
-// land in the jar, causing NoSuchMethodError on DefaultHeadersImpl at runtime.
+// mergeServiceFiles() alone doesn't take effect with Ktor 3.3+'s bundled Shadow version
+// (KTOR-8987) — the merged file still gets dropped by the default duplicate-exclusion.
+// Scope duplicatesStrategy = INCLUDE to just META-INF/services/** instead of setting it
+// globally: setting it globally let mismatched Netty class versions from different
+// dependencies both land in the jar, causing NoSuchMethodError on DefaultHeadersImpl.
 tasks {
     shadowJar {
         mergeServiceFiles()
+        filesMatching("META-INF/services/**") {
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        }
     }
 }
