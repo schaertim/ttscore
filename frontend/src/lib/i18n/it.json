@@ -123,7 +123,13 @@
     "push_enabled_desc": "Riceverai una notifica quando i giocatori, le squadre o le leghe che segui avranno nuovi risultati.",
     "push_disabled_desc": "Ricevi una notifica quando i giocatori, le squadre o le leghe che segui avranno nuovi risultati.",
     "sign_out": "Esci",
-    "language": "Lingua"
+    "language": "Lingua",
+    "pro_section": "Pro",
+    "pro_active": "Pro è attivo",
+    "pro_renews": "Si rinnova il {date}",
+    "manage_billing": "Gestisci abbonamento",
+    "pro_upgrade": "Passa a Pro",
+    "pro_upgrade_desc": "Testa a testa, statistiche di carriera e preferiti illimitati"
   },
   "auth": {
     "welcome_back": "Bentornato",
@@ -134,6 +140,7 @@
     "sign_in": "Accedi",
     "continue_google": "Continua con Google",
     "or": "O",
+    "or_continue": "Oppure continua con",
     "email": "Email",
     "password": "Password",
     "loading": "Caricamento…",
@@ -171,6 +178,10 @@
     "pro_tier": "Pro",
     "price_monthly": "CHF 3 / mese",
     "price_yearly": "CHF 25 / anno",
+    "subscribe": "Abbonati",
+    "checkout_note": "Paga con carta o TWINT. Disdici quando vuoi.",
+    "checkout_success": "Pagamento ricevuto — attivazione dell'accesso Pro…",
+    "checkout_cancelled": "Pagamento annullato. Nessun addebito effettuato.",
     "checkout_soon": "Pagamento in arrivo",
     "already_pro": "Sei Pro — grazie! 💚",
     "feature_browse": "Tutte le leghe, classifiche e punteggi dei set",

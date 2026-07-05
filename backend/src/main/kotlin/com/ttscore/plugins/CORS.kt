@@ -9,6 +9,7 @@ fun Application.configureCors() {
         allowHost("localhost:5173") // SvelteKit dev server
         allowMethod(HttpMethod.Get)
         allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Put)
         allowMethod(HttpMethod.Delete)
         allowMethod(HttpMethod.Options)
         allowHeader(HttpHeaders.ContentType)

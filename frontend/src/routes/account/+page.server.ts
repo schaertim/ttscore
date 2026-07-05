@@ -1,9 +1,13 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { redirect, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { authedKtor } from '$lib/server/ktor';
 import { unfollowAction, setNotifyAction } from '$lib/server/followActions';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, depends }) => {
+	// Re-run when auth state changes so the profile refreshes after the
+	// home player is set/removed client-side (SetPlayerSearch invalidates this).
+	depends('supabase:auth');
+
 	const { session } = await locals.safeGetSession();
 	if (!session) redirect(303, '/signin?redirectTo=/account');
 
@@ -28,35 +32,23 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	setHomePlayer: async ({ locals, request }) => {
-		const { session } = await locals.safeGetSession();
-		if (!session) redirect(303, '/signin?redirectTo=/account');
-
-		const formData = await request.formData();
-		const playerId = formData.get('playerId') as string;
-		if (!playerId) return fail(400, { error: 'No player selected' });
-
-		let res: Response;
-		try {
-			res = await authedKtor(session.access_token).put('/users/me/home-player', { playerId });
-		} catch (e) {
-			return fail(500, { error: `Network error — is Ktor running? ${e}` });
-		}
-
-		if (!res.ok) {
-			const body = await res.text().catch(() => '(no body)');
-			return fail(500, { error: `Ktor ${res.status}: ${body}` });
-		}
-
-		return { success: true };
-	},
-
 	removeHomePlayer: async ({ locals }) => {
 		const { session } = await locals.safeGetSession();
 		if (!session) redirect(303, '/signin?redirectTo=/account');
 
 		await authedKtor(session.access_token).delete('/users/me/home-player');
 		return { success: true };
+	},
+
+	billingPortal: async ({ locals }) => {
+		const { session } = await locals.safeGetSession();
+		if (!session) redirect(303, '/signin?redirectTo=/account');
+
+		const res = await authedKtor(session.access_token).post('/billing/portal', {});
+		if (!res.ok) return fail(res.status, { error: 'portal_failed' });
+
+		const { url } = await res.json();
+		redirect(303, url);
 	},
 
 	unfollow: unfollowAction,

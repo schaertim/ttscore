@@ -1,4 +1,5 @@
 ﻿<script lang="ts">
+	import type { Snippet } from 'svelte';
 	import type { Group, Season, SeasonStats, Federation } from '$lib/api';
 	import { api } from '$lib/api';
 	import * as Select from '$lib/components/ui/select/index.js';
@@ -21,18 +22,20 @@
 	interface Props {
 		seasons: Season[];
 		federations: Federation[];
+		/** Optional callout (e.g. sign-in / set-player banner) rendered under the header. */
+		banner?: Snippet;
 	}
 
-	let { seasons, federations }: Props = $props();
+	let { seasons, federations, banner }: Props = $props();
 
 	let selectedSeasonId = $state(seasons[0]?.id ?? '');
 
 	const selectedSeason = $derived(seasons.find((s: Season) => s.id === selectedSeasonId));
 
 	let groups = $state<Group[]>([]);
-	let loadingGroups = $state(false);
+	let loadingGroups = $state(true);
 	let stats = $state<SeasonStats | null>(null);
-	let loadingStats = $state(false);
+	let loadingStats = $state(true);
 	let expandedFederations = $state<string[]>([]);
 
 	async function loadGroups() {
@@ -95,6 +98,8 @@
 			</Select.Content>
 		</Select.Root>
 	</header>
+
+	{@render banner?.()}
 
 	<section class="space-y-4">
 		<SectionLabel label={$_('leagues.regions')} icon={TrophyIcon} />

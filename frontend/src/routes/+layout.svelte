@@ -69,6 +69,7 @@
 		homePlayerId={data.homePlayerId}
 		opponentId={h2h.opponentId}
 		isPro={data.isPro}
+		supabase={data.supabase}
 	/>
 {/if}
 

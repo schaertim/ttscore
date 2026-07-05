@@ -3,47 +3,39 @@
 	import { goto, invalidate } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import { Input } from '$lib/components/ui/input/index.js';
-	import { api, type Player, type FollowResponse } from '$lib/api';
-	import { StarIcon, BellIcon, BellRingingIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon, MagnifyingGlassIcon } from 'phosphor-svelte';
+	import { type Player, type FollowResponse } from '$lib/api';
+	import { StarIcon, BellIcon, BellRingingIcon, SunIcon, MoonIcon, TrashIcon, UserIcon, UsersThreeIcon, TrophyIcon, PaintBrushHouseholdIcon, SparkleIcon, CaretRightIcon } from 'phosphor-svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
+	import SetPlayerSearch from '$lib/components/SetPlayerSearch.svelte';
+	import { setHomePlayer } from '$lib/homePlayer';
 	import { theme } from '$lib/theme.svelte';
 	import { _ } from 'svelte-i18n';
 	import { formatName } from '$lib/utils';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
-	import { page } from '$app/state';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import { subscribe, unsubscribe, getSubscription } from '$lib/push';
 
 	let { data }: { data: PageData } = $props();
 
-	let query = $state('');
-	let results = $state<Player[]>([]);
-	let searching = $state(false);
-	let searchTimeout: ReturnType<typeof setTimeout>;
+	let settingPlayer = $state(false);
+
+	async function handleSelectPlayer(player: Player) {
+		settingPlayer = true;
+		try {
+			await setHomePlayer(data.supabase, player.id);
+			await invalidate('supabase:auth');
+		} finally {
+			settingPlayer = false;
+		}
+	}
 
 	const followGroups = $derived([
 		{ label: $_('common.leagues_label'), icon: TrophyIcon, items: data.follows.filter((f: FollowResponse) => f.targetType === 'division_group') },
 		{ label: $_('common.teams_label'), icon: UsersThreeIcon, items: data.follows.filter((f: FollowResponse) => f.targetType === 'team') },
 		{ label: $_('common.players_label'), icon: UserIcon, items: data.follows.filter((f: FollowResponse) => f.targetType === 'player') },
 	].filter(g => g.items.length > 0));
-
-	function onInput() {
-		clearTimeout(searchTimeout);
-		results = [];
-		if (!query.trim()) return;
-		searchTimeout = setTimeout(async () => {
-			searching = true;
-			try {
-				const res = await api.players.search(query, 0, 6);
-				results = res.items;
-			} finally {
-				searching = false;
-			}
-		}, 300);
-	}
 
 	async function signOut() {
 		await data.supabase.auth.signOut();
@@ -84,6 +76,10 @@
 		const segment = targetType === 'division_group' ? 'groups' : targetType === 'team' ? 'teams' : 'players';
 		return `/${segment}/${targetId}`;
 	}
+
+	const proRenewDate = $derived(
+		data.profile.proUntil ? new Date(data.profile.proUntil).toLocaleDateString() : null
+	);
 </script>
 
 <div class="space-y-6">
@@ -124,51 +120,48 @@
 				</form>
 			</a>
 		{:else}
-			{#if page.form?.error}
-				<p class="text-sm text-destructive">{page.form.error}</p>
-			{/if}
+			<SetPlayerSearch onSelect={handleSelectPlayer} disabled={settingPlayer} />
+		{/if}
+	</section>
 
-			<div class="space-y-3">
-				<div class="relative">
-					<MagnifyingGlassIcon
-						size="16"
-						class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-					/>
-					<Input
-						placeholder={$_("account.search_placeholder")}
-						bind:value={query}
-						oninput={onInput}
-						class="w-full py-4 pl-9 text-base"
-					/>
-				</div>
-
-				{#if results.length > 0}
-					<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
-						{#each results as player (player.id)}
-							<form
-								method="POST"
-								action="?/setHomePlayer"
-								use:enhance={() => {
-									return async ({ update }) => {
-										query = '';
-										results = [];
-										await update();
-									};
-								}}
-							>
-								<input type="hidden" name="playerId" value={player.id} />
-								<button
-									type="submit"
-									class="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-accent"
-								>
-									<span class="font-semibold">{formatName(player.fullName)}</span>
-									<span class="text-xs text-muted-foreground">{player.currentClubName ?? ''}</span>
-								</button>
-							</form>
-						{/each}
+	<section class="space-y-3">
+		<SectionLabel label={$_("account.pro_section")} icon={SparkleIcon} />
+		{#if data.profile.isPro}
+			<div class="space-y-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+				<div class="flex items-center justify-between gap-3">
+					<div class="min-w-0">
+						<p class="flex items-center gap-1.5 text-sm font-semibold">
+							<SparkleIcon size="16" weight="fill" class="text-primary" />
+							{$_("account.pro_active")}
+						</p>
+						{#if proRenewDate}
+							<p class="text-xs text-muted-foreground">{$_("account.pro_renews", { values: { date: proRenewDate } })}</p>
+						{/if}
 					</div>
-				{/if}
+				</div>
+				<form method="POST" action="?/billingPortal">
+					<button
+						type="submit"
+						class="w-full rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold transition-colors hover:bg-accent"
+					>
+						{$_("account.manage_billing")}
+					</button>
+				</form>
 			</div>
+		{:else}
+			<a
+				href="/pro"
+				class="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 transition-colors hover:bg-accent"
+			>
+				<div class="flex min-w-0 items-center gap-3">
+					<SparkleIcon size="20" weight="fill" class="shrink-0 text-primary" />
+					<div class="min-w-0">
+						<p class="text-sm font-semibold">{$_("account.pro_upgrade")}</p>
+						<p class="truncate text-xs text-muted-foreground">{$_("account.pro_upgrade_desc")}</p>
+					</div>
+				</div>
+				<CaretRightIcon size="18" class="shrink-0 text-muted-foreground" />
+			</a>
 		{/if}
 	</section>
 

@@ -202,6 +202,9 @@ object UserProfiles : Table("user_profile") {
 
     /** Pro entitlement expiry. Null or past = free; a future timestamp = active Pro. */
     val proUntil = timestampWithTimeZone("pro_until").nullable()
+
+    /** Stripe customer id, set on first checkout. Used for the billing portal + webhook lookup. */
+    val stripeCustomerId = text("stripe_customer_id").nullable()
     val createdAt = timestampWithTimeZone("created_at")
     override val primaryKey = PrimaryKey(userId)
 }

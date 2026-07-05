@@ -203,7 +203,13 @@
 		"push_enabled_desc": "Du wirst benachrichtigt, wenn Spieler, Teams oder Ligen, denen du folgst, neue Ergebnisse haben.",
 		"push_disabled_desc": "Werde benachrichtigt, wenn Spieler, Teams oder Ligen, denen du folgst, neue Ergebnisse haben.",
 		"sign_out": "Abmelden",
-		"language": "Sprache"
+		"language": "Sprache",
+		"pro_section": "Pro",
+		"pro_active": "Pro ist aktiv",
+		"pro_renews": "Verlängert sich am {date}",
+		"manage_billing": "Abo verwalten",
+		"pro_upgrade": "Auf Pro upgraden",
+		"pro_upgrade_desc": "Head-to-Head, Karrierestatistiken & unbegrenzte Favoriten"
 	},
 	"auth": {
 		"welcome_back": "Willkommen zurück",
@@ -214,6 +220,7 @@
 		"sign_in": "Anmelden",
 		"continue_google": "Mit Google fortfahren",
 		"or": "Oder",
+		"or_continue": "Oder weiter mit",
 		"email": "E-Mail",
 		"password": "Passwort",
 		"loading": "Wird geladen…",
@@ -251,6 +258,10 @@
 		"pro_tier": "Pro",
 		"price_monthly": "CHF 3 / Monat",
 		"price_yearly": "CHF 25 / Jahr",
+		"subscribe": "Abonnieren",
+		"checkout_note": "Zahle mit Karte oder TWINT. Jederzeit kündbar.",
+		"checkout_success": "Zahlung erhalten — dein Pro-Zugang wird aktiviert …",
+		"checkout_cancelled": "Bezahlung abgebrochen. Es wurde nichts belastet.",
 		"checkout_soon": "Bezahlung folgt bald",
 		"already_pro": "Du bist Pro — danke! 💚",
 		"feature_browse": "Alle Ligen, Tabellen & Satzresultate",

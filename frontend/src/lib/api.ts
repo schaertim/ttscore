@@ -8,6 +8,15 @@ async function get<T>(path: string): Promise<T> {
 	return res.json();
 }
 
+/** Like {@link get}, but forwards a Supabase access token — required for Pro-gated endpoints. */
+async function getAuthed<T>(path: string, accessToken: string): Promise<T> {
+	const res = await fetch(`${BASE}${path}`, {
+		headers: { Authorization: `Bearer ${accessToken}` }
+	});
+	if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
+	return res.json();
+}
+
 // ── Types ────────────────────────────────────────────────────
 
 export type Season = {
@@ -388,8 +397,8 @@ export const api = {
 		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
 		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`),
 		seasonStats: (playerId: string) => get<PlayerSeasonStats>(`/players/${playerId}/stats`),
-		headToHead: (playerId: string, opponentId: string) =>
-			get<HeadToHead>(`/players/${playerId}/h2h/${opponentId}`),
+		headToHead: (playerId: string, opponentId: string, accessToken: string) =>
+			getAuthed<HeadToHead>(`/players/${playerId}/h2h/${opponentId}`, accessToken),
 		leagueContext: (playerId: string) => get<LeagueContext>(`/players/${playerId}/league-context`),
 		classHistory: (playerId: string) =>
 			get<ClassHistoryEntry[]>(`/players/${playerId}/class-history`)

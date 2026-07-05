@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.ktor.server.auth.jwt)
     implementation("nl.martijndwars:web-push:5.1.1")
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    implementation("com.stripe:stripe-java:32.2.0")
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
 }

@@ -63,6 +63,64 @@ object UserProfileService {
         }
     }
 
+    /**
+     * Sets the Pro entitlement expiry for a user (from the Stripe webhook). A future timestamp
+     * grants Pro; null or a past one revokes it. Upserts the profile row so a webhook can never
+     * lose a payment just because the profile was created lazily.
+     */
+    suspend fun setProUntil(
+        userId: String,
+        proUntil: OffsetDateTime?,
+    ) = dbQuery {
+        val updated =
+            UserProfiles.update({ UserProfiles.userId eq userId }) {
+                it[UserProfiles.proUntil] = proUntil
+            }
+        if (updated == 0) {
+            UserProfiles.insert {
+                it[UserProfiles.userId] = userId
+                it[UserProfiles.proUntil] = proUntil
+                it[createdAt] = OffsetDateTime.now()
+            }
+        }
+    }
+
+    /** Stores the Stripe customer id for a user (set on first checkout). Upserts the profile row. */
+    suspend fun linkStripeCustomer(
+        userId: String,
+        stripeCustomerId: String,
+    ) = dbQuery {
+        val updated =
+            UserProfiles.update({ UserProfiles.userId eq userId }) {
+                it[UserProfiles.stripeCustomerId] = stripeCustomerId
+            }
+        if (updated == 0) {
+            UserProfiles.insert {
+                it[UserProfiles.userId] = userId
+                it[UserProfiles.stripeCustomerId] = stripeCustomerId
+                it[createdAt] = OffsetDateTime.now()
+            }
+        }
+    }
+
+    /** Returns the user's Stripe customer id, or null if they have never checked out. */
+    suspend fun getStripeCustomerId(userId: String): String? =
+        dbQuery {
+            UserProfiles.select(UserProfiles.stripeCustomerId)
+                .where { UserProfiles.userId eq userId }
+                .firstOrNull()
+                ?.get(UserProfiles.stripeCustomerId)
+        }
+
+    /** Resolves a Stripe customer id back to our user id (for subscription webhooks). */
+    suspend fun findUserIdByStripeCustomer(stripeCustomerId: String): String? =
+        dbQuery {
+            UserProfiles.select(UserProfiles.userId)
+                .where { UserProfiles.stripeCustomerId eq stripeCustomerId }
+                .firstOrNull()
+                ?.get(UserProfiles.userId)
+        }
+
     /** Returns the user's home player id, or null if none is set / no profile exists. */
     suspend fun getHomePlayerId(userId: String): UUID? =
         dbQuery {

@@ -2,6 +2,7 @@
 
 import com.ttscore.routes.*
 import com.ttscore.service.PushService
+import com.ttscore.service.StripeService
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 
@@ -11,6 +12,15 @@ fun Application.configureRouting() {
         publicKey = vapidConfig.property("publicKey").getString(),
         privateKey = vapidConfig.property("privateKey").getString(),
         subject = vapidConfig.property("subject").getString(),
+    )
+
+    val stripeConfig = environment.config.config("stripe")
+    StripeService.init(
+        secretKey = stripeConfig.property("secretKey").getString(),
+        webhookSecret = stripeConfig.property("webhookSecret").getString(),
+        priceMonthly = stripeConfig.property("priceMonthly").getString(),
+        priceYearly = stripeConfig.property("priceYearly").getString(),
+        frontendUrl = stripeConfig.property("frontendUrl").getString(),
     )
 
     routing {
@@ -25,6 +35,7 @@ fun Application.configureRouting() {
             userProfileRoutes()
             followRoutes()
             pushRoutes()
+            stripeRoutes()
         }
     }
 }

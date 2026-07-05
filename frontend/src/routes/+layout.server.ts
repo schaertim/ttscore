@@ -2,7 +2,16 @@
 import { authedKtor } from '$lib/server/ktor';
 import { resolveLocale } from '$lib/i18n';
 
-export const load: LayoutServerLoad = async ({ locals: { safeGetSession }, cookies, request }) => {
+export const load: LayoutServerLoad = async ({
+	locals: { safeGetSession },
+	cookies,
+	request,
+	depends
+}) => {
+	// Re-run this load (recomputing hasHomePlayer / homePlayerId / isPro) whenever the
+	// auth state changes — the layout calls invalidate('supabase:auth') on sign in/out.
+	depends('supabase:auth');
+
 	const { session, user } = await safeGetSession();
 	const locale = resolveLocale(
 		cookies.get('ttscore_locale') ?? request.headers.get('accept-language')

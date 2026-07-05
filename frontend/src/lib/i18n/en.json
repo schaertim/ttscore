@@ -203,7 +203,13 @@
 		"push_enabled_desc": "You'll be notified when followed players, teams, or leagues have new results.",
 		"push_disabled_desc": "Get notified when followed players, teams, or leagues have new results.",
 		"sign_out": "Sign out",
-		"language": "Language"
+		"language": "Language",
+		"pro_section": "Pro",
+		"pro_active": "Pro is active",
+		"pro_renews": "Renews on {date}",
+		"manage_billing": "Manage billing",
+		"pro_upgrade": "Upgrade to Pro",
+		"pro_upgrade_desc": "Head-to-head, career stats & unlimited follows"
 	},
 	"auth": {
 		"welcome_back": "Welcome back",
@@ -214,6 +220,7 @@
 		"sign_in": "Sign in",
 		"continue_google": "Continue with Google",
 		"or": "Or",
+		"or_continue": "Or continue with",
 		"email": "Email",
 		"password": "Password",
 		"loading": "Loading…",
@@ -251,6 +258,10 @@
 		"pro_tier": "Pro",
 		"price_monthly": "CHF 3 / month",
 		"price_yearly": "CHF 25 / year",
+		"subscribe": "Subscribe",
+		"checkout_note": "Pay with card or TWINT. Cancel anytime.",
+		"checkout_success": "Payment received — activating your Pro access…",
+		"checkout_cancelled": "Checkout cancelled. No charge was made.",
 		"checkout_soon": "Checkout coming soon",
 		"already_pro": "You're Pro — thank you! 💚",
 		"feature_browse": "All leagues, standings & set scores",

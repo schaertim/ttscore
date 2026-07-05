@@ -3,6 +3,7 @@
 	import { enhance } from '$app/forms';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
+	import InfoItem from '$lib/components/InfoItem.svelte';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import EloChart from '$lib/components/EloChart.svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
@@ -21,8 +22,7 @@
 		ChartLineIcon,
 		ClockCounterClockwiseIcon,
 		UserCirclePlusIcon,
-		ScalesIcon,
-		CaretRightIcon
+		ScalesIcon
 	} from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { page } from '$app/state';
@@ -100,63 +100,43 @@
 		</div>
 
 		{#if canCompare}
-			<button
-				type="button"
+			<InfoItem
+				variant="muted"
+				size="sm"
+				icon={ScalesIcon}
+				title={$_('h2h.compare_with_me')}
 				onclick={compareWithMe}
-				class="flex w-full items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
-			>
-				<ScalesIcon size="16" class="text-primary" />
-				<span class="font-medium">{$_('h2h.compare_with_me')}</span>
-				<CaretRightIcon size="14" class="ml-auto" />
-			</button>
+			/>
 		{/if}
 	</header>
 
 	{#if !data.user}
-		<a
+		<InfoItem
 			href="/signin?redirectTo={encodeURIComponent(page.url.pathname)}"
-			class="flex items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 transition-colors hover:bg-primary/10"
-		>
-			<div class="shrink-0 rounded-full bg-primary/10 p-2">
-				<UserCirclePlusIcon size="20" class="text-primary" />
-			</div>
-			<div class="min-w-0 flex-1">
-				<p class="text-sm font-semibold">{$_('set_player.is_this_you')}</p>
-				<p class="text-xs text-muted-foreground">{$_('set_player.sign_in_prompt')}</p>
-			</div>
-			<span class="shrink-0 text-xs font-semibold text-primary">{$_('set_player.sign_in_cta')}</span
-			>
-		</a>
+			icon={UserCirclePlusIcon}
+			title={$_('set_player.is_this_you')}
+			description={$_('set_player.sign_in_prompt')}
+		/>
 	{:else if !data.hasHomePlayer}
 		<form
 			method="POST"
 			action="?/setHomePlayer"
 			use:enhance={() => {
 				settingHomePlayer = true;
-				return async ({ result, update }) => {
+				return async ({ update }) => {
 					settingHomePlayer = false;
-					if (result.type !== 'success') {
-						await update();
-					}
+					// Re-run load functions so `hasHomePlayer` flips to true and this item unmounts.
+					await update();
 				};
 			}}
 		>
-			<button
+			<InfoItem
 				type="submit"
 				disabled={settingHomePlayer}
-				class="flex w-full items-center gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left transition-colors hover:bg-primary/10 disabled:opacity-50"
-			>
-				<div class="shrink-0 rounded-full bg-primary/10 p-2">
-					<UserCirclePlusIcon size="20" class="text-primary" />
-				</div>
-				<div class="min-w-0 flex-1">
-					<p class="text-sm font-semibold">{$_('set_player.set_title')}</p>
-					<p class="text-xs text-muted-foreground">{$_('set_player.set_desc')}</p>
-				</div>
-				<span class="shrink-0 text-xs font-semibold text-primary">
-					{settingHomePlayer ? $_('set_player.setting') : $_('set_player.set_cta')}
-				</span>
-			</button>
+				icon={UserCirclePlusIcon}
+				title={$_('set_player.set_title')}
+				description={$_('set_player.set_desc')}
+			/>
 		</form>
 	{/if}
 

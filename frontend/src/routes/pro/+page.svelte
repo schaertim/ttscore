@@ -6,6 +6,7 @@
 	import { CheckIcon, SparkleIcon } from 'phosphor-svelte';
 
 	const isPro = $derived(!!page.data.isPro);
+	const checkoutStatus = $derived(page.data.checkoutStatus as string | null);
 
 	const freeFeatures = $derived([
 		$_('pro.feature_browse'),
@@ -29,35 +30,52 @@
 		<p class="text-sm text-muted-foreground">{$_('pro.page_subtitle')}</p>
 	</header>
 
+	{#if checkoutStatus === 'success' && !isPro}
+		<div class="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-center">
+			<p class="text-sm font-semibold">{$_('pro.checkout_success')}</p>
+		</div>
+	{:else if checkoutStatus === 'cancelled' && !isPro}
+		<div class="rounded-2xl border border-border bg-card p-4 text-center">
+			<p class="text-sm text-muted-foreground">{$_('pro.checkout_cancelled')}</p>
+		</div>
+	{/if}
+
 	{#if isPro}
 		<div class="rounded-2xl border border-primary/20 bg-primary/5 p-6 text-center">
 			<p class="text-base font-semibold">{$_('pro.already_pro')}</p>
 		</div>
 	{:else}
 		<div class="grid grid-cols-2 gap-3">
-			<div
+			<form
+				method="POST"
+				action="?/checkout"
 				class="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-5 text-center"
 			>
+				<input type="hidden" name="plan" value="monthly" />
 				<span class="text-xl font-black">{$_('pro.price_monthly')}</span>
 				<button
-					disabled
-					class="mt-1 w-full rounded-full bg-muted px-4 py-2 text-xs font-semibold text-muted-foreground"
+					type="submit"
+					class="mt-1 w-full rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
 				>
-					{$_('pro.checkout_soon')}
+					{$_('pro.subscribe')}
 				</button>
-			</div>
-			<div
+			</form>
+			<form
+				method="POST"
+				action="?/checkout"
 				class="flex flex-col items-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-5 text-center"
 			>
+				<input type="hidden" name="plan" value="yearly" />
 				<span class="text-xl font-black">{$_('pro.price_yearly')}</span>
 				<button
-					disabled
-					class="mt-1 w-full rounded-full bg-muted px-4 py-2 text-xs font-semibold text-muted-foreground"
+					type="submit"
+					class="mt-1 w-full rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
 				>
-					{$_('pro.checkout_soon')}
+					{$_('pro.subscribe')}
 				</button>
-			</div>
+			</form>
 		</div>
+		<p class="text-center text-xs text-muted-foreground">{$_('pro.checkout_note')}</p>
 	{/if}
 
 	<div class="grid gap-4 sm:grid-cols-2">

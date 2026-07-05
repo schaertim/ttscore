@@ -15,6 +15,9 @@ fun ApplicationCall.userIdOrNull(): String? = principal<JWTPrincipal>()?.payload
 /** Returns the authenticated user ID. Throws if called outside an authenticated route. */
 fun ApplicationCall.userId(): String = userIdOrNull() ?: error("userId() called on an unauthenticated route")
 
+/** Returns the `email` claim from the Supabase JWT, or null if absent. */
+fun ApplicationCall.userEmailOrNull(): String? = principal<JWTPrincipal>()?.payload?.getClaim("email")?.asString()
+
 /**
  * Strips diacritics and lowercases a string for accent-insensitive comparison.
  * e.g. "Grégory" → "gregory", "Müller" → "muller"

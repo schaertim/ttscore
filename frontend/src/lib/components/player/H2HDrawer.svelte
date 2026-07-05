@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { _ } from 'svelte-i18n';
+	import type { SupabaseClient } from '@supabase/supabase-js';
 	import { api, type HeadToHead, type H2HGame, type PlayerGame, type EloEntry } from '$lib/api';
 	import GameCard from '$lib/components/GameCard.svelte';
 	import EloChart from '$lib/components/EloChart.svelte';
@@ -23,9 +24,11 @@
 		opponentId: string | null;
 		/** H2H is a Pro feature — non-Pro users see a paywall instead of the data. */
 		isPro: boolean;
+		/** Used to forward the access token — the H2H endpoint requires auth to verify Pro status. */
+		supabase: SupabaseClient;
 	}
 
-	let { open = $bindable(), homePlayerId, opponentId, isPro }: Props = $props();
+	let { open = $bindable(), homePlayerId, opponentId, isPro, supabase }: Props = $props();
 
 	let data = $state<HeadToHead | null>(null);
 	let loading = $state(false);
@@ -47,8 +50,11 @@
 		eloA = [];
 		eloB = [];
 		const opp = opponentId;
-		api.players
-			.headToHead(homePlayerId, opp)
+		supabase.auth
+			.getSession()
+			.then(({ data: sessionData }) =>
+				api.players.headToHead(homePlayerId, opp, sessionData.session?.access_token ?? '')
+			)
 			.then((res) => (data = res))
 			.catch(() => (error = true))
 			.finally(() => (loading = false));

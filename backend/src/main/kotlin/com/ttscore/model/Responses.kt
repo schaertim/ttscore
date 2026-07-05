@@ -23,6 +23,18 @@ data class SetHomePlayerRequest(
     val playerId: String,
 )
 
+/** Body for `POST /billing/checkout`. `plan` is "monthly" or "yearly". */
+@Serializable
+data class CheckoutRequest(
+    val plan: String,
+)
+
+/** A Stripe-hosted URL (Checkout Session or billing portal) for the frontend to redirect to. */
+@Serializable
+data class BillingUrlResponse(
+    val url: String,
+)
+
 // ── Career tab (Pro) ── all-time, league singles, classification-based (no historical ELO) ──
 
 /** One classification observation: a (season, half) and the class in effect then. */
