@@ -251,7 +251,7 @@ data class EloEntryResponse(
 
 @Serializable
 data class StatsResponse(
-    val registeredPlayers: Long,
+    val activePlayers: Long,
     val matchesLast24h: Long,
 )
 

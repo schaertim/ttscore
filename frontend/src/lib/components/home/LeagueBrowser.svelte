@@ -175,8 +175,8 @@
 
 	<section class="grid grid-cols-2 gap-3">
 		<StatCard
-			label={$_('leagues.players_registered')}
-			value={loadingStats || !stats ? null : stats.registeredPlayers.toLocaleString()}
+			label={$_('leagues.players_active')}
+			value={loadingStats || !stats ? null : stats.activePlayers.toLocaleString()}
 		>
 			{#snippet footer()}
 				<TrendUpIcon size="16" />

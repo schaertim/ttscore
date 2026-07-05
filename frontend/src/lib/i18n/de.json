@@ -53,7 +53,7 @@
 		"no_groups": "Keine Gruppen für diese Saison gefunden",
 		"teams": "{count, number} {count, plural, one {Team} other {Teams}}",
 		"round": "RD {played}/{total}",
-		"players_registered": "Registrierte Spieler",
+		"players_active": "Aktive Spieler",
 		"matches_played": "Gespielte Matches",
 		"last_24h": "Letzte 24 Stunden"
 	},

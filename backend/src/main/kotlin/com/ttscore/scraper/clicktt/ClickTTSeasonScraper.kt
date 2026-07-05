@@ -1,27 +1,22 @@
-﻿package com.ttscore.scraper.clicktt
-
-import com.ttscore.jobs.ClickTtIdBackfillJob
+package com.ttscore.scraper.clicktt
 
 /**
- * Orchestrates the full click-tt season scrape for a given season.
+ * Seeds a single click-tt season from scratch: league structure + match details.
  *
- * Phase 1 — ClickTtIdBackfillJob: links click-tt person/club IDs to existing knob-scraped records,
- *            and inserts fresh rows for any registered players not yet in the DB.
- * Phase 2 — ClickTTGroupScraper: league structure, teams, standings, and match schedule
- * Phase 3 — ClickTTMatchScraper: individual game results, set scores, and player season records
+ * Phase 1 — ClickTTGroupScraper: league structure, teams, standings, and match schedule
+ * Phase 2 — ClickTTMatchScraper: individual game results, set scores, and player season records
  *
- * The backfill job runs first so all registered players exist before match scraping begins.
+ * Player identity linking (ClickTtIdBackfillJob) is a separate, season-independent concern
+ * and must have run before this so ClickTTMatchScraper.upsertPlayer can resolve person IDs.
  */
 class ClickTTSeasonScraper(
     private val groupScraper: ClickTTGroupScraper,
-    private val backfillJob: ClickTtIdBackfillJob,
     private val matchScraper: ClickTTMatchScraper,
 ) {
     suspend fun run(
-        season: String = "2025/2026",
+        season: String = "2026/2027",
         federations: Collection<String>? = null,
     ) {
-        backfillJob.run()
         if (federations != null) groupScraper.run(season, federations) else groupScraper.run(season)
         matchScraper.run()
     }
@@ -32,7 +27,6 @@ class ClickTTSeasonScraper(
             val parser = ClickTTParser()
             return ClickTTSeasonScraper(
                 groupScraper = ClickTTGroupScraper(client, parser),
-                backfillJob = ClickTtIdBackfillJob(client, parser),
                 matchScraper = ClickTTMatchScraper(client, parser),
             )
         }

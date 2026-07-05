@@ -16,7 +16,7 @@ object StatsService {
     suspend fun getStats(seasonName: String): StatsResponse =
         dbQuery {
             val distinctPlayerCount = PlayerSeasons.playerId.countDistinct()
-            val registeredPlayers =
+            val activePlayers =
                 PlayerSeasons
                     .join(Seasons, JoinType.INNER, PlayerSeasons.seasonId, Seasons.id)
                     .select(distinctPlayerCount)
@@ -34,7 +34,7 @@ object StatsService {
                     .count()
 
             StatsResponse(
-                registeredPlayers = registeredPlayers,
+                activePlayers = activePlayers,
                 matchesLast24h = matchesLast24h,
             )
         }

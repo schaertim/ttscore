@@ -159,7 +159,7 @@ export type PlayerGame = {
 };
 
 export type SeasonStats = {
-	registeredPlayers: number;
+	activePlayers: number;
 	matchesLast24h: number;
 };
 

@@ -14,6 +14,13 @@ object Seasons : Table("season") {
     override val primaryKey = PrimaryKey(id)
 }
 
+/** Ledger of one-time scraper backfills — see V17 migration and BackfillLedger. */
+object ScraperBackfill : Table("scraper_backfill") {
+    val key = text("key")
+    val completedAt = timestampWithTimeZone("completed_at")
+    override val primaryKey = PrimaryKey(key)
+}
+
 object Federations : Table("federation") {
     val id = uuid("id").autoGenerate()
     val name = varchar("name", 50)

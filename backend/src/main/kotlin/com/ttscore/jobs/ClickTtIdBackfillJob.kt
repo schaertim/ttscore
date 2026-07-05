@@ -105,4 +105,12 @@ class ClickTtIdBackfillJob(
 
         logger.info("ClickTtIdBackfillJob complete — $totalPlayers players and $totalClubs clubs linked")
     }
+
+    companion object {
+        fun create(): ClickTtIdBackfillJob {
+            val client = ClickTTClient()
+            val parser = ClickTTParser()
+            return ClickTtIdBackfillJob(client, parser)
+        }
+    }
 }

@@ -90,7 +90,7 @@
 	const timestamp = $derived(getTimestamp(item));
 </script>
 
-<a href={entityHref} class="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-accent">
+<a href={entityHref} class="group flex items-center bg-card gap-3 rounded-xl border border-border  px-4 py-3 hover:bg-accent">
 	<div class="flex h-9 w-7 shrink-0 items-center justify-center rounded-lg">
 		<EntityIcon size="20" class="text-muted-foreground" />
 	</div>
