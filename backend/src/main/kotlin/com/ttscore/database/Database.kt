@@ -16,6 +16,9 @@ fun Application.configureDatabase() {
 
     Flyway.configure()
         .dataSource(url, user, password)
+        // Fail fast with the exact bad filename instead of silently skipping migrations
+        // (seen with fat-jar classpath scanning misparsing otherwise-valid V*__*.sql names).
+        .validateMigrationNaming(true)
         .load()
         .migrate()
 
