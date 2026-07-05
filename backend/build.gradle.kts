@@ -42,3 +42,15 @@ dependencies {
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
 }
+
+// The Ktor fat jar (buildFatJar → shadowJar) must merge META-INF/services files.
+// Otherwise Flyway's ServiceLoader plugin discovery (ResourceTypeProvider) is wiped out
+// when duplicate service files from flyway-core + flyway-database-postgresql overwrite each
+// other, and every migration is rejected as "Unrecognised migration name format".
+// See flyway/flyway#3757 and KTOR-8987. duplicatesStrategy is required with Shadow 9.x.
+tasks {
+    shadowJar {
+        mergeServiceFiles()
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+}
