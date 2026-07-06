@@ -56,7 +56,7 @@ private fun Application.runBackfill(currentSeason: String) {
     val logger = LoggerFactory.getLogger("Backfill")
     launch {
         try {
-    /*        BackfillLedger.runOnce("knob:1989-2024/2025") {
+            BackfillLedger.runOnce("knob:1989-2024/2025") {
                 logger.info("Backfill — knob history 1989→2024/2025")
                 BackfillScraper.create().run()
             }
@@ -69,7 +69,7 @@ private fun Application.runBackfill(currentSeason: String) {
             BackfillLedger.runOnce("clicktt-season:2025/2026") {
                 logger.info("Backfill — click-tt season 2025/2026")
                 ClickTTSeasonScraper.create().run("2025/2026")
-            }*/
+            }
 
             // Seed the current season once, immediately, so data is available without waiting
             // for the 03:00 run. Keyed by season, so bumping scraper.currentSeason next year
