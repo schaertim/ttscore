@@ -3,12 +3,18 @@
 import com.ttscore.database.*
 import com.ttscore.model.MatchStatus
 import com.ttscore.scraper.clicktt.ClickTTGroupScraper.Companion.toChampionship
+import com.ttscore.scraper.clicktt.model.ParsedClickTTMatchDetail
+import com.ttscore.scraper.knob.SCRAPE_CONCURRENCY
+import com.ttscore.scraper.knob.mapConcurrent
 import com.ttscore.service.ClassificationService
 import com.ttscore.util.clickTtNameToDb
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.util.*
+
+/** Mirrors MATCH_BATCH in the knob MatchScraper — see that file for rationale. */
+private const val MATCH_BATCH = 200
 
 class ClickTTMatchScraper(
     private val client: ClickTTClient,
@@ -85,28 +91,41 @@ class ClickTTMatchScraper(
         }
 
     private suspend fun scrapeAll(matches: List<MatchToScrape>) {
-        for ((index, match) in matches.withIndex()) {
-            try {
-                scrapeMatch(match)
-                if (index % 50 == 0) {
-                    logger.info("Progress: $index / ${matches.size} matches scraped")
+        var done = 0
+        for (batch in matches.chunked(MATCH_BATCH)) {
+            val parsed =
+                batch.mapConcurrent(SCRAPE_CONCURRENCY) { match ->
+                    try {
+                        val championship = toChampionship(match.federationName, match.season)
+                        val html = client.fetchMatchDetail(match.clickttMatchId, championship, match.clickttGroupId)
+                        match to parser.parseClickTTMatchDetail(html, match.clickttMatchId)
+                    } catch (e: Exception) {
+                        logger.error("Failed meetingId=${match.clickttMatchId}: ${e.message}")
+                        null
+                    }
+                }.filterNotNull()
+
+            for ((match, detail) in parsed) {
+                try {
+                    if (detail.games.isEmpty()) {
+                        logger.debug("No games found for meetingId=${match.clickttMatchId}")
+                        continue
+                    }
+                    writeMatchGames(match, detail)
+                } catch (e: Exception) {
+                    logger.error("Failed meetingId=${match.clickttMatchId}: ${e.message}")
                 }
-            } catch (e: Exception) {
-                logger.error("Failed meetingId=${match.clickttMatchId}: ${e.message}")
             }
+
+            done += batch.size
+            logger.info("Progress: ${done.coerceAtMost(matches.size)} / ${matches.size} matches processed")
         }
     }
 
-    private suspend fun scrapeMatch(match: MatchToScrape) {
-        val championship = toChampionship(match.federationName, match.season)
-        val html = client.fetchMatchDetail(match.clickttMatchId, championship, match.clickttGroupId)
-        val detail = parser.parseClickTTMatchDetail(html, match.clickttMatchId)
-
-        if (detail.games.isEmpty()) {
-            logger.debug("No games found for meetingId=${match.clickttMatchId}")
-            return
-        }
-
+    private fun writeMatchGames(
+        match: MatchToScrape,
+        detail: ParsedClickTTMatchDetail,
+    ) {
         transaction {
             val seasonId =
                 Seasons.select(Seasons.id)

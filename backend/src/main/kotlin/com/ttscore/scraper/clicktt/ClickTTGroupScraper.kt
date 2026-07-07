@@ -5,6 +5,8 @@ import com.ttscore.model.MatchStatus
 import com.ttscore.scraper.clicktt.model.ParsedClickTTMatch
 import com.ttscore.scraper.clicktt.model.ParsedClickTTStanding
 import com.ttscore.scraper.knob.FEDERATION_RVIDS
+import com.ttscore.scraper.knob.SCRAPE_CONCURRENCY
+import com.ttscore.scraper.knob.mapConcurrent
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -58,21 +60,31 @@ class ClickTTGroupScraper(
 
         logger.info("  $championship — ${groups.size} groups")
 
-        for (group in groups) {
-            try {
-                if (isAlreadyScraped(group.groupId)) {
-                    logger.debug("    group=${group.groupId} already scraped, skipping")
-                    continue
+        // Pre-filter already-scraped groups with cheap serial DB reads (no HTML dependency),
+        // then fetch the remaining groups' standings+schedule pages concurrently.
+        val pending = groups.filterNot { isAlreadyScraped(it.groupId) }
+
+        val fetched =
+            pending.mapConcurrent(SCRAPE_CONCURRENCY) { group ->
+                try {
+                    // Standings gives us teams, positions, and promotion/relegation zones
+                    val standingsHtml = client.fetchGroupPage(group.championship, group.groupId)
+                    val standings = parser.parseGroupStandings(standingsHtml)
+
+                    // Schedule gives us all matches (completed + upcoming) — always fetched
+                    val scheduleHtml =
+                        client.fetchGroupPage(group.championship, group.groupId, displayDetail = "meetings")
+                    val matches = parser.parseMatchSchedule(scheduleHtml)
+
+                    Triple(group, standings, matches)
+                } catch (e: Exception) {
+                    logger.error("    group=${group.groupId} (${group.divisionName}) failed: ${e.message}")
+                    null
                 }
+            }.filterNotNull()
 
-                // Standings gives us teams, positions, and promotion/relegation zones
-                val standingsHtml = client.fetchGroupPage(group.championship, group.groupId)
-                val standings = parser.parseGroupStandings(standingsHtml)
-
-                // Schedule gives us all matches (completed + upcoming) — always fetched
-                val scheduleHtml = client.fetchGroupPage(group.championship, group.groupId, displayDetail = "meetings")
-                val matches = parser.parseMatchSchedule(scheduleHtml)
-
+        for ((group, standings, matches) in fetched) {
+            try {
                 if (standings.isEmpty()) {
                     // Aufstieg/playoff group: standings table has plain-text team names with no
                     // teamPortrait links, so parseGroupStandings returns empty. Teams already exist

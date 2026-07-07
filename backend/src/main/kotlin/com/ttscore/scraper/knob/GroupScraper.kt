@@ -2,6 +2,8 @@
 
 import com.ttscore.database.*
 import com.ttscore.model.MatchStatus
+import com.ttscore.scraper.knob.model.GruppePageResult
+import com.ttscore.scraper.knob.model.ParsedDivisionPage
 import com.ttscore.scraper.knob.model.ParsedMatch
 import com.ttscore.scraper.knob.model.ParsedStandingRow
 import com.ttscore.scraper.knob.model.ParsedTeam
@@ -39,7 +41,7 @@ class GroupScraper(
     }
 
     suspend fun run(
-        seasons: List<String> = generateSeasons(fromYear = 1989, toYear = 2024),
+        seasons: List<String> = generateSeasons(fromYear = 1989, toYear = KNOB_LAST_SEASON_YEAR),
         federations: Collection<String>? = null,
     ) {
         // Ensure all federations exist before scraping begins
@@ -78,25 +80,42 @@ class GroupScraper(
         range: IntRange,
     ) {
         logger.info("  [$season] $leagueName pass${if (rvid != null) " (rvid=$rvid)" else ""}")
+
+        // Stage 1 — fetch + parse every gruppe id concurrently (network/CPU only, no DB access).
+        // Most ids are misses (knob redirects invalid ids to a default page → null), so this
+        // filters down to the handful of real hits for this league/season.
+        val hits =
+            range.toList().mapConcurrent(SCRAPE_CONCURRENCY) { gruppeId ->
+                try {
+                    val html = client.fetchDivisionPage(gruppeId, season, rvid)
+                    val result = parser.parseGruppePage(html, gruppeId, seasonYear)
+                        ?: return@mapConcurrent null
+                    // Cross-check — the page's active league must match this pass's league
+                    if (result.leagueName != leagueName) return@mapConcurrent null
+                    GruppeHit(gruppeId, result, parser.parseDivisionPage(html))
+                } catch (e: Exception) {
+                    logger.error("    gruppe=$gruppeId failed: ${e.message}")
+                    null
+                }
+            }.filterNotNull()
+
+        // Stage 2 — persist hits serially (single non-pooled connection; keep writes off the
+        // concurrent stage above).
         var found = 0
-
-        for (gruppeId in range) {
+        for (hit in hits) {
+            // Per-hit try/catch mirrors the original loop: one bad row is logged and skipped
+            // rather than aborting the whole pass.
             try {
-                val html = client.fetchDivisionPage(gruppeId, season, rvid)
-                val result = parser.parseGruppePage(html, gruppeId, seasonYear) ?: continue
-
-                // Cross-check — the page's active league must match this pass's league
-                if (result.leagueName != leagueName) continue
-
                 // Skip if already scraped — gruppe IDs are reused across seasons so we
                 // must scope the check to both gruppe ID and season name
-                if (isAlreadyScraped(gruppeId, season)) {
-                    logger.debug("    gruppe=$gruppeId season=$season already scraped, skipping")
+                if (isAlreadyScraped(hit.gruppeId, season)) {
+                    logger.debug("    gruppe=${hit.gruppeId} season=$season already scraped, skipping")
                     found++
                     continue
                 }
 
-                val page = parser.parseDivisionPage(html)
+                val result = hit.result
+                val page = hit.page
 
                 transaction {
                     val seasonId = upsertSeason(season)
@@ -108,7 +127,7 @@ class GroupScraper(
                         } else {
                             result.divisionName
                         }
-                    val groupId = upsertGroup(federationId, seasonId, groupName, gruppeId)
+                    val groupId = upsertGroup(federationId, seasonId, groupName, hit.gruppeId)
 
                     if (page.teams.isNotEmpty()) {
                         val teamIdMap = upsertTeams(page.teams, groupId)
@@ -120,16 +139,22 @@ class GroupScraper(
 
                 found++
                 logger.info(
-                    "    gruppe=$gruppeId → $leagueName / ${result.divisionName} / " +
+                    "    gruppe=${hit.gruppeId} → $leagueName / ${result.divisionName} / " +
                         "${result.groupName} — ${page.teams.size} teams, ${page.matches.size} matches",
                 )
             } catch (e: Exception) {
-                logger.error("    gruppe=$gruppeId failed: ${e.message}")
+                logger.error("    gruppe=${hit.gruppeId} write failed: ${e.message}")
             }
         }
 
         logger.info("  [$season] $leagueName done — $found groups found")
     }
+
+    private data class GruppeHit(
+        val gruppeId: Int,
+        val result: GruppePageResult,
+        val page: ParsedDivisionPage,
+    )
 
     private fun isAlreadyScraped(
         gruppeId: Int,

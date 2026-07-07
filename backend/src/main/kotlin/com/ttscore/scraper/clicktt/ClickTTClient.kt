@@ -102,7 +102,6 @@ class ClickTTClient {
         url: String,
         maxAttempts: Int = 3,
     ): String {
-        delay(10)
         var lastException: Exception? = null
         repeat(maxAttempts) { attempt ->
             try {
