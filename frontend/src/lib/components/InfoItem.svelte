@@ -95,7 +95,7 @@
 {/snippet}
 
 {#if href}
-	<a {href} class={cn(infoItemVariants({ variant, size }), className)}>
+	<a {href} {onclick} class={cn(infoItemVariants({ variant, size }), className)}>
 		{@render body()}
 	</a>
 {:else}

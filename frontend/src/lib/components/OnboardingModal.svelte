@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { TrophyIcon, ChartLineUpIcon, BellRingingIcon } from 'phosphor-svelte';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Carousel from '$lib/components/ui/carousel/index.js';
 	import type { CarouselAPI } from '$lib/components/ui/carousel/context.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { _ } from 'svelte-i18n';
+	import { analytics } from '$lib/analytics';
 
 	const STORAGE_KEY = 'ttscore_onboarded';
 
@@ -57,7 +59,8 @@
 	function signUp() {
 		persistOnboarded();
 		open = false;
-		goto('/signin');
+		analytics.signupPrompted('onboarding_modal');
+		goto(`/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`);
 	}
 </script>
 

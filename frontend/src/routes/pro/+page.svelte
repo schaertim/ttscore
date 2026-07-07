@@ -4,6 +4,7 @@
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { CheckIcon, SparkleIcon } from 'phosphor-svelte';
+	import { analytics } from '$lib/analytics';
 
 	const isPro = $derived(!!page.data.isPro);
 	const checkoutStatus = $derived(page.data.checkoutStatus as string | null);
@@ -55,6 +56,7 @@
 				<span class="text-xl font-black">{$_('pro.price_monthly')}</span>
 				<button
 					type="submit"
+					onclick={() => analytics.proCheckoutStarted('monthly')}
 					class="mt-1 w-full rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
 				>
 					{$_('pro.subscribe')}
@@ -69,6 +71,7 @@
 				<span class="text-xl font-black">{$_('pro.price_yearly')}</span>
 				<button
 					type="submit"
+					onclick={() => analytics.proCheckoutStarted('yearly')}
 					class="mt-1 w-full rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
 				>
 					{$_('pro.subscribe')}

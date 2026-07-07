@@ -31,6 +31,7 @@
 	import { formatName } from '$lib/utils';
 	import { api } from '$lib/api';
 	import type { Player, EloEntry, PlayerGame, PlayerSeasonStats } from '$lib/api';
+	import { analytics } from '$lib/analytics';
 	let { data }: { data: PageData } = $props();
 
 	let settingHomePlayer = $state(false);
@@ -93,6 +94,7 @@
 
 	function compareWithMe() {
 		h2h.opponentId = data.player.id;
+		analytics.h2hOpened(data.player.id, data.isPro);
 	}
 
 	function classificationStroke(classification: string | null | undefined): string {
@@ -196,6 +198,7 @@
 	{#if !data.user}
 		<InfoItem
 			href="/signin?redirectTo={encodeURIComponent(page.url.pathname)}"
+			onclick={() => analytics.signupPrompted('set_player_prompt')}
 			icon={UserCirclePlusIcon}
 			title={$_('set_player.is_this_you')}
 			description={$_('set_player.sign_in_prompt')}
@@ -206,8 +209,11 @@
 			action="?/setHomePlayer"
 			use:enhance={() => {
 				settingHomePlayer = true;
-				return async ({ update }) => {
+				return async ({ result, update }) => {
 					settingHomePlayer = false;
+					if (result.type === 'success') {
+						analytics.homePlayerSet(data.player.id);
+					}
 					// Re-run load functions so `hasHomePlayer` flips to true and this item unmounts.
 					await update();
 				};
@@ -297,6 +303,7 @@
 				<PaywallTeaser
 					title={$_('career.paywall_title')}
 					description={$_('career.paywall_desc')}
+					source="career_paywall"
 				/>
 			{/if}
 		</Tabs.Content>

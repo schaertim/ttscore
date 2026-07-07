@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { LockKeyIcon, SparkleIcon } from 'phosphor-svelte';
 	import { _ } from 'svelte-i18n';
+	import { analytics, type ProSource } from '$lib/analytics';
 
 	interface Props {
 		title: string;
 		description: string;
+		source: ProSource;
 	}
 
-	let { title, description }: Props = $props();
+	let { title, description, source }: Props = $props();
 </script>
 
 <div
@@ -22,6 +24,7 @@
 	</div>
 	<a
 		href="/pro"
+		onclick={() => analytics.proPrompted(source)}
 		class="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
 	>
 		<SparkleIcon size="16" weight="fill" />

@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { _ } from 'svelte-i18n';
+	import { analytics } from '$lib/analytics';
 
 	// The Supabase client is passed down through the layout's page data.
 	// Using $page.data gives us access to the supabase instance created in +layout.ts.
@@ -59,6 +60,7 @@
 					// If email confirmation is disabled in the dashboard, the user is
 					// signed in immediately and we redirect. Otherwise show a message.
 					error = 'Check your email to confirm your account.';
+					analytics.signedUp('password');
 					await invalidate('supabase:auth');
 					goto(redirectTo);
 				}

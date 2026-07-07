@@ -16,6 +16,7 @@
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import { subscribe, unsubscribe, getSubscription } from '$lib/push';
+	import { analytics } from '$lib/analytics';
 
 	let { data }: { data: PageData } = $props();
 
@@ -151,6 +152,7 @@
 		{:else}
 			<a
 				href="/pro"
+				onclick={() => analytics.proPrompted('account_upgrade')}
 				class="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 transition-colors hover:bg-accent"
 			>
 				<div class="flex min-w-0 items-center gap-3">

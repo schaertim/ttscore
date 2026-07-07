@@ -23,6 +23,7 @@
 	import { _ } from 'svelte-i18n';
 	import { formatName } from '$lib/utils';
 	import { getRecentPlayers, addRecentPlayer, type RecentPlayer } from '$lib/recentPlayers';
+	import { analytics } from '$lib/analytics';
 
 	let { data }: { data: PageData } = $props();
 
@@ -39,6 +40,7 @@
 
 	function compareWithMe(playerId: string) {
 		h2h.opponentId = playerId;
+		analytics.h2hOpened(playerId, data.isPro);
 	}
 
 	const PAGE_SIZE = 20;
@@ -56,6 +58,9 @@
 			try {
 				response = await api.players.search(searchQuery, page, PAGE_SIZE);
 				currentPage = page;
+				// Only a genuinely new query, not a pagination click through existing results
+				// (both call this same function).
+				if (page === 0) analytics.playerSearched(searchQuery.length, response.total);
 			} catch {
 				response = null;
 			} finally {

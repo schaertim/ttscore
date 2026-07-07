@@ -7,6 +7,7 @@
 	import { toast } from 'svelte-sonner';
 	import { _ } from 'svelte-i18n';
 	import { get } from 'svelte/store';
+	import { analytics } from '$lib/analytics';
 
 	interface Props {
 		/** Notifications require an existing follow — the bell is disabled otherwise. */
@@ -19,6 +20,7 @@
 	let { following, followId, notify = $bindable(), authenticated = true }: Props = $props();
 
 	function redirectToSignIn() {
+		analytics.signupPrompted('notify_button');
 		goto(`/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`);
 	}
 
@@ -30,11 +32,24 @@
 			loading = false;
 			if (result.type === 'success') {
 				notify = !notify;
+				if (followId) {
+					if (notify) {
+						analytics.notificationsEnabled(followId);
+					} else {
+						analytics.notificationsDisabled(followId);
+					}
+				}
 			} else {
 				if (result.type === 'failure' && result.data?.reason === 'notify_pro') {
 					toast.error(get(_)('pro.notify_title'), {
 						description: get(_)('pro.notify_desc'),
-						action: { label: get(_)('pro.unlock'), onClick: () => goto('/pro') }
+						action: {
+							label: get(_)('pro.unlock'),
+							onClick: () => {
+								analytics.proPrompted('notify_limit');
+								goto('/pro');
+							}
+						}
 					});
 				}
 				await update();

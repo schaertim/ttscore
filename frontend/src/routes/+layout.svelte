@@ -1,10 +1,11 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { goto, invalidate } from '$app/navigation';
+	import { goto, invalidate, afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { theme } from '$lib/theme.svelte';
 	import { h2h } from '$lib/h2h.svelte';
+	import { analytics, initAnalytics } from '$lib/analytics';
 	import H2HDrawer from '$lib/components/player/H2HDrawer.svelte';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { HouseIcon, TrophyIcon, MagnifyingGlassIcon, UserCircleIcon, SignInIcon } from 'phosphor-svelte';
@@ -38,6 +39,14 @@
 
 	onMount(() => {
 		theme.init();
+		initAnalytics();
+
+		if (data.user) {
+			analytics.identify(data.user.id, {
+				is_pro: data.isPro,
+				has_home_player: data.hasHomePlayer
+			});
+		}
 
 		const {
 			data: { subscription }
@@ -45,15 +54,31 @@
 			if (session?.expires_at !== data.session?.expires_at) {
 				invalidate('supabase:auth');
 			}
+			if (event === 'SIGNED_IN' && session?.user) {
+				analytics.identify(session.user.id);
+				// Sole `signed_in` capture point — covers both the in-page password flow and the
+				// Google OAuth redirect flow uniformly, exactly once per real sign-in transition.
+				// `signUp` also fires this same event when email confirmation is disabled; that's
+				// fine, since our funnel step 2 is "did the prompt lead to an authenticated
+				// session" — login-form.svelte fires a separate signed_up for the new-account signal.
+				analytics.signedIn(session.user.app_metadata?.provider === 'google' ? 'google' : 'password');
+			} else if (event === 'SIGNED_OUT') {
+				analytics.reset();
+			}
 		});
 
 		return () => subscription.unsubscribe();
+	});
+
+	afterNavigate(() => {
+		analytics.pageview();
 	});
 
 	function handleAccountClick() {
 		if (data.user) {
 			goto('/account');
 		} else {
+			analytics.signupPrompted('navbar');
 			goto(`/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`);
 		}
 	}

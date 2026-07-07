@@ -1,5 +1,6 @@
 import { PUBLIC_API_URL } from '$env/static/public';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { analytics } from '$lib/analytics';
 
 /**
  * Sets the signed-in user's home player from the browser.
@@ -24,4 +25,6 @@ export async function setHomePlayer(supabase: SupabaseClient, playerId: string):
 	if (!res.ok) {
 		throw new Error(`Failed to set home player: ${res.status}`);
 	}
+
+	analytics.homePlayerSet(playerId);
 }

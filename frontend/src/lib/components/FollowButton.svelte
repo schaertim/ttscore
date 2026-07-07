@@ -7,6 +7,7 @@
 	import { toast } from 'svelte-sonner';
 	import { _ } from 'svelte-i18n';
 	import { get } from 'svelte/store';
+	import { analytics } from '$lib/analytics';
 
 	interface Props {
 		following: boolean;
@@ -28,6 +29,7 @@
 	}: Props = $props();
 
 	function redirectToSignIn() {
+		analytics.signupPrompted('follow_button');
 		goto(`/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`);
 	}
 
@@ -41,6 +43,7 @@
 				following = false;
 				followId = null;
 				notify = false;
+				analytics.unfollowed(targetType, targetId);
 			} else {
 				await update();
 			}
@@ -55,11 +58,18 @@
 				following = true;
 				followId = result.data.followId as unknown as string;
 				notify = false;
+				analytics.followed(targetType, targetId);
 			} else {
 				if (result.type === 'failure' && result.data?.reason === 'follow_limit') {
 					toast.error(get(_)('pro.follow_limit_title'), {
 						description: get(_)('pro.follow_limit_desc'),
-						action: { label: get(_)('pro.unlock'), onClick: () => goto('/pro') }
+						action: {
+							label: get(_)('pro.unlock'),
+							onClick: () => {
+								analytics.proPrompted('follow_limit');
+								goto('/pro');
+							}
+						}
 					});
 				}
 				await update();
