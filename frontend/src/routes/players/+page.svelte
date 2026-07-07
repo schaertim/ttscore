@@ -118,7 +118,7 @@
 	{#if showRecents}
 		<section class="space-y-3">
 			<SectionLabel label={$_('search.recently_viewed')} icon={ClockIcon} />
-			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
+			<div class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
 				{#each filteredRecents as player (player.id)}
 					<RecentPlayerCard
 						id={player.id}
@@ -136,7 +136,7 @@
 	{#if showFavorites}
 		<section class="space-y-3">
 			<SectionLabel label={$_('search.favourites')} icon={StarIcon} />
-			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
+			<div class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
 				{#each favoritePlayers as player (player.id)}
 					<FollowPlayerCard
 						id={player.id}

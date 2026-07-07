@@ -22,7 +22,7 @@
 		: formatted);
 </script>
 
-<div class="relative w-32 shrink-0">
+<div class="relative w-32 shrink-0 snap-start">
 	<a
 		href="/players/{id}"
 		class="flex w-full flex-col items-center gap-2 rounded-2xl border border-border bg-card

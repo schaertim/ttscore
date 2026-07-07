@@ -17,6 +17,15 @@ export const theme = {
 	}
 };
 
+// Keep the Android status bar (theme-color) in sync with --background, matching
+// the user's actual theme (including their manual override), not just the OS's
+// prefers-color-scheme.
+const LIGHT_BACKGROUND = '#ffffff';
+const DARK_BACKGROUND = '#09090b';
+
 function apply() {
 	document.documentElement.classList.toggle('dark', dark);
+	document
+		.querySelector('meta[name="theme-color"]')
+		?.setAttribute('content', dark ? DARK_BACKGROUND : LIGHT_BACKGROUND);
 }

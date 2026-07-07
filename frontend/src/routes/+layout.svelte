@@ -59,7 +59,9 @@
 	}
 </script>
 
-<main class="mx-auto max-w-2xl px-4 pt-4 pb-24">
+<main
+	class="mx-auto max-w-2xl px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))]"
+>
 	{@render children()}
 </main>
 
@@ -74,7 +76,7 @@
 {/if}
 
 <nav
-	class="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card"
+	class="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]"
 	style="backdrop-filter: blur(24px);"
 >
 	<div class="mx-auto flex h-16 max-w-2xl items-center justify-center gap-2 px-4">

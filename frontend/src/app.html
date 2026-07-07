@@ -2,12 +2,12 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<meta name="text-scale" content="scale" />
-		<meta name=”description” content=”Table tennis match feed — follow players, teams, and leagues” />
-		<meta name="theme-color" content="#4338ca" />
+		<meta name="description" content="Table tennis match feed — follow players, teams, and leagues" />
+		<meta name="theme-color" content="#09090b" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="ttscore" />
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -15,9 +15,13 @@
 			(function () {
 				const stored = localStorage.getItem('theme');
 				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-				if (stored === 'dark' || (!stored && prefersDark)) {
+				const dark = stored === 'dark' || (!stored && prefersDark);
+				if (dark) {
 					document.documentElement.classList.add('dark');
 				}
+				document
+					.querySelector('meta[name="theme-color"]')
+					.setAttribute('content', dark ? '#09090b' : '#ffffff');
 			})();
 		</script>
 		%sveltekit.head%
