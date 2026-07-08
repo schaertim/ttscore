@@ -1,7 +1,7 @@
 ﻿package com.ttscore.scraper.clicktt
 
 import io.ktor.client.*
-import io.ktor.client.engine.cio.*
+import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
@@ -14,7 +14,7 @@ class ClickTTClient {
     private val logger = LoggerFactory.getLogger(ClickTTClient::class.java)
 
     private val client =
-        HttpClient(CIO) {
+        HttpClient(OkHttp) {
             install(HttpCookies)
             install(HttpTimeout) {
                 connectTimeoutMillis = 10_000

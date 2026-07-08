@@ -34,7 +34,6 @@ fun Application.module() {
     configureCors()
 
     val currentSeason = environment.config.property("scraper.currentSeason").getString()
-    runBackfill(currentSeason)
 
     if (environment.config.property("jobs.enabled").getString().toBoolean()) {
         scheduleJobs(currentSeason)
@@ -63,17 +62,12 @@ private fun Application.runBackfill(currentSeason: String) {
             // Restore BackfillLedger.runOnce(...) around these before this code ever runs
             // against staging/prod again.
 
-            // ---- TEST RUN — revert before the real full backfill ----
-            // Knob scoped to 2022-present so this finishes quickly; click-tt steps run in full
-            // since they're not year-scoped anyway. Swap BackfillScraper back to .run() (full
-            // 1989 range) when ready for the real thing.
-            logger.info("Backfill — knob history TEST (2022→present)")
-            BackfillScraper.create().runFromYear(2024)
+            logger.info("Backfill — knob history (1989→present)")
+            BackfillScraper.create().run()
             logger.info("Backfill — click-tt player/club id linking")
             ClickTtIdBackfillJob.create().run()
             logger.info("Backfill — click-tt season 2025/2026")
             ClickTTSeasonScraper.create().run("2025/2026")
-            // ---- END TEST RUN ----
 
             // Seed the current season once, immediately, so data is available without waiting
             // for the 03:00 run. Keyed by season, so bumping scraper.currentSeason next year

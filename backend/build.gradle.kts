@@ -29,7 +29,10 @@ dependencies {
     implementation("org.flywaydb:flyway-core:10.10.0")
     implementation("org.flywaydb:flyway-database-postgresql:10.10.0")
     implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
+    // OkHttp, not CIO, for the scraper HTTP clients (KnobClient/ClickTTClient) — CIO's connection
+    // establishment misbehaves under concurrency in a way OkHttp (a mature, battle-tested client)
+    // doesn't. See KnobClient.kt for the failure signature that led to this.
+    implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.jsoup)
     implementation(libs.exposed.kotlin.datetime)
