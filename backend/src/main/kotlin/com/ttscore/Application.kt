@@ -61,14 +61,14 @@ private fun Application.runBackfill(currentSeason: String) {
             // The dump is the artifact — staging/prod import it rather than scraping themselves.
             // Restore BackfillLedger.runOnce(...) around these before this code ever runs
             // against staging/prod again.
-
+/*
             logger.info("Backfill — knob history (1989→present)")
             BackfillScraper.create().run()
             logger.info("Backfill — click-tt player/club id linking")
             ClickTtIdBackfillJob.create().run()
             logger.info("Backfill — click-tt season 2025/2026")
             ClickTTSeasonScraper.create().run("2025/2026")
-
+*/
             // Seed the current season once, immediately, so data is available without waiting
             // for the 03:00 run. Keyed by season, so bumping scraper.currentSeason next year
             // triggers exactly one immediate seed on the first boot after the change.

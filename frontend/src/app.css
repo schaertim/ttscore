@@ -166,6 +166,7 @@
 		/* Native-feel: contain overscroll so pull-to-refresh / swipe-back gestures
 		   don't leak into the browser. */
 		overscroll-behavior-y: contain;
+		scrollbar-gutter: stable;
 	}
 	body {
 		@apply bg-background text-foreground;

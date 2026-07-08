@@ -9,6 +9,7 @@
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { HouseIcon, TrophyIcon, MagnifyingGlassIcon, UserCircleIcon, SignInIcon } from 'phosphor-svelte';
 	import { _ } from 'svelte-i18n';
+	import { classColorVar } from '$lib/utils';
 
 	let { children, data } = $props();
 
@@ -35,6 +36,14 @@
 	}
 
 	const accountActive = $derived(page.url.pathname === '/account');
+
+	// Active nav items are tinted with the set player's class color, falling back to
+	// the default foreground color (white in dark mode) when no player is set.
+	const activeColor = $derived(
+		data.homePlayerClassification
+			? classColorVar(data.homePlayerClassification)
+			: 'var(--color-foreground)'
+	);
 
 	onMount(() => {
 		theme.init();
@@ -76,16 +85,16 @@
 {/if}
 
 <nav
-	class="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]"
-	style="backdrop-filter: blur(24px);"
+	class="fixed inset-x-0 bottom-0 z-50 border-t-1 border-primary/20 bg-card pb-[env(safe-area-inset-bottom)]"
 >
-	<div class="mx-auto flex h-16 max-w-2xl items-center justify-center gap-2 px-4">
+	<div class="mx-auto flex h-16 max-w-2xl items-center justify-center gap-4 px-4">
 		{#each navItems as item}
 			{@const active = isActive(item.href)}
 			<a
 				href={item.href}
 				class="flex w-16 flex-col items-center justify-center gap-1 transition-colors
-				       {active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+				       {active ? '' : 'text-muted-foreground hover:text-foreground'}"
+				style={active ? `color: ${activeColor}` : ''}
 			>
 				<item.icon size="22" weight={active ? 'fill' : 'regular'} />
 				{#if active}
@@ -97,7 +106,8 @@
 		<button
 			onclick={handleAccountClick}
 			class="flex w-16 flex-col items-center justify-center gap-1 transition-colors
-			       {accountActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}"
+			       {accountActive ? '' : 'text-muted-foreground hover:text-foreground'}"
+			style={accountActive ? `color: ${activeColor}` : ''}
 			aria-label={data.user ? $_('nav.account') : $_('nav.sign_in')}
 		>
 			{#if data.user}
