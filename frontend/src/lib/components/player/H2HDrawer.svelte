@@ -183,15 +183,15 @@
 				<!-- Versus header -->
 				<Drawer.Header class="border-b px-5 pt-2 pb-5 text-left">
 					<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-						<div class="min-w-0 text-left">
+						<a href="/players/{data.playerA.id}" class="min-w-0 text-left">
 							<p class="truncate text-xs font-medium tracking-wide text-muted-foreground">
 								{data.playerA.currentClubName ?? ''}
 							</p>
-							<p class="mt-1 truncate text-lg font-semibold">
+							<p class="mt-1 truncate text-lg font-semibold hover:underline">
 								{formatShortName(data.playerA.fullName)}
 							</p>
 							<div class="mt-1"><ClassBadge classification={clsA} /></div>
-						</div>
+						</a>
 
 						<div class="flex flex-col items-center gap-0.5 px-3">
 							<div class="flex items-baseline gap-1.5 leading-none">
@@ -205,15 +205,15 @@
 							</p>
 						</div>
 
-						<div class="min-w-0 text-right">
+						<a href="/players/{data.playerB.id}" class="min-w-0 text-right">
 							<p class="truncate text-xs font-medium tracking-wide text-muted-foreground">
 								{data.playerB.currentClubName ?? ''}
 							</p>
-							<p class="mt-1 truncate text-lg font-semibold">
+							<p class="mt-1 truncate text-lg font-semibold hover:underline">
 								{formatShortName(data.playerB.fullName)}
 							</p>
 							<div class="mt-1 flex justify-end"><ClassBadge classification={clsB} /></div>
-						</div>
+						</a>
 					</div>
 				</Drawer.Header>
 

@@ -124,47 +124,6 @@
 		{/if}
 	</section>
 
-	<section class="space-y-3">
-		<SectionLabel label={$_("account.pro_section")} icon={SparkleIcon} />
-		{#if data.profile.isPro}
-			<div class="space-y-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-				<div class="flex items-center justify-between gap-3">
-					<div class="min-w-0">
-						<p class="flex items-center gap-1.5 text-sm font-semibold">
-							<SparkleIcon size="16" weight="fill" class="text-primary" />
-							{$_("account.pro_active")}
-						</p>
-						{#if proRenewDate}
-							<p class="text-xs text-muted-foreground">{$_("account.pro_renews", { values: { date: proRenewDate } })}</p>
-						{/if}
-					</div>
-				</div>
-				<form method="POST" action="?/billingPortal">
-					<button
-						type="submit"
-						class="w-full rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold transition-colors hover:bg-accent"
-					>
-						{$_("account.manage_billing")}
-					</button>
-				</form>
-			</div>
-		{:else}
-			<a
-				href="/pro"
-				class="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 transition-colors hover:bg-accent"
-			>
-				<div class="flex min-w-0 items-center gap-3">
-					<SparkleIcon size="20" weight="fill" class="shrink-0 text-primary" />
-					<div class="min-w-0">
-						<p class="text-sm font-semibold">{$_("account.pro_upgrade")}</p>
-						<p class="truncate text-xs text-muted-foreground">{$_("account.pro_upgrade_desc")}</p>
-					</div>
-				</div>
-				<CaretRightIcon size="18" class="shrink-0 text-muted-foreground" />
-			</a>
-		{/if}
-	</section>
-
 	{#if followGroups.length > 0}
 		<section class="space-y-3">
 			<SectionLabel label={$_("account.favorites")} icon={StarIcon} />
@@ -239,6 +198,47 @@
 			</button>
 		</section>
 	{/if}
+
+	<section class="space-y-3">
+		<SectionLabel label={$_("account.pro_section")} icon={SparkleIcon} />
+		{#if data.profile.isPro}
+			<div class="space-y-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+				<div class="flex items-center justify-between gap-3">
+					<div class="min-w-0">
+						<p class="flex items-center gap-1.5 text-sm font-semibold">
+							<SparkleIcon size="16" weight="fill" class="text-primary" />
+							{$_("account.pro_active")}
+						</p>
+						{#if proRenewDate}
+							<p class="text-xs text-muted-foreground">{$_("account.pro_renews", { values: { date: proRenewDate } })}</p>
+						{/if}
+					</div>
+				</div>
+				<form method="POST" action="?/billingPortal">
+					<button
+						type="submit"
+						class="w-full rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold transition-colors hover:bg-accent"
+					>
+						{$_("account.manage_billing")}
+					</button>
+				</form>
+			</div>
+		{:else}
+			<a
+				href="/pro"
+				class="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 transition-colors hover:bg-accent"
+			>
+				<div class="flex min-w-0 items-center gap-3">
+					<SparkleIcon size="20" weight="fill" class="shrink-0 text-primary" />
+					<div class="min-w-0">
+						<p class="text-sm font-semibold">{$_("account.pro_upgrade")}</p>
+						<p class="truncate text-xs text-muted-foreground">{$_("account.pro_upgrade_desc")}</p>
+					</div>
+				</div>
+				<CaretRightIcon size="18" class="shrink-0 text-muted-foreground" />
+			</a>
+		{/if}
+	</section>
 
 	<section class="space-y-3">
 		<SectionLabel label={$_("account.appearance")} icon={PaintBrushHouseholdIcon} />

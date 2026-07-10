@@ -9,6 +9,7 @@
 	import StatCard from '$lib/components/StatCard.svelte';
 	import FollowButton from '$lib/components/FollowButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
+	import { CaretRightIcon } from 'phosphor-svelte';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
 	import { _, locale } from 'svelte-i18n';
@@ -40,6 +41,9 @@
 	});
 
 	const sorted = $derived([...data.standings].sort((a, b) => a.position - b.position));
+
+	// Standings position per team, for annotating scheduled fixtures.
+	const posByTeam = $derived(new Map(data.standings.map((s) => [s.teamId, s.position])));
 
 	const completedMatches = $derived(
 		data.matches
@@ -99,7 +103,14 @@
 		<div class="flex items-center justify-between">
 			<BackButton class="" />
 			<div class="flex items-center">
-				<FollowButton bind:following bind:followId bind:notify targetType="division_group" targetId={data.group.id} authenticated={!!data.user} />
+				<FollowButton
+					bind:following
+					bind:followId
+					bind:notify
+					targetType="division_group"
+					targetId={data.group.id}
+					authenticated={!!data.user}
+				/>
 				<NotifyButton {following} {followId} bind:notify authenticated={!!data.user} />
 			</div>
 		</div>
@@ -108,121 +119,135 @@
 			<p class="text-sm text-muted-foreground">
 				{data.group.season}
 				{#if data.group.totalRounds > 0}
-					· <span class="font-semibold">{$_('leagues.round', { values: { played: data.group.roundsPlayed, total: data.group.totalRounds } })}</span>
+					· <span class="font-semibold"
+						>{$_('leagues.round', {
+							values: { played: data.group.roundsPlayed, total: data.group.totalRounds }
+						})}</span
+					>
 				{/if}
 			</p>
 		</div>
 	</header>
 
-<Tabs.Root value={activeTab} onValueChange={setTab}>
-	<Tabs.List class="w-full">
-		<Tabs.Trigger value="standings" class="flex-1">{$_("group.standings")}</Tabs.Trigger>
-		<Tabs.Trigger value="results" class="flex-1">{$_("group.results")}</Tabs.Trigger>
-		<Tabs.Trigger value="schedule" class="flex-1">{$_("group.schedule")}</Tabs.Trigger>
-	</Tabs.List>
+	<Tabs.Root value={activeTab} onValueChange={setTab}>
+		<Tabs.List class="w-full">
+			<Tabs.Trigger value="standings" class="flex-1">{$_('group.standings')}</Tabs.Trigger>
+			<Tabs.Trigger value="results" class="flex-1">{$_('group.results')}</Tabs.Trigger>
+			<Tabs.Trigger value="schedule" class="flex-1">{$_('group.schedule')}</Tabs.Trigger>
+		</Tabs.List>
 
-	<Tabs.Content value="standings" class="mt-4 space-y-3">
-		<div class="overflow-hidden rounded-xl border border-border">
-			<Table.Root>
-				<Table.Header>
-					<Table.Row class="border-border hover:bg-transparent">
-						<Table.Head class="w-8 pl-4 text-xs">{$_("group.pos")}</Table.Head>
-						<Table.Head class="text-xs">{$_("group.team")}</Table.Head>
-						<Table.Head class="w-10 text-center text-xs">{$_("group.played")}</Table.Head>
-						<Table.Head class="w-10 text-center text-xs">{$_("group.points")}</Table.Head>
-						<Table.Head class="w-12 pr-4 text-right text-xs">{$_("group.diff")}</Table.Head>
-					</Table.Row>
-				</Table.Header>
-				<Table.Body>
-					{#each sorted as row (row.teamId)}
-						{@const z = zone(row.position)}
-						<Table.Row class="border-border">
-							<Table.Cell
-								class="border-l-2 pl-4 font-mono font-semibold tabular-nums
-								{z === 'promotion'
-									? 'border-l-win'
-									: z === 'relegation'
-										? 'border-l-loss'
-										: 'border-l-transparent'}"
-							>
-								{row.position}
-							</Table.Cell>
-
-							<Table.Cell class="text-sm font-semibold">
-								<a href="/teams/{row.teamId}" class="hover:underline">
-									{row.team}
-								</a>
-							</Table.Cell>
-
-							<Table.Cell class="text-center font-mono tabular-nums">
-								{row.played}
-							</Table.Cell>
-
-							<Table.Cell class="text-center font-mono font-semibold tabular-nums">
-								{row.points}
-							</Table.Cell>
-
-							<Table.Cell
-								class="pr-4 text-right font-mono font-semibold tabular-nums
-                       {row.gamesWon - row.gamesLost > 0
-									? 'text-win'
-									: row.gamesWon - row.gamesLost < 0
-										? 'text-loss'
-										: 'text-muted-foreground'}"
-							>
-								{diff(row.gamesWon, row.gamesLost)}
-							</Table.Cell>
+		<Tabs.Content value="standings" class="mt-4 space-y-3">
+			<div class="overflow-hidden rounded-xl border border-border">
+				<Table.Root>
+					<Table.Header>
+						<Table.Row class="border-border hover:bg-transparent">
+							<Table.Head class="w-8 pl-4 text-xs">{$_('group.pos')}</Table.Head>
+							<Table.Head class="text-xs">{$_('group.team')}</Table.Head>
+							<Table.Head class="w-10 text-center text-xs">{$_('group.played')}</Table.Head>
+							<Table.Head class="w-10 text-center text-xs">{$_('group.points')}</Table.Head>
+							<Table.Head class="w-12 pr-4 text-right text-xs">{$_('group.diff')}</Table.Head>
 						</Table.Row>
-					{/each}
-				</Table.Body>
-			</Table.Root>
-		</div>
+					</Table.Header>
+					<Table.Body>
+						{#each sorted as row (row.teamId)}
+							{@const z = zone(row.position)}
+							<Table.Row class="border-border">
+								<Table.Cell
+									class="border-l-2 pl-4 font-mono font-semibold tabular-nums
+								{z === 'promotion'
+										? 'border-l-win'
+										: z === 'relegation'
+											? 'border-l-loss'
+											: 'border-l-transparent'}"
+								>
+									{row.position}
+								</Table.Cell>
 
-		{#if completedMatches.length > 0}
-			<div class="grid grid-cols-2 gap-3 pt-1">
-				<StatCard label={$_("group.home_advantage")} value={homeWinPct} />
-				<StatCard label={$_("group.draw_rate")} value={drawPct} />
+								<Table.Cell class="text-sm font-semibold">
+									<a href="/teams/{row.teamId}" class="hover:underline">
+										{row.team}
+									</a>
+								</Table.Cell>
+
+								<Table.Cell class="text-center font-mono tabular-nums">
+									{row.played}
+								</Table.Cell>
+
+								<Table.Cell class="text-center font-mono font-semibold tabular-nums">
+									{row.points}
+								</Table.Cell>
+
+								<Table.Cell
+									class="pr-4 text-right font-mono font-semibold tabular-nums
+                       {row.gamesWon - row.gamesLost > 0
+										? 'text-win'
+										: row.gamesWon - row.gamesLost < 0
+											? 'text-loss'
+											: 'text-muted-foreground'}"
+								>
+									{diff(row.gamesWon, row.gamesLost)}
+								</Table.Cell>
+							</Table.Row>
+						{/each}
+					</Table.Body>
+				</Table.Root>
 			</div>
-		{/if}
-	</Tabs.Content>
 
-	<Tabs.Content value="results" class="mt-4 space-y-3">
-		{#if completedMatches.length === 0}
-			<p class="py-12 text-center text-sm text-muted-foreground">{$_("group.no_results")}</p>
-		{:else}
-			{#each completedMatches as match (match.id)}
-				<MatchCard {match} />
-			{/each}
-		{/if}
-	</Tabs.Content>
-
-	<Tabs.Content value="schedule" class="mt-4 space-y-3">
-		{#if scheduledMatches.length === 0}
-			<p class="py-12 text-center text-sm text-muted-foreground">{$_("group.no_schedule")}</p>
-		{:else}
-			{#each scheduledMatches as match (match.id)}
-				<div
-					class="flex items-center justify-between rounded-xl border border-border
-                 bg-card px-4 py-3"
-				>
-					<div class="flex min-w-0 flex-col gap-1">
-						<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-							{$_('group.round_label', { values: { round: match.round } })} · {formatDate(match.playedAt)}
-						</span>
-						<div class="flex min-w-0 items-center gap-2 text-sm">
-							<span class="truncate font-semibold">{match.homeTeam}</span>
-							<span class="shrink-0 text-muted-foreground">vs</span>
-							<span class="truncate font-semibold">{match.awayTeam}</span>
-						</div>
-					</div>
-					<span
-						class="ml-3 shrink-0 rounded-full border border-border px-2 py-1 text-xs text-muted-foreground"
-					>
-						{formatDate(match.playedAt)}
-					</span>
+			{#if completedMatches.length > 0}
+				<div class="grid grid-cols-2 gap-3 pt-1">
+					<StatCard label={$_('group.home_advantage')} value={homeWinPct} />
+					<StatCard label={$_('group.draw_rate')} value={drawPct} />
 				</div>
-			{/each}
-		{/if}
-	</Tabs.Content>
-</Tabs.Root>
+			{/if}
+		</Tabs.Content>
+
+		<Tabs.Content value="results" class="mt-4 space-y-3">
+			{#if completedMatches.length === 0}
+				<p class="py-12 text-center text-sm text-muted-foreground">{$_('group.no_results')}</p>
+			{:else}
+				{#each completedMatches as match (match.id)}
+					<MatchCard {match} />
+				{/each}
+			{/if}
+		</Tabs.Content>
+
+		<Tabs.Content value="schedule" class="mt-4 space-y-3">
+			{#if scheduledMatches.length === 0}
+				<p class="py-12 text-center text-sm text-muted-foreground">{$_('group.no_schedule')}</p>
+			{:else}
+				{#each scheduledMatches as match (match.id)}
+					<a
+						href="/matches/{match.id}"
+						class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
+					>
+						<div class="flex min-w-0 flex-1 flex-col gap-1">
+							<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
+								{$_('group.round_label', { values: { round: match.round } })} · {formatDate(
+									match.playedAt
+								)}
+							</span>
+							<div class="flex min-w-0 items-center gap-2 text-sm">
+								<span class="min-w-0 truncate font-semibold">
+									{#if posByTeam.get(match.homeTeamId)}<span
+											class="font-mono text-2xs text-muted-foreground tabular-nums"
+											>#{posByTeam.get(match.homeTeamId)}</span
+										>
+									{/if}{match.homeTeam}
+								</span>
+								<span class="shrink-0 text-muted-foreground">vs</span>
+								<span class="min-w-0 truncate font-semibold">
+									{#if posByTeam.get(match.awayTeamId)}<span
+											class="font-mono text-2xs text-muted-foreground tabular-nums"
+											>#{posByTeam.get(match.awayTeamId)}</span
+										>
+									{/if}{match.awayTeam}
+								</span>
+							</div>
+						</div>
+						<CaretRightIcon size="16" class="shrink-0 text-muted-foreground" />
+					</a>
+				{/each}
+			{/if}
+		</Tabs.Content>
+	</Tabs.Root>
 </div>

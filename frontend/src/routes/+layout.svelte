@@ -89,9 +89,7 @@
 			<a
 				href={item.href}
 				aria-label={item.label}
-				class="flex w-16 flex-col items-center justify-center gap-1 {active
-					? ''
-					: 'text-muted-foreground'}"
+				class="flex w-16 flex-col items-center justify-center gap-1 text-muted-foreground [@media(hover:hover)]:hover:text-foreground"
 				style={active ? `color: ${activeColor}` : ''}
 			>
 				<item.icon size="22" weight={active ? 'fill' : 'regular'} />

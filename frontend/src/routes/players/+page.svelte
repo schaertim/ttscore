@@ -118,7 +118,7 @@
 			<Carousel.Root opts={{ align: 'start' }} class="w-full">
 				<Carousel.Content class="-ms-3">
 					{#each filteredRecents as player (player.id)}
-						<Carousel.Item class="basis-1/3 ps-3">
+						<Carousel.Item class="basis-1/3 ps-3 md:basis-1/5">
 							<RecentPlayerCard
 								id={player.id}
 								fullName={player.fullName}
@@ -138,7 +138,7 @@
 	{#if showFavorites}
 		<section class="space-y-3">
 			<SectionLabel label={$_('search.favourites')} icon={StarIcon} />
-			<div class="grid grid-cols-3 gap-3">
+			<div class="grid grid-cols-3 gap-3 md:grid-cols-5">
 				{#each favoritePlayers as player (player.id)}
 					<FollowPlayerCard
 						id={player.id}

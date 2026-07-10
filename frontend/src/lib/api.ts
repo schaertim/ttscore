@@ -216,6 +216,7 @@ export type PlayerSeasonStats = {
 	monthly: MonthlyForm[];
 	longestWinStreak: number;
 	currentWinStreak: number;
+	bestWinOpponentId: string | null;
 	bestWinOpponentName: string | null;
 	bestWinOpponentClass: string | null;
 	competitions: CompetitionStat[];
@@ -247,6 +248,89 @@ export type HeadToHead = {
 	statsB: PlayerSeasonStats;
 	record: H2HRecord;
 	games: H2HGame[];
+};
+
+// ── Match preview (Pro) ──
+
+export type PreviewPlayer = {
+	id: string;
+	fullName: string;
+	classification: string | null;
+	elo: number | null;
+	wins: number;
+	losses: number;
+};
+
+export type PreviewTeam = {
+	teamId: string;
+	teamName: string;
+	position: number;
+	played: number;
+	points: number;
+	/** Games won minus games lost across the season. */
+	gamesDiff: number;
+	/** "W-D-L" match record. */
+	record: string;
+	/** Last five decided matches, newest first: "W" | "L" | "D". */
+	form: string[];
+	/** Full roster, strongest first. */
+	roster: PreviewPlayer[];
+};
+
+export type PreviewPriorMeeting = {
+	matchId: string;
+	homeTeam: string;
+	awayTeam: string;
+	homeScore: number | null;
+	awayScore: number | null;
+	playedAt: string | null;
+	round: string | null;
+};
+
+export type PreviewMatchup = {
+	homePlayer: PreviewPlayer;
+	awayPlayer: PreviewPlayer;
+	/** All-time direct record, oriented so homeWins belongs to homePlayer. */
+	homeWins: number;
+	awayWins: number;
+	meetings: number;
+	lastPlayedAt: string | null;
+	/** ELO-implied probability that homePlayer wins; null when either ELO is unknown. */
+	homeWinProbability: number | null;
+	/** Every past duel result from homePlayer's perspective, newest first: "W" | "L". */
+	results: string[];
+};
+
+/** Shared fixture-header shape rendered by PreviewHeader (team + player previews). */
+export type PreviewFixture = {
+	matchId: string;
+	groupId: string;
+	groupName: string;
+	round: string | null;
+	playedAt: string | null;
+	status: string;
+	home: PreviewTeam;
+	away: PreviewTeam;
+};
+
+export type MatchPreview = PreviewFixture & {
+	previousMeeting: PreviewPriorMeeting | null;
+	keyMatchups: PreviewMatchup[];
+};
+
+/** Player-centric preview of one fixture; duels always have the focus player as homePlayer. */
+export type PlayerMatchPreview = PreviewFixture & {
+	/** True when the focus player's team is the home side. */
+	isHome: boolean;
+	player: PreviewPlayer;
+	/** One duel per opponent-roster player, strongest opponent first. */
+	duels: PreviewMatchup[];
+};
+
+export type PlayerUpcoming = {
+	teamId: string;
+	teamName: string;
+	matches: Match[];
 };
 
 // ── Career tab (Pro) ──
@@ -281,6 +365,7 @@ export type CareerMilestones = {
 	peakClass: string | null;
 	peakClassSeason: string | null;
 	longestWinStreak: number;
+	bestWinOpponentId: string | null;
 	bestWinOpponentName: string | null;
 	bestWinOpponentClass: string | null;
 	bestSeasonName: string | null;
@@ -384,7 +469,10 @@ export const api = {
 	},
 
 	matches: {
-		detail: (matchId: string) => get<MatchDetail>(`/matches/${matchId}`)
+		detail: (matchId: string) => get<MatchDetail>(`/matches/${matchId}`),
+		/** Pro-gated neutral preview for a (typically scheduled) fixture. */
+		preview: (matchId: string, accessToken: string) =>
+			getAuthed<MatchPreview>(`/matches/${matchId}/preview`, accessToken)
 	},
 
 	stats: {
@@ -404,6 +492,10 @@ export const api = {
 		elo: (playerId: string) => get<EloEntry[]>(`/players/${playerId}/elo`),
 		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
 		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`),
+		upcoming: (playerId: string) => get<PlayerUpcoming>(`/players/${playerId}/upcoming`),
+		/** Pro-gated player-centric preview of one of the player's team fixtures. */
+		matchPreview: (playerId: string, matchId: string, accessToken: string) =>
+			getAuthed<PlayerMatchPreview>(`/players/${playerId}/preview/${matchId}`, accessToken),
 		seasonStats: (playerId: string) => get<PlayerSeasonStats>(`/players/${playerId}/stats`),
 		headToHead: (playerId: string, opponentId: string, accessToken: string) =>
 			getAuthed<HeadToHead>(`/players/${playerId}/h2h/${opponentId}`, accessToken),

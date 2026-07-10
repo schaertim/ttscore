@@ -57,15 +57,11 @@
 		return stops;
 	}
 
-	// A dashed reference line per class level in view, labelled on the right — mirrors the
-	// ELO chart's threshold annotations.
+	// Dashed reference lines, labelled on the right — mirrors the ELO chart's threshold
+	// annotations. Only classes the player actually held are shown, to avoid clutter.
 	const classLines = $derived.by(() => {
-		const out: { rank: number; label: string }[] = [];
-		for (let r = Math.floor(yMin) + 1; r < yMax; r++) {
-			const label = classLabelForRank(r);
-			if (label) out.push({ rank: r, label });
-		}
-		return out;
+		const uniqueRanks = [...new Set(ranks)].sort((a, b) => a - b);
+		return uniqueRanks.map((rank) => ({ rank, label: classLabelForRank(rank) }));
 	});
 
 	const chartConfig = $derived({

@@ -73,91 +73,89 @@
 	const displayElo = $derived(player.liveElo ?? player.currentElo);
 </script>
 
-<a href="/players/{player.id}" class="block">
-	<div
-		class="relative overflow-hidden rounded-2xl border border-border/50 bg-card"
-		style="background-image: radial-gradient(circle at calc(100% - 3.25rem) 3.25rem, color-mix(in srgb, {classificationVar} 32%, transparent) 0%, color-mix(in srgb, {classificationVar} 7%, transparent) 30%, transparent 56%);"
-	>
-		<div class="p-6 pb-0">
-			<!-- Top row: name/club left, class badge right -->
-			<div class="flex items-start justify-between gap-4">
-				<div class="min-w-0">
-					<h1 class="text-3xl leading-tight font-black tracking-tight">
-						{formatName(player.fullName)}
-					</h1>
-					{#if player.currentClubName}
-						<p class="text-sm text-muted-foreground">{player.currentClubName}</p>
-					{/if}
-				</div>
-
-				{#if currentClass}
-					<div
-						class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-black"
-						style="background: {classificationVar}; color: var(--card);"
-					>
-						{currentClass}
-					</div>
+<div
+	class="relative overflow-hidden rounded-2xl border border-border/50 bg-card"
+	style="background-image: radial-gradient(circle at calc(100% - 3.25rem) 3.25rem, color-mix(in srgb, {classificationVar} 32%, transparent) 0%, color-mix(in srgb, {classificationVar} 7%, transparent) 30%, transparent 56%);"
+>
+	<div class="p-6 pb-0">
+		<!-- Top row: name/club left, class badge right -->
+		<div class="flex items-start justify-between gap-4">
+			<div class="min-w-0">
+				<h1 class="text-3xl leading-tight font-black tracking-tight">
+					{formatName(player.fullName)}
+				</h1>
+				{#if player.currentClubName}
+					<p class="text-sm text-muted-foreground">{player.currentClubName}</p>
 				{/if}
 			</div>
 
-			<!-- Centered ELO -->
-			{#if displayElo}
-				<div class="py-6 text-center">
-					<p class="mb-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-						{$_('home.elo_rating')}
-					</p>
-					<p class="font-mono text-6xl font-black tabular-nums leading-none">{displayElo}</p>
-					{#await recentMatches then matches}
-						{@const delta = monthDelta(matches)}
-						{@const rounded = Math.round(delta)}
-						{#if rounded !== 0}
-							<p
-								class="mt-2 inline-flex items-center gap-1 text-sm font-semibold {delta > 0
-									? 'text-emerald-500'
-									: 'text-red-500'}"
-							>
-								{#if delta > 0}
-									<ArrowUpIcon size="13" weight="bold" />+{rounded} {$_('home.this_month')}
-								{:else}
-									<ArrowDownIcon size="13" weight="bold" />{rounded} {$_('home.this_month')}
-								{/if}
-							</p>
-						{/if}
-					{/await}
+			{#if currentClass}
+				<div
+					class="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-black"
+					style="background: {classificationVar}; color: var(--card);"
+				>
+					{currentClass}
 				</div>
 			{/if}
 		</div>
 
-		<!-- Edge-to-edge sparkline with dot -->
+		<!-- Centered ELO -->
 		{#if displayElo}
-			{#await eloHistory then history}
-				{@const pts = buildSparklineData(history)}
-				{#if pts.length >= 2}
-					<div bind:clientWidth={chartWidth} class="w-full" aria-hidden="true">
-						{#if chartWidth > 0}
-							{@const sparkline = buildSparklineSvg(pts, chartWidth)}
-							{#if sparkline}
-								<svg width={chartWidth} height={CHART_HEIGHT} class="block">
-									<path
-										d={sparkline.d}
-										stroke={classificationVar}
-										stroke-width="2.5"
-										fill="none"
-										stroke-linecap="round"
-									/>
-									<!-- solid dot -->
-									<circle
-										cx={sparkline.dotX}
-										cy={sparkline.dotY}
-										r="6"
-										fill={classificationVar}
-									/>
-								</svg>
+			<div class="py-6 text-center">
+				<p class="mb-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+					{$_('home.elo_rating')}
+				</p>
+				<p class="font-mono text-6xl font-black tabular-nums leading-none">{displayElo}</p>
+				{#await recentMatches then matches}
+					{@const delta = monthDelta(matches)}
+					{@const rounded = Math.round(delta)}
+					{#if rounded !== 0}
+						<p
+							class="mt-2 inline-flex items-center gap-1 text-sm font-semibold {delta > 0
+								? 'text-emerald-500'
+								: 'text-red-500'}"
+						>
+							{#if delta > 0}
+								<ArrowUpIcon size="13" weight="bold" />+{rounded} {$_('home.this_month')}
+							{:else}
+								<ArrowDownIcon size="13" weight="bold" />{rounded} {$_('home.this_month')}
 							{/if}
-						{/if}
-					</div>
-				{/if}
-			{/await}
+						</p>
+					{/if}
+				{/await}
+			</div>
 		{/if}
 	</div>
-</a>
+
+	<!-- Edge-to-edge sparkline with dot -->
+	{#if displayElo}
+		{#await eloHistory then history}
+			{@const pts = buildSparklineData(history)}
+			{#if pts.length >= 2}
+				<div bind:clientWidth={chartWidth} class="w-full" aria-hidden="true">
+					{#if chartWidth > 0}
+						{@const sparkline = buildSparklineSvg(pts, chartWidth)}
+						{#if sparkline}
+							<svg width={chartWidth} height={CHART_HEIGHT} class="block">
+								<path
+									d={sparkline.d}
+									stroke={classificationVar}
+									stroke-width="2.5"
+									fill="none"
+									stroke-linecap="round"
+								/>
+								<!-- solid dot -->
+								<circle
+									cx={sparkline.dotX}
+									cy={sparkline.dotY}
+									r="6"
+									fill={classificationVar}
+								/>
+							</svg>
+						{/if}
+					{/if}
+				</div>
+			{/if}
+		{/await}
+	{/if}
+</div>

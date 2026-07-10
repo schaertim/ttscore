@@ -8,9 +8,11 @@
 		match: Match;
 		/** When set, shows only the opponent + H/A icon instead of both team names */
 		perspectiveTeam?: string;
+		/** Overrides the link target (defaults to the match detail page). */
+		href?: string;
 	}
 
-	let { match, perspectiveTeam }: Props = $props();
+	let { match, perspectiveTeam, href }: Props = $props();
 
 	type Result = 'win' | 'loss' | 'completed' | null;
 
@@ -51,7 +53,7 @@
 </script>
 
 <a
-	href="/matches/{match.id}"
+	href={href ?? `/matches/${match.id}`}
 	class="group flex items-center justify-between rounded-xl border
 	       border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 >

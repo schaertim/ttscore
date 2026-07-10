@@ -12,7 +12,8 @@
 		ThumbsDownIcon,
 		HandshakeIcon,
 		MedalIcon,
-		PingPongIcon
+		PingPongIcon,
+		ClockIcon
 	} from 'phosphor-svelte';
 
 	interface Props {
@@ -53,6 +54,9 @@
 			const text = kc.find((c) => c.startsWith('text-')) ?? 'text-muted-foreground';
 			return { icon: MedalIcon, bg, text };
 		}
+		if (i.kind === 'upcoming_match') {
+			return { icon: ClockIcon, bg: 'bg-primary/15', text: 'text-primary' };
+		}
 		return { icon: PingPongIcon, bg: 'bg-muted', text: 'text-muted-foreground' };
 	}
 
@@ -72,25 +76,46 @@
 					? `${$_('feed.promoted')} ${i.from} → ${i.to}`
 					: `${$_('feed.relegated')} ${i.from} → ${i.to}`;
 			case 'team_match': {
-				const prefix = i.result === 'WIN' ? $_('feed.won') : i.result === 'LOSS' ? $_('feed.lost') : $_('feed.drew');
+				const prefix =
+					i.result === 'WIN'
+						? $_('feed.won')
+						: i.result === 'LOSS'
+							? $_('feed.lost')
+							: $_('feed.drew');
 				return `${prefix} ${i.score} ${$_('feed.vs')} ${i.opponent}`;
 			}
 			case 'group_match':
 				return `${i.homeTeam} ${i.score} ${i.awayTeam}`;
+			case 'upcoming_match':
+				return `${$_('feed.upcoming')} · ${i.homeTeam} ${$_('feed.vs')} ${i.awayTeam}`;
 		}
 	}
 
-	function getTimestamp(i: FeedItem): string | null {
+	// Relative time label. Past events read "2 days ago"; an upcoming fixture counts down ("in 5h").
+	function displayTime(i: FeedItem): string | null {
 		if (i.kind === 'class_change') return null;
-		return i.playedAt ?? null;
+		if (i.kind === 'upcoming_match') {
+			if (!i.playedAt) return null;
+			const diffMs = new Date(i.playedAt).getTime() - Date.now();
+			if (diffMs <= 0) return null;
+			const hours = Math.round(diffMs / 3_600_000);
+			const days = Math.round(diffMs / 86_400_000);
+			const lang = typeof navigator !== 'undefined' ? navigator.language : 'de';
+			const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
+			return hours < 24 ? rtf.format(hours, 'hour') : rtf.format(days, 'day');
+		}
+		return i.playedAt ? timeAgo(i.playedAt) : null;
 	}
 
 	const badge = $derived(getBadge(item));
 	const description = $derived(getDescription(item));
-	const timestamp = $derived(getTimestamp(item));
+	const timestamp = $derived(displayTime(item));
 </script>
 
-<a href={entityHref} class="group flex items-center bg-card gap-3 rounded-xl border border-border  px-4 py-3 hover:bg-accent">
+<a
+	href={entityHref}
+	class="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-accent"
+>
 	<div class="flex h-9 w-7 shrink-0 items-center justify-center rounded-lg">
 		<EntityIcon size="20" class="text-muted-foreground" />
 	</div>
@@ -100,14 +125,20 @@
 		<div class="flex items-baseline justify-between gap-2">
 			<p class="truncate text-sm font-semibold">{entityName}</p>
 			{#if timestamp}
-				<p class="shrink-0 text-xs text-muted-foreground">{timeAgo(timestamp)}</p>
+				<p class="shrink-0 text-xs text-muted-foreground">{timestamp}</p>
 			{/if}
 		</div>
 		<p class="truncate text-xs text-muted-foreground">{description}</p>
 	</div>
 
 	<!-- Right: event type badge -->
-	<div class={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-sm ring-1 ring-transparent transition-all', badge.bg, badge.bg === 'bg-muted' && 'group-hover:ring-border')}>
+	<div
+		class={cn(
+			'flex h-8 w-8 shrink-0 items-center justify-center rounded-sm ring-1 ring-transparent transition-all',
+			badge.bg,
+			badge.bg === 'bg-muted' && 'group-hover:ring-border'
+		)}
+	>
 		<badge.icon size="16" class={badge.text} weight="bold" />
 	</div>
 </a>

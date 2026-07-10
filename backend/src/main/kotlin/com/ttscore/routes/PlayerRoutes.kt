@@ -2,6 +2,7 @@
 
 import com.ttscore.model.ReasonResponse
 import com.ttscore.scraper.clicktt.ClickTTSyncService
+import com.ttscore.service.MatchService
 import com.ttscore.service.PlayerService
 import com.ttscore.service.SeasonService
 import com.ttscore.util.isPro
@@ -109,6 +110,18 @@ fun Route.playerRoutes() {
             }
         }
 
+        get("/{id}/upcoming") {
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+
+            val upcoming =
+                PlayerService.getUpcomingMatches(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "No team found for player")
+
+            call.respond(HttpStatusCode.OK, upcoming)
+        }
+
         get("/{id}/stats") {
             val id =
                 call.parameters["id"]
@@ -141,6 +154,26 @@ fun Route.playerRoutes() {
                         ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
 
                 call.respond(HttpStatusCode.OK, h2h)
+            }
+
+            // Player-focused match preview is a Pro feature — same pattern as the team preview.
+            get("/{id}/preview/{matchId}") {
+                if (!call.isPro()) {
+                    return@get call.respond(HttpStatusCode.Forbidden, ReasonResponse("pro_required"))
+                }
+
+                val id =
+                    call.parameters["id"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+                val matchId =
+                    call.parameters["matchId"]
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing match id")
+
+                val preview =
+                    MatchService.getPlayerMatchPreview(id, matchId)
+                        ?: return@get call.respond(HttpStatusCode.NotFound, "Preview not available")
+
+                call.respond(HttpStatusCode.OK, preview)
             }
 
             // Career tab is a Pro feature — same optional-auth / 403 pattern as H2H.

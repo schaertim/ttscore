@@ -74,6 +74,7 @@ data class CareerMilestones(
     val peakClass: String?,
     val peakClassSeason: String?,
     val longestWinStreak: Int,
+    val bestWinOpponentId: String?,
     val bestWinOpponentName: String?,
     val bestWinOpponentClass: String?,
     val bestSeasonName: String?,
@@ -170,6 +171,8 @@ data class MatchResponse(
 @Serializable
 data class MatchDetailResponse(
     val id: String,
+    val homeTeamId: String,
+    val awayTeamId: String,
     val homeTeam: String,
     val awayTeam: String,
     val homeScore: Int?,
@@ -324,6 +327,110 @@ data class ClassHistoryEntryResponse(
     val seasonName: String,
 )
 
+// ── Match preview (Pro) — neutral, roster-based look-ahead at a scheduled fixture ──
+
+@Serializable
+data class MatchPreviewResponse(
+    val matchId: String,
+    val groupId: String,
+    val groupName: String,
+    val round: String?,
+    val playedAt: String?,
+    val status: MatchStatus,
+    val home: PreviewTeamResponse,
+    val away: PreviewTeamResponse,
+    /** An already-played meeting between these two teams this season (the "first leg"), if any. */
+    val previousMeeting: PreviewPriorMeetingResponse?,
+    /** Most interesting projected singles duels across the two rosters, best first. */
+    val keyMatchups: List<PreviewMatchupResponse>,
+)
+
+@Serializable
+data class PreviewTeamResponse(
+    val teamId: String,
+    val teamName: String,
+    val position: Int,
+    val played: Int,
+    val points: Int,
+    /** Games-won minus games-lost across the season (the standings "diff"). */
+    val gamesDiff: Int,
+    /** "W-D-L" match record. */
+    val record: String,
+    /** Last five decided matches, newest first: "W" | "L" | "D". */
+    val form: List<String>,
+    /** Full roster, strongest first (by live/official ELO, classification as fallback). */
+    val roster: List<PreviewPlayerResponse>,
+)
+
+@Serializable
+data class PreviewPlayerResponse(
+    val id: String,
+    val fullName: String,
+    val classification: String?,
+    val elo: Int?,
+    val wins: Int,
+    val losses: Int,
+)
+
+@Serializable
+data class PreviewPriorMeetingResponse(
+    val matchId: String,
+    val homeTeam: String,
+    val awayTeam: String,
+    val homeScore: Int?,
+    val awayScore: Int?,
+    val playedAt: String?,
+    val round: String?,
+)
+
+/**
+ * A projected singles duel between a home-roster and an away-roster player. Record fields are the
+ * all-time direct head-to-head (decisive singles only), oriented so [homeWins] belongs to
+ * [homePlayer]. [homeWinProbability] is the ELO-implied edge (null when either ELO is unknown).
+ */
+@Serializable
+data class PreviewMatchupResponse(
+    val homePlayer: PreviewPlayerResponse,
+    val awayPlayer: PreviewPlayerResponse,
+    val homeWins: Int,
+    val awayWins: Int,
+    val meetings: Int,
+    val lastPlayedAt: String?,
+    val homeWinProbability: Double?,
+    /** Every past duel result from [homePlayer]'s perspective, newest first: "W" | "L". */
+    val results: List<String> = emptyList(),
+)
+
+/** Upcoming (scheduled) fixtures for a player's current team. */
+@Serializable
+data class PlayerUpcomingResponse(
+    val teamId: String,
+    val teamName: String,
+    val matches: List<MatchResponse>,
+)
+
+/**
+ * Player-centric look-ahead at one fixture: the same header data as [MatchPreviewResponse]
+ * (both teams' standing/form; rosters left empty) plus a projected duel against every
+ * opponent-roster player ([PreviewMatchupResponse.homePlayer] is always the focus player).
+ */
+@Serializable
+data class PlayerMatchPreviewResponse(
+    val matchId: String,
+    val groupId: String,
+    val groupName: String,
+    val round: String?,
+    val playedAt: String?,
+    val status: MatchStatus,
+    val home: PreviewTeamResponse,
+    val away: PreviewTeamResponse,
+    /** True when the focus player's team is the home side. */
+    val isHome: Boolean,
+    val player: PreviewPlayerResponse,
+    /** One duel per opponent-roster player, strongest opponent first. */
+    val duels: List<PreviewMatchupResponse>,
+)
+
 @Serializable
 data class LeagueContextResponse(
     val teamId: String,
@@ -406,6 +513,7 @@ data class PlayerSeasonStatsResponse(
     val monthly: List<MonthlyFormResponse>,
     val longestWinStreak: Int,
     val currentWinStreak: Int,
+    val bestWinOpponentId: String?,
     val bestWinOpponentName: String?,
     val bestWinOpponentClass: String?,
     val competitions: List<CompetitionStatResponse>,

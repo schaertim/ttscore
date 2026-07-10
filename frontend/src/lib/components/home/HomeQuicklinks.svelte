@@ -2,7 +2,7 @@
 	import type { Player, LeagueContext } from '$lib/api';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import QuicklinkRow from '$lib/components/home/QuicklinkRow.svelte';
-	import { UserIcon, ListBulletsIcon, TrophyIcon, UsersThreeIcon, ClockCounterClockwiseIcon, LinkIcon } from 'phosphor-svelte';
+	import { UserIcon, ListBulletsIcon, TrophyIcon, UsersThreeIcon, PingPongIcon, LinkIcon } from 'phosphor-svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { _ } from 'svelte-i18n';
 
@@ -25,7 +25,7 @@
 	/>
 	<QuicklinkRow
 		href="/players/{player.id}/games"
-		icon={ClockCounterClockwiseIcon}
+		icon={PingPongIcon}
 		label={$_('home.my_games')}
 		sublabel={$_('home.games_sublabel')}
 	/>
@@ -56,9 +56,7 @@
 				href="/teams/{ctx.teamId}"
 				icon={UsersThreeIcon}
 				label={$_('home.my_team')}
-				sublabel={ctx.scheduledMatchCount > 0
-					? $_('home.upcoming', { values: { count: ctx.scheduledMatchCount } }) + ` · ${ctx.teamName}`
-					: ctx.teamName}
+				sublabel={ctx.teamName}
 			/>
 		{/if}
 	{/await}

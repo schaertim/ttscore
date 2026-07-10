@@ -17,7 +17,13 @@
 	{#if stats.bestWinOpponentName}
 		<StatTile label={$_('stats.best_win')}>
 			<p class="flex items-center gap-1.5 text-xl font-semibold">
-				<span class="truncate">{formatName(stats.bestWinOpponentName)}</span>
+				{#if stats.bestWinOpponentId}
+					<a href="/players/{stats.bestWinOpponentId}" class="truncate hover:underline">
+						{formatName(stats.bestWinOpponentName)}
+					</a>
+				{:else}
+					<span class="truncate">{formatName(stats.bestWinOpponentName)}</span>
+				{/if}
 				<ClassBadge classification={stats.bestWinOpponentClass} />
 			</p>
 		</StatTile>

@@ -256,6 +256,7 @@ object PlayerService {
             monthly = emptyList(),
             longestWinStreak = 0,
             currentWinStreak = 0,
+            bestWinOpponentId = null,
             bestWinOpponentName = null,
             bestWinOpponentClass = null,
             competitions = emptyList(),
@@ -381,6 +382,7 @@ object PlayerService {
             var comeFromBehindWins = 0
             var comeFromBehindGames = 0
             var bestRank: Int? = null
+            var bestId: UUID? = null
             var bestName: String? = null
             var bestClass: String? = null
             val decidedResults = mutableListOf<Boolean>()
@@ -407,6 +409,7 @@ object PlayerService {
                     if (oppClass != null) tiers.getOrPut(oppClass) { WinAcc() }.add(won)
                     if (won && oppRank != null && (bestRank == null || oppRank > bestRank!!)) {
                         bestRank = oppRank
+                        bestId = oppId
                         bestName =
                             if (isHome) {
                                 row.getOrNull(awayPlayer[Players.fullName])
@@ -551,6 +554,7 @@ object PlayerService {
                         .map { MonthlyFormResponse(it.key, it.value[0], it.value[1]) },
                 longestWinStreak = longestStreak,
                 currentWinStreak = currentStreak,
+                bestWinOpponentId = bestId?.toString(),
                 bestWinOpponentName = bestName,
                 bestWinOpponentClass = bestClass,
                 competitions =
@@ -808,6 +812,7 @@ object PlayerService {
             var debutSeason: String? = null
             var debutOpponentName: String? = null
             var scalpRank: Int? = null
+            var scalpId: UUID? = null
             var scalpName: String? = null
             var scalpClass: String? = null
 
@@ -836,6 +841,7 @@ object PlayerService {
                     val r = classRank(oppClass)
                     if (oppClass != null && r != null && (scalpRank == null || r > scalpRank)) {
                         scalpRank = r
+                        scalpId = oppId
                         scalpName = opponentNames[oppId]
                         scalpClass = oppClass
                     }
@@ -890,6 +896,7 @@ object PlayerService {
                         peakClass = peak?.classification,
                         peakClassSeason = peak?.seasonName,
                         longestWinStreak = longestStreak,
+                        bestWinOpponentId = scalpId?.toString(),
                         bestWinOpponentName = scalpName,
                         bestWinOpponentClass = scalpClass,
                         bestSeasonName = bestSeason?.key,
@@ -1004,6 +1011,67 @@ object PlayerService {
                         groupName = groupName,
                     )
                 }
+        }
+    }
+
+    /** All scheduled fixtures of the player's current-season team, soonest first. */
+    suspend fun getUpcomingMatches(playerId: String): PlayerUpcomingResponse? {
+        val uuid = playerId.toUuidOrNull() ?: return null
+        return dbQuery {
+            val teamRow =
+                PlayerSeasons
+                    .join(Teams, JoinType.INNER, PlayerSeasons.teamId, Teams.id)
+                    .join(Seasons, JoinType.INNER, PlayerSeasons.seasonId, Seasons.id)
+                    .select(Teams.id, Teams.name)
+                    .where { PlayerSeasons.playerId eq uuid }
+                    .orderBy(Seasons.name to SortOrder.DESC)
+                    .firstOrNull() ?: return@dbQuery null
+
+            val teamId = teamRow[Teams.id]
+            val homeTeamAlias = Teams.alias("ht")
+            val awayTeamAlias = Teams.alias("at")
+
+            val matches =
+                Matches
+                    .join(homeTeamAlias, JoinType.INNER, Matches.homeTeamId, homeTeamAlias[Teams.id])
+                    .join(awayTeamAlias, JoinType.INNER, Matches.awayTeamId, awayTeamAlias[Teams.id])
+                    .select(
+                        Matches.id,
+                        Matches.homeTeamId,
+                        Matches.awayTeamId,
+                        homeTeamAlias[Teams.name],
+                        awayTeamAlias[Teams.name],
+                        Matches.homeScore,
+                        Matches.awayScore,
+                        Matches.round,
+                        Matches.playedAt,
+                        Matches.status,
+                    )
+                    .where {
+                        ((Matches.homeTeamId eq teamId) or (Matches.awayTeamId eq teamId)) and
+                            (Matches.status eq MatchStatus.SCHEDULED)
+                    }
+                    .orderBy(Matches.playedAt to SortOrder.ASC_NULLS_LAST)
+                    .map { row ->
+                        MatchResponse(
+                            id = row[Matches.id].toString(),
+                            homeTeamId = row[Matches.homeTeamId].toString(),
+                            awayTeamId = row[Matches.awayTeamId].toString(),
+                            homeTeam = row[homeTeamAlias[Teams.name]],
+                            awayTeam = row[awayTeamAlias[Teams.name]],
+                            homeScore = row[Matches.homeScore]?.toInt(),
+                            awayScore = row[Matches.awayScore]?.toInt(),
+                            round = row[Matches.round],
+                            playedAt = row[Matches.playedAt]?.toString(),
+                            status = row[Matches.status],
+                        )
+                    }
+
+            PlayerUpcomingResponse(
+                teamId = teamId.toString(),
+                teamName = teamRow[Teams.name],
+                matches = matches,
+            )
         }
     }
 

@@ -19,11 +19,12 @@
 <Carousel.Root opts={{ align: 'start', loop: true }} plugins={[autoplay]} class="w-full">
 	<Carousel.Content class="-ms-3">
 		{#each topRivals as rival (rival.opponentId)}
-			<Carousel.Item class="basis-1/3 ps-3">
+			<Carousel.Item class="basis-1/3 ps-3 md:basis-1/5">
 				<PlayerTile
 					fullName={rival.opponentName}
 					classification={rival.opponentClass}
 					onclick={() => comparePlayers(playerId, rival.opponentId)}
+					cornerPosition="bottom-right"
 				>
 					{#snippet content()}
 						<ScoreLine
@@ -33,6 +34,9 @@
 								{ value: rival.losses, tone: 'loss' }
 							]}
 						/>
+					{/snippet}
+					{#snippet corner()}
+						<ScalesIcon size="16" class="text-muted-foreground/40" />
 					{/snippet}
 				</PlayerTile>
 			</Carousel.Item>
