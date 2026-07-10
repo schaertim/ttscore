@@ -709,6 +709,40 @@ object PlayerService {
                     }
             val peak = classProgression.maxByOrNull { classRank(it.classification) ?: Int.MIN_VALUE }
 
+            // Highest class held per season (by ladder rank) — colours the club timeline dots.
+            val seasonTopClass: Map<String, String> =
+                classProgression
+                    .groupBy { it.seasonName }
+                    .mapValues { (_, pts) ->
+                        pts.maxBy { classRank(it.classification) ?: Int.MIN_VALUE }.classification
+                    }
+
+            // Biggest climb between consecutive seasons' first-half classifications — this
+            // reflects the full prior season's results (promotion/relegation), unlike comparing
+            // first-half to second-half of the same season, which only captures the mid-season
+            // reclass. On ties (same jump size), prefer the one at the highest class level
+            // (highest arrival rank).
+            var jumpSeason: String? = null
+            var jumpFrom: String? = null
+            var jumpTo: String? = null
+            var jumpDelta = 0
+            var jumpToRank = Int.MIN_VALUE
+            val firstHalfPoints = classProgression.filter { it.half == "first" }
+            for (i in 1 until firstHalfPoints.size) {
+                val prev = firstHalfPoints[i - 1]
+                val curr = firstHalfPoints[i]
+                val prevRank = classRank(prev.classification) ?: continue
+                val currRank = classRank(curr.classification) ?: continue
+                val delta = currRank - prevRank
+                if (delta > jumpDelta || (delta == jumpDelta && delta > 0 && currRank > jumpToRank)) {
+                    jumpDelta = delta
+                    jumpToRank = currRank
+                    jumpSeason = curr.seasonName
+                    jumpFrom = prev.classification
+                    jumpTo = curr.classification
+                }
+            }
+
             // ── Club + league per season ──
             val seasonRows =
                 PlayerSeasons
@@ -728,6 +762,7 @@ object PlayerService {
                             seasonName = seasonName,
                             clubName = rows.first()[Clubs.name],
                             leagueName = rows.first()[Groups.name],
+                            topClass = seasonTopClass[seasonName],
                         )
                     }
 
@@ -822,7 +857,7 @@ object PlayerService {
             val rivalries =
                 perOpponent.entries
                     .sortedByDescending { it.value.games }
-                    .take(6)
+                    .take(10)
                     .map { (oppId, acc) ->
                         CareerRival(
                             opponentId = oppId.toString(),
@@ -860,6 +895,9 @@ object PlayerService {
                         bestSeasonName = bestSeason?.key,
                         bestSeasonWins = bestSeason?.value?.get(0) ?: 0,
                         bestSeasonGames = bestSeason?.value?.get(1) ?: 0,
+                        biggestJumpSeason = jumpSeason,
+                        biggestJumpFrom = jumpFrom,
+                        biggestJumpTo = jumpTo,
                     ),
                 rivalries = rivalries,
             )

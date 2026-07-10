@@ -51,6 +51,8 @@ data class CareerSeasonEntry(
     val seasonName: String,
     val clubName: String?,
     val leagueName: String?,
+    /** Highest class the player held during this season (by ladder rank), if known. */
+    val topClass: String?,
 )
 
 @Serializable
@@ -77,6 +79,10 @@ data class CareerMilestones(
     val bestSeasonName: String?,
     val bestSeasonWins: Int,
     val bestSeasonGames: Int,
+    /** Biggest within-season class climb (first half → second half of the same season). */
+    val biggestJumpSeason: String?,
+    val biggestJumpFrom: String?,
+    val biggestJumpTo: String?,
 )
 
 /** A frequent opponent across the whole career (drives the rivalries list). */

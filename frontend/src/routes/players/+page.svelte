@@ -13,12 +13,13 @@
 		StarIcon,
 		ScalesIcon
 	} from 'phosphor-svelte';
-	import { h2h } from '$lib/h2h.svelte';
+	import { compareWithMe } from '$lib/h2h.svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import FollowPlayerCard from '$lib/components/FollowPlayerCard.svelte';
 	import RecentPlayerCard from '$lib/components/RecentPlayerCard.svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
+	import * as Carousel from '$lib/components/ui/carousel/index.js';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { _ } from 'svelte-i18n';
 	import { formatName } from '$lib/utils';
@@ -36,10 +37,6 @@
 	$effect(() => {
 		recentPlayers = getRecentPlayers();
 	});
-
-	function compareWithMe(playerId: string) {
-		h2h.opponentId = playerId;
-	}
 
 	const PAGE_SIZE = 20;
 
@@ -118,30 +115,36 @@
 	{#if showRecents}
 		<section class="space-y-3">
 			<SectionLabel label={$_('search.recently_viewed')} icon={ClockIcon} />
-			<div class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
-				{#each filteredRecents as player (player.id)}
-					<RecentPlayerCard
-						id={player.id}
-						fullName={player.fullName}
-						classification={player.classification}
-						onremove={() => {
-							recentPlayers = recentPlayers.filter((p) => p.id !== player.id);
-						}}
-					/>
-				{/each}
-			</div>
+			<Carousel.Root opts={{ align: 'start' }} class="w-full">
+				<Carousel.Content class="-ms-3">
+					{#each filteredRecents as player (player.id)}
+						<Carousel.Item class="basis-1/3 ps-3">
+							<RecentPlayerCard
+								id={player.id}
+								fullName={player.fullName}
+								classification={player.classification}
+								currentClubName={player.currentClubName}
+								onremove={() => {
+									recentPlayers = recentPlayers.filter((p) => p.id !== player.id);
+								}}
+							/>
+						</Carousel.Item>
+					{/each}
+				</Carousel.Content>
+			</Carousel.Root>
 		</section>
 	{/if}
 
 	{#if showFavorites}
 		<section class="space-y-3">
 			<SectionLabel label={$_('search.favourites')} icon={StarIcon} />
-			<div class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
+			<div class="grid grid-cols-3 gap-3">
 				{#each favoritePlayers as player (player.id)}
 					<FollowPlayerCard
 						id={player.id}
 						fullName={player.fullName}
 						classification={player.liveClassification ?? player.classification}
+						currentClubName={player.currentClubName}
 						followId={player.followId}
 						onunfollow={() => {
 							favoritePlayers = favoritePlayers.filter((p) => p.id !== player.id);

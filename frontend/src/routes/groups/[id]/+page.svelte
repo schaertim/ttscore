@@ -9,9 +9,26 @@
 	import StatCard from '$lib/components/StatCard.svelte';
 	import FollowButton from '$lib/components/FollowButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
+	import { page } from '$app/state';
+	import { replaceState } from '$app/navigation';
 	import { _, locale } from 'svelte-i18n';
 
 	let { data }: { data: PageData } = $props();
+
+	// Persist the active tab in the URL (?tab=…) so it survives reloads and back navigation.
+	const TABS = ['standings', 'results', 'schedule'];
+	const activeTab = $derived(
+		TABS.includes(page.url.searchParams.get('tab') ?? '')
+			? page.url.searchParams.get('tab')!
+			: 'standings'
+	);
+
+	function setTab(value: string) {
+		const url = new URL(page.url);
+		if (value === 'standings') url.searchParams.delete('tab');
+		else url.searchParams.set('tab', value);
+		replaceState(url, page.state);
+	}
 	let following = $state(false);
 	let followId = $state<string | null>(null);
 	let notify = $state(false);
@@ -97,7 +114,7 @@
 		</div>
 	</header>
 
-<Tabs.Root value="standings">
+<Tabs.Root value={activeTab} onValueChange={setTab}>
 	<Tabs.List class="w-full">
 		<Tabs.Trigger value="standings" class="flex-1">{$_("group.standings")}</Tabs.Trigger>
 		<Tabs.Trigger value="results" class="flex-1">{$_("group.results")}</Tabs.Trigger>

@@ -9,7 +9,7 @@
 	import { get } from 'svelte/store';
 
 	interface Props {
-		/** Notifications require an existing follow — the bell is disabled otherwise. */
+		/** Notifications require an existing follow — the bell is hidden otherwise. */
 		following: boolean;
 		followId: string | null;
 		notify: boolean;
@@ -52,16 +52,7 @@
 	>
 		<BellIcon size="20" />
 	</button>
-{:else if !following}
-	<button
-		type="button"
-		disabled
-		title="Follow to enable notifications"
-		class="flex items-center justify-center rounded-full p-2 text-muted-foreground opacity-40"
-	>
-		<BellIcon size="20" />
-	</button>
-{:else}
+{:else if following}
 	<form method="POST" action="?/setNotify" use:enhance={toggleEnhance}>
 		<input type="hidden" name="followId" value={followId} />
 		<input type="hidden" name="notify" value={String(!notify)} />

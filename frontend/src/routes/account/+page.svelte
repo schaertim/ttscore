@@ -219,7 +219,7 @@
 			<button
 				onclick={togglePush}
 				disabled={pushLoading || pushSubscribed === null}
-				class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent disabled:opacity-50"
+				class="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-accent disabled:opacity-50"
 			>
 				<div class="flex min-w-0 flex-1 flex-col items-start gap-1">
 					<span class="font-semibold">

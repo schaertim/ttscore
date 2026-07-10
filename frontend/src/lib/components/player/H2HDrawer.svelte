@@ -18,17 +18,18 @@
 
 	interface Props {
 		open: boolean;
-		/** Always the signed-in user's player — shown on the left. */
-		homePlayerId: string;
-		/** The opponent to compare against. Changing this triggers a re-fetch. */
-		opponentId: string | null;
+		/** Player shown on the left (playerA). Null only when a "compare with me" is triggered
+		 *  without a home player set — the drawer then shows its empty state. */
+		leftPlayerId: string | null;
+		/** Player shown on the right (playerB). Changing this triggers a re-fetch. */
+		rightPlayerId: string | null;
 		/** H2H is a Pro feature — non-Pro users see a paywall instead of the data. */
 		isPro: boolean;
 		/** Used to forward the access token — the H2H endpoint requires auth to verify Pro status. */
 		supabase: SupabaseClient;
 	}
 
-	let { open = $bindable(), homePlayerId, opponentId, isPro, supabase }: Props = $props();
+	let { open = $bindable(), leftPlayerId, rightPlayerId, isPro, supabase }: Props = $props();
 
 	let data = $state<HeadToHead | null>(null);
 	let loading = $state(false);
@@ -40,8 +41,8 @@
 
 	let loadedKey = $state('');
 	$effect(() => {
-		if (!open || !opponentId || !isPro) return;
-		const key = `${homePlayerId}:${opponentId}`;
+		if (!open || !leftPlayerId || !rightPlayerId || !isPro) return;
+		const key = `${leftPlayerId}:${rightPlayerId}`;
 		if (key === loadedKey) return;
 		loadedKey = key;
 		loading = true;
@@ -49,21 +50,22 @@
 		data = null;
 		eloA = [];
 		eloB = [];
-		const opp = opponentId;
+		const left = leftPlayerId;
+		const right = rightPlayerId;
 		supabase.auth
 			.getSession()
 			.then(({ data: sessionData }) =>
-				api.players.headToHead(homePlayerId, opp, sessionData.session?.access_token ?? '')
+				api.players.headToHead(left, right, sessionData.session?.access_token ?? '')
 			)
 			.then((res) => (data = res))
 			.catch(() => (error = true))
 			.finally(() => (loading = false));
 		api.players
-			.elo(homePlayerId)
+			.elo(left)
 			.then((res) => (eloA = res))
 			.catch(() => {});
 		api.players
-			.elo(opp)
+			.elo(right)
 			.then((res) => (eloB = res))
 			.catch(() => {});
 	});
@@ -72,15 +74,11 @@
 	const clsA = $derived(data?.playerA.liveClassification ?? data?.playerA.classification ?? null);
 	const clsB = $derived(data?.playerB.liveClassification ?? data?.playerB.classification ?? null);
 
-	// "You" gets the vivid class colour; the opponent gets a faded version of the same
-	// hue — matching how ClassBadge tints its background (pure hue, blended with
-	// transparent rather than desaturated toward grey). The contrast alone conveys who
-	// is who, so the charts need no legend.
-	const youColor = $derived(classColorVar(clsA));
-	const colors = $derived<[string, string]>([
-		youColor,
-		`color-mix(in srgb, ${youColor} 40%, transparent)`
-	]);
+	// Left player is always vivid, right player always muted — a fixed left/right convention
+	// (the caller decides who goes where). Fading matches how ClassBadge tints: pure hue
+	// blended with transparent, not desaturated toward grey.
+	const faded = (c: string) => `color-mix(in srgb, ${c} 40%, transparent)`;
+	const colors = $derived<[string, string]>([classColorVar(clsA), faded(classColorVar(clsB))]);
 
 	const radarPlayers = $derived(
 		data
@@ -186,8 +184,8 @@
 				<Drawer.Header class="border-b px-5 pt-2 pb-5 text-left">
 					<div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
 						<div class="min-w-0 text-left">
-							<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-								{$_('h2h.you')}
+							<p class="truncate text-xs font-medium tracking-wide text-muted-foreground">
+								{data.playerA.currentClubName ?? ''}
 							</p>
 							<p class="mt-1 truncate text-lg font-semibold">
 								{formatShortName(data.playerA.fullName)}
@@ -208,8 +206,8 @@
 						</div>
 
 						<div class="min-w-0 text-right">
-							<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-								{$_('h2h.opponent')}
+							<p class="truncate text-xs font-medium tracking-wide text-muted-foreground">
+								{data.playerB.currentClubName ?? ''}
 							</p>
 							<p class="mt-1 truncate text-lg font-semibold">
 								{formatShortName(data.playerB.fullName)}
@@ -278,7 +276,7 @@
 					{#if data.games.length > 0}
 						<section class="space-y-2">
 							<SectionLabel label={$_('h2h.recent_encounters')} icon={ClockCounterClockwiseIcon} />
-							<div class="space-y-2">
+							<div class="space-y-3">
 								{#each encounterGames.slice(0, 6) as game (game.gameId)}
 									<GameCard mode="player" {game} />
 								{/each}

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { AnnotationLine, LineChart, Spline } from 'layerchart';
+	import { AnnotationLine, Highlight, LinearGradient, LineChart, Spline } from 'layerchart';
 	import { scaleLinear, scaleUtc } from 'd3-scale';
 	import { curveMonotoneX } from 'd3-shape';
 	import * as Chart from '$lib/components/ui/chart/index.js';
-	import { ELO_THRESHOLDS } from '$lib/utils';
+	import { ELO_THRESHOLDS, classColorVar } from '$lib/utils';
 	import { _, locale } from 'svelte-i18n';
 	import type { EloEntry } from '$lib/api';
 
@@ -66,6 +66,42 @@
 	);
 
 	const visibleThresholds = $derived(ELO_THRESHOLDS.filter(([elo]) => elo > yMin && elo < yMax));
+
+	// The left line is always vivid, additional lines (the right player in H2H) are muted — the
+	// same fixed left/right convention used for the solid per-player colours.
+	const singleSeries = $derived(chartSeries.length === 1);
+	const faded = (c: string) => `color-mix(in srgb, ${c} 40%, transparent)`;
+
+	// The class an ELO falls into (ELO_THRESHOLDS is descending by min), and its class colour.
+	function eloClass(elo: number): string {
+		for (const [min, cls] of ELO_THRESHOLDS) if (elo >= min) return cls;
+		return ELO_THRESHOLDS[ELO_THRESHOLDS.length - 1][1];
+	}
+	const eloColor = (elo: number, muted: boolean) => {
+		const c = classColorVar(eloClass(elo));
+		return muted ? faded(c) : c;
+	};
+
+	// Vertical gradient stops that switch colour hard wherever the class *letter* changes across
+	// the visible ELO range, so the line takes each class band's colour by height.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	function gradientStops(context: any, muted: boolean): [number, string][] {
+		const total = context.height + context.padding.top + context.padding.bottom;
+		const offset = (v: number) => context.yScale(v) / total;
+		const stops: [number, string][] = [];
+		let bandAbove = eloColor(yMax, muted);
+		stops.push([0, bandAbove]);
+		for (const [min] of ELO_THRESHOLDS) {
+			if (min <= yMin || min >= yMax) continue;
+			const bandBelow = eloColor(min - 1, muted);
+			if (bandBelow === bandAbove) continue; // same colour, no visible edge
+			const o = offset(min);
+			stops.push([o, bandAbove], [o, bandBelow]); // duplicate offset = hard edge
+			bandAbove = bandBelow;
+		}
+		stops.push([1, bandAbove]);
+		return stops;
+	}
 </script>
 
 {#if drawable.length === 0}
@@ -89,18 +125,26 @@
 				xAxis: {
 					format: (v: Date) =>
 						v.toLocaleDateString($locale ?? 'de', { month: 'short', year: '2-digit' })
-				},
-				highlight: { points: { r: 4 } }
+				}
 			}}
 		>
 			{#snippet marks({ context })}
 				{#each context.series.visibleSeries as s (s.key)}
-					<Spline
-						seriesKey={s.key}
-						strokeWidth={2}
-						curve={curveMonotoneX}
-						defined={(d: Record<string, number | Date | null>) => d[s.key] != null}
-					/>
+					<LinearGradient
+						stops={gradientStops(context, s.key !== chartSeries[0]?.key)}
+						units="userSpaceOnUse"
+						vertical
+					>
+						{#snippet children({ gradient })}
+							<Spline
+								seriesKey={s.key}
+								stroke={gradient}
+								strokeWidth={2}
+								curve={curveMonotoneX}
+								defined={(d: Record<string, number | Date | null>) => d[s.key] != null}
+							/>
+						{/snippet}
+					</LinearGradient>
 				{/each}
 				{#each visibleThresholds as [elo, label] (elo)}
 					<AnnotationLine
@@ -114,8 +158,22 @@
 					/>
 				{/each}
 			{/snippet}
-			{#snippet tooltip()}
-				<Chart.Tooltip hideLabel />
+
+			{#snippet highlight({ context })}
+				{#if singleSeries && context.tooltip.data}
+					<Highlight lines points={{ r: 4, fill: eloColor(context.y(context.tooltip.data), false) }} />
+				{:else}
+					<Highlight lines points={{ r: 4 }} />
+				{/if}
+			{/snippet}
+
+			{#snippet tooltip({ context })}
+				<Chart.Tooltip
+					hideLabel
+					color={singleSeries && context.tooltip.data
+						? eloColor(context.y(context.tooltip.data), false)
+						: undefined}
+				/>
 			{/snippet}
 		</LineChart>
 	</Chart.Container>

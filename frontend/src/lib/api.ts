@@ -261,6 +261,7 @@ export type CareerSeasonEntry = {
 	seasonName: string;
 	clubName: string | null;
 	leagueName: string | null;
+	topClass: string | null;
 };
 
 export type CareerTotals = {
@@ -285,6 +286,9 @@ export type CareerMilestones = {
 	bestSeasonName: string | null;
 	bestSeasonWins: number;
 	bestSeasonGames: number;
+	biggestJumpSeason: string | null;
+	biggestJumpFrom: string | null;
+	biggestJumpTo: string | null;
 };
 
 export type CareerRival = {

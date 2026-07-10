@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { LineChart, Spline } from 'layerchart';
+	import { AnnotationLine, Highlight, LinearGradient, LineChart, Spline } from 'layerchart';
 	import { scaleLinear, scaleUtc } from 'd3-scale';
-	import { curveStepAfter } from 'd3-shape';
+	import { curveLinear } from 'd3-shape';
 	import * as Chart from '$lib/components/ui/chart/index.js';
 	import { classColorVar, classificationRank, classLabelForRank } from '$lib/utils';
 	import { _, locale } from 'svelte-i18n';
@@ -25,12 +25,48 @@
 			.sort((a, b) => a.date.getTime() - b.date.getTime())
 	);
 
-	const latestClass = $derived(progression.at(-1)?.classification);
-	const color = $derived(classColorVar(latestClass));
+	// Fallback stroke colour (the gradient overrides it): the latest class.
+	const color = $derived(classColorVar(points.at(-1) ? classLabelForRank(points.at(-1)!.rank) : null));
 
 	const ranks = $derived(points.map((p) => p.rank));
 	const yMin = $derived(ranks.length ? Math.max(1, Math.min(...ranks) - 1) : 1);
 	const yMax = $derived(ranks.length ? Math.min(22, Math.max(...ranks) + 1) : 22);
+
+	// Class-letter band boundaries on the ladder (D≤5, C 6–10, B 11–15, A≥16). The line is
+	// stroked with a vertical gradient that switches colour hard at each boundary, so its
+	// colour always reflects the class band at that height.
+	const BAND_BOUNDARIES = [15.5, 10.5, 5.5];
+	const bandColor = (rank: number) => classColorVar(classLabelForRank(Math.round(rank)));
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	function gradientStops(context: any): [number, string][] {
+		const total = context.height + context.padding.top + context.padding.bottom;
+		const offset = (rank: number) => context.yScale(rank) / total;
+		const stops: [number, string][] = [];
+		// Top of the domain downward; higher rank sits nearer the top (offset 0).
+		let bandAbove = bandColor(yMax);
+		stops.push([0, bandAbove]);
+		for (const boundary of BAND_BOUNDARIES) {
+			if (boundary <= yMin || boundary >= yMax) continue;
+			const o = offset(boundary);
+			const bandBelow = bandColor(boundary - 0.5);
+			stops.push([o, bandAbove], [o, bandBelow]); // duplicate offset = hard edge
+			bandAbove = bandBelow;
+		}
+		stops.push([1, bandAbove]);
+		return stops;
+	}
+
+	// A dashed reference line per class level in view, labelled on the right — mirrors the
+	// ELO chart's threshold annotations.
+	const classLines = $derived.by(() => {
+		const out: { rank: number; label: string }[] = [];
+		for (let r = Math.floor(yMin) + 1; r < yMax; r++) {
+			const label = classLabelForRank(r);
+			if (label) out.push({ rank: r, label });
+		}
+		return out;
+	});
 
 	const chartConfig = $derived({
 		rank: { label: $_('career.class'), color }
@@ -49,20 +85,64 @@
 			xScale={scaleUtc()}
 			yScale={scaleLinear()}
 			yDomain={[yMin, yMax]}
-			axis={true}
-			padding={{ right: 16, bottom: 20, left: 36 }}
+			axis="x"
+			padding={{ right: 20, bottom: 20, left: 10 }}
 			grid={false}
 			rule={false}
 			series={[{ key: 'rank', label: $_('career.class'), color }]}
 			props={{
 				xAxis: {
 					format: (v: Date) => v.toLocaleDateString($locale ?? 'de', { year: 'numeric' })
-				},
-				yAxis: { format: (v: number) => classLabelForRank(v) }
+				}
 			}}
 		>
-			{#snippet marks()}
-				<Spline seriesKey="rank" strokeWidth={2} curve={curveStepAfter} />
+			{#snippet marks({ context })}
+				<LinearGradient stops={gradientStops(context)} units="userSpaceOnUse" vertical>
+					{#snippet children({ gradient })}
+						<Spline seriesKey="rank" stroke={gradient} strokeWidth={2} curve={curveLinear} />
+					{/snippet}
+				</LinearGradient>
+				{#each classLines as line (line.rank)}
+					<AnnotationLine
+						y={line.rank}
+						label={line.label}
+						labelPlacement="right"
+						props={{
+							line: {
+								style: 'stroke: var(--foreground); stroke-opacity: 0.3',
+								'stroke-dasharray': '4 3'
+							},
+							label: { class: 'fill-foreground/30 text-2xs' }
+						}}
+					/>
+				{/each}
+			{/snippet}
+
+			{#snippet highlight({ context })}
+				{#if context.tooltip.data}
+					<Highlight lines points={{ fill: bandColor(context.y(context.tooltip.data)) }} />
+				{/if}
+			{/snippet}
+
+			{#snippet tooltip({ context })}
+				{@const rank = context.tooltip.data ? context.y(context.tooltip.data) : 0}
+				<Chart.Tooltip
+					color={bandColor(rank)}
+					labelFormatter={(v: Date) => v.toLocaleDateString($locale ?? 'de', { year: 'numeric' })}
+				>
+					{#snippet formatter({ value })}
+						<div class="flex flex-1 items-center gap-2">
+							<div
+								class="size-2.5 shrink-0 rounded-[2px]"
+								style="background-color: {bandColor(Number(value))}"
+							></div>
+							<span class="text-muted-foreground">{$_('career.class')}</span>
+							<span class="ml-auto font-mono font-medium text-foreground">
+								{classLabelForRank(Number(value))}
+							</span>
+						</div>
+					{/snippet}
+				</Chart.Tooltip>
 			{/snippet}
 		</LineChart>
 	</Chart.Container>

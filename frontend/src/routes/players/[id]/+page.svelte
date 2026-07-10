@@ -17,7 +17,7 @@
 	import StatsTab from '$lib/components/player/StatsTab.svelte';
 	import CareerTab from '$lib/components/player/CareerTab.svelte';
 	import PaywallTeaser from '$lib/components/PaywallTeaser.svelte';
-	import { h2h } from '$lib/h2h.svelte';
+	import { compareWithMe } from '$lib/h2h.svelte';
 
 	import {
 		ChartLineIcon,
@@ -27,6 +27,7 @@
 	} from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { page } from '$app/state';
+	import { replaceState } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
 	import { formatName } from '$lib/utils';
 	import { api } from '$lib/api';
@@ -91,8 +92,19 @@
 		})();
 	});
 
-	function compareWithMe() {
-		h2h.opponentId = data.player.id;
+	// Persist the active tab in the URL (?tab=…) so it survives reloads and back navigation.
+	const TABS = ['overview', 'stats', 'career'];
+	const activeTab = $derived(
+		TABS.includes(page.url.searchParams.get('tab') ?? '')
+			? page.url.searchParams.get('tab')!
+			: 'overview'
+	);
+
+	function setTab(value: string) {
+		const url = new URL(page.url);
+		if (value === 'overview') url.searchParams.delete('tab');
+		else url.searchParams.set('tab', value);
+		replaceState(url, page.state);
 	}
 
 	function classificationStroke(classification: string | null | undefined): string {
@@ -188,7 +200,7 @@
 				size="sm"
 				icon={ScalesIcon}
 				title={$_('h2h.compare_with_me')}
-				onclick={compareWithMe}
+				onclick={() => compareWithMe(data.player.id)}
 			/>
 		{/if}
 	</header>
@@ -223,7 +235,7 @@
 		</form>
 	{/if}
 
-	<Tabs.Root value="overview">
+	<Tabs.Root value={activeTab} onValueChange={setTab}>
 		<Tabs.List class="w-full">
 			<Tabs.Trigger value="overview" class="flex-1">{$_('player.tab_overview')}</Tabs.Trigger>
 			<Tabs.Trigger value="stats" class="flex-1">{$_('player.tab_stats')}</Tabs.Trigger>
@@ -288,7 +300,7 @@
 					</div>
 				{:then career}
 					{#if career}
-						<CareerTab {career} />
+						<CareerTab {career} playerId={player.id} />
 					{:else}
 						<p class="py-12 text-center text-sm text-muted-foreground">{$_('career.no_data')}</p>
 					{/if}

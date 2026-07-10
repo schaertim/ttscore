@@ -14,7 +14,7 @@
 		CalendarBlankIcon,
 		MedalIcon,
 		ChartDonutIcon,
-		CalendarDotsIcon
+		CalendarDotsIcon, PresentationChartIcon
 	} from 'phosphor-svelte';
 
 	interface Props {
@@ -33,18 +33,21 @@
 	<p class="py-12 text-center text-sm text-muted-foreground">{$_('stats.no_data')}</p>
 {:else}
 	<div class="space-y-6">
-		<div class="grid grid-cols-3 gap-3">
-			<StatTile label={$_('stats.games')} labelPosition="bottom" align="center" value={stats.totalGames} />
-			<StatTile label={$_('stats.record')} labelPosition="bottom" align="center">
-				<ScoreLine
-					segments={[
-						{ value: stats.overall.wins, tone: 'win' },
-						{ value: losses, tone: 'loss' }
-					]}
-				/>
-			</StatTile>
-			<StatTile label={$_('stats.win_rate')} labelPosition="bottom" align="center" value={`${winPct}%`} />
-		</div>
+		<section class="space-y-3">
+			<SectionLabel label={$_('stats.overview')} icon={PresentationChartIcon} />
+			<div class="grid grid-cols-3 gap-3">
+				<StatTile label={$_('stats.games')} labelPosition="bottom" align="center" value={stats.totalGames} />
+				<StatTile label={$_('stats.record')} labelPosition="bottom" align="center">
+					<ScoreLine
+						segments={[
+							{ value: stats.overall.wins, tone: 'win' },
+							{ value: losses, tone: 'loss' }
+						]}
+					/>
+				</StatTile>
+				<StatTile label={$_('stats.win_rate')} labelPosition="bottom" align="center" value={`${winPct}%`} />
+			</div>
+		</section>
 
 		{#if stats.setDistribution.length > 0}
 			<section class="space-y-3">
