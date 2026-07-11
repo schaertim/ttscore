@@ -35,7 +35,7 @@
 {#snippet body()}
 	<PlayerAvatar {fullName} {classification} size={avatarSize} />
 	<div class="flex w-full min-w-0 flex-col items-center gap-0.5">
-		<span class="w-full truncate text-sm font-semibold leading-tight" title={formatName(fullName)}>
+		<span class="w-full truncate text-sm leading-tight font-semibold" title={formatName(fullName)}>
 			{formatShortName(fullName)}
 		</span>
 		{#if content}

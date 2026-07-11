@@ -13,11 +13,14 @@
 </script>
 
 <h2
-	class={cn('flex items-center gap-2 px-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase', className)}
+	class={cn(
+		'flex items-center gap-2 px-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase',
+		className
+	)}
 >
 	{label}
 	{#if Icon}
-		<Icon size="16" class="shrink-0" />
+		<Icon size={16} class="shrink-0" />
 	{/if}
 	{#if children}
 		{@render children()}

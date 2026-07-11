@@ -6,24 +6,29 @@
 	import StatTile from '$lib/components/StatTile.svelte';
 	import ScoreLine from '$lib/components/ScoreLine.svelte';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
+	import BestWinTile from '$lib/components/BestWinTile.svelte';
+	import RecordOverview from '$lib/components/RecordOverview.svelte';
 	import ClassArc from './ClassArc.svelte';
 	import CareerClubs from './CareerClubs.svelte';
 	import CareerRivals from './CareerRivals.svelte';
-	import { formatName } from '$lib/utils';
 	import {
 		ChartLineIcon,
-		PingPongIcon,
 		MedalIcon,
-		TrophyIcon,
 		ScalesIcon,
-		ArrowRightIcon, FlagBannerIcon, FlagBannerFoldIcon, PresentationChartIcon
+		ArrowRightIcon,
+		FlagBannerFoldIcon,
+		PresentationChartIcon
 	} from 'phosphor-svelte';
 
-	let { career, playerId }: { career: Career; playerId: string } = $props();
+	interface Props {
+		career: Career;
+		playerId: string;
+	}
+
+	let { career, playerId }: Props = $props();
 
 	const t = $derived(career.totals);
 	const m = $derived(career.milestones);
-	const winPct = $derived(t.matches > 0 ? Math.round((t.wins / t.matches) * 100) : 0);
 	const hasClassArc = $derived(career.classProgression.length >= 2);
 	const isEmpty = $derived(
 		t.matches === 0 && career.classProgression.length === 0 && career.seasons.length === 0
@@ -37,22 +42,31 @@
 		{#if t.matches > 0}
 			<section class="space-y-3">
 				<SectionLabel label={$_('career.at_a_glance')} icon={PresentationChartIcon} />
+				<RecordOverview
+					totalLabel={$_('career.matches')}
+					total={t.matches}
+					wins={t.wins}
+					losses={t.losses}
+				/>
 				<div class="grid grid-cols-3 gap-3">
-					<StatTile label={$_('career.matches')} labelPosition="bottom" align="center" value={t.matches} />
-					<StatTile label={$_('stats.record')} labelPosition="bottom" align="center">
-						<ScoreLine
-							segments={[
-								{ value: t.wins, tone: 'win' },
-								{ value: t.losses, tone: 'loss' }
-							]}
-						/>
-					</StatTile>
-					<StatTile label={$_('stats.win_rate')} labelPosition="bottom" align="center" value={`${winPct}%`} />
-				</div>
-				<div class="grid grid-cols-3 gap-3">
-					<StatTile label={$_('career.seasons')} labelPosition="bottom" align="center" value={t.seasonsPlayed} />
-					<StatTile label={$_('career.opponents')} labelPosition="bottom" align="center" value={t.opponentsFaced} />
-					<StatTile label={$_('career.clubs')} labelPosition="bottom" align="center" value={t.clubsCount} />
+					<StatTile
+						label={$_('career.seasons')}
+						labelPosition="bottom"
+						align="center"
+						value={t.seasonsPlayed}
+					/>
+					<StatTile
+						label={$_('career.opponents')}
+						labelPosition="bottom"
+						align="center"
+						value={t.opponentsFaced}
+					/>
+					<StatTile
+						label={$_('career.clubs')}
+						labelPosition="bottom"
+						align="center"
+						value={t.clubsCount}
+					/>
 				</div>
 			</section>
 		{/if}
@@ -105,7 +119,7 @@
 							<div class="space-y-1">
 								<div class="flex items-center gap-1.5">
 									<ClassBadge classification={m.biggestJumpFrom} size="md" />
-									<ArrowRightIcon size="16" class="shrink-0 text-muted-foreground" />
+									<ArrowRightIcon size={16} class="shrink-0 text-muted-foreground" />
 									<ClassBadge classification={m.biggestJumpTo} size="md" />
 								</div>
 								{#if m.biggestJumpSeason}
@@ -119,18 +133,12 @@
 				</div>
 
 				{#if m.bestWinOpponentName}
-					<StatTile label={$_('career.best_win')}>
-						<p class="flex items-center gap-1.5 text-xl font-semibold">
-							{#if m.bestWinOpponentId}
-								<a href="/players/{m.bestWinOpponentId}" class="truncate hover:underline">
-									{formatName(m.bestWinOpponentName)}
-								</a>
-							{:else}
-								<span class="truncate">{formatName(m.bestWinOpponentName)}</span>
-							{/if}
-							<ClassBadge classification={m.bestWinOpponentClass} />
-						</p>
-					</StatTile>
+					<BestWinTile
+						label={$_('career.best_win')}
+						opponentId={m.bestWinOpponentId}
+						opponentName={m.bestWinOpponentName}
+						opponentClass={m.bestWinOpponentClass}
+					/>
 				{/if}
 
 				<div class="grid grid-cols-2 gap-3">

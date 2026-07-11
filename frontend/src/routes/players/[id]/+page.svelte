@@ -5,40 +5,38 @@
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
 	import InfoItem from '$lib/components/InfoItem.svelte';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
-	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import EloChart from '$lib/components/EloChart.svelte';
-	import ClassBadge from '$lib/components/ClassBadge.svelte';
-	import BackButton from '$lib/components/BackButton.svelte';
-	import GameCard from '$lib/components/GameCard.svelte';
-	import FollowButton from '$lib/components/FollowButton.svelte';
-	import NotifyButton from '$lib/components/NotifyButton.svelte';
+	import PlayerGameCard from '$lib/components/PlayerGameCard.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
-	import PageTitle from '$lib/components/PageTitle.svelte';
+	import PlayerHeader from '$lib/components/player/PlayerHeader.svelte';
 	import StatsTab from '$lib/components/player/StatsTab.svelte';
 	import CareerTab from '$lib/components/player/CareerTab.svelte';
 	import PaywallTeaser from '$lib/components/PaywallTeaser.svelte';
-	import { compareWithMe } from '$lib/h2h.svelte';
 
-	import {
-		ChartLineIcon,
-		ClockCounterClockwiseIcon,
-		UserCirclePlusIcon,
-		ScalesIcon
-	} from 'phosphor-svelte';
+	import { ChartLineIcon, ClockCounterClockwiseIcon, UserCirclePlusIcon } from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
-	import { formatName } from '$lib/utils';
+	import { classColorVar } from '$lib/utils';
 	import { api } from '$lib/api';
 	import type { Player, EloEntry, PlayerGame, PlayerSeasonStats } from '$lib/api';
+
 	let { data }: { data: PageData } = $props();
 
 	let settingHomePlayer = $state(false);
 
-	let following = $state(data.following);
-	let followId = $state(data.followId);
-	let notify = $state(data.notify);
+	// Synced in an effect (not just initialised) so client-side navigation between
+	// players — which reuses this component — picks up the new player's follow state.
+	let following = $state(false);
+	let followId = $state<string | null>(null);
+	let notify = $state(false);
+
+	$effect.pre(() => {
+		following = data.following;
+		followId = data.followId;
+		notify = data.notify;
+	});
 
 	// Data refetched after the on-demand sync, tagged with the player id it belongs to so an override
 	// never bleeds onto a different profile after navigation. Until it is set the page shows the streamed
@@ -62,10 +60,9 @@
 	const player = $derived(freshFor?.player ?? data.player);
 	const syncing = $derived(data.player.isSyncing && syncDone !== data.player.id);
 
-	// Class derived from the player's *current* ELO (live where available). This is what we show on
-	// the profile/home/search surfaces and use to colour the graph — match rows keep historical classes.
+	// Class derived from the player's *current* ELO (live where available) — used to colour
+	// the graph; match rows keep historical classes.
 	const currentClass = $derived(player.liveClassification ?? player.classification);
-	const displayElo = $derived(player.liveElo ?? player.currentElo);
 
 	const canCompare = $derived(!!data.homePlayerId && data.homePlayerId !== player.id);
 
@@ -106,19 +103,11 @@
 		else url.searchParams.set('tab', value);
 		replaceState(url, page.state);
 	}
-
-	function classificationStroke(classification: string | null | undefined): string {
-		if (!classification) return 'var(--color-primary)';
-		const letter = classification[0].toLowerCase();
-		return ['a', 'b', 'c', 'd', 'e'].includes(letter)
-			? `var(--class-${letter})`
-			: 'var(--color-primary)';
-	}
 </script>
 
 {#snippet eloCard(history: EloEntry[])}
 	<div class="h-52">
-		<EloChart series={[{ label: 'ELO', color: classificationStroke(currentClass), history }]} />
+		<EloChart series={[{ label: 'ELO', color: classColorVar(currentClass), history }]} />
 	</div>
 {/snippet}
 
@@ -131,7 +120,7 @@
 		{:else}
 			<div class="space-y-3">
 				{#each matches.slice(0, 3) as game (game.gameId)}
-					<GameCard mode="player" {game} />
+					<PlayerGameCard {game} />
 				{/each}
 			</div>
 			{#if matches.length > 3}
@@ -145,65 +134,15 @@
 {/snippet}
 
 <div class="space-y-6">
-	<header class="space-y-4">
-		<div class="flex items-center justify-between">
-			<BackButton class="" />
-			<div class="flex items-center">
-				<FollowButton
-					bind:following
-					bind:followId
-					bind:notify
-					targetType="player"
-					targetId={data.player.id}
-					authenticated={!!data.user}
-				/>
-				<NotifyButton
-					{following}
-					{followId}
-					bind:notify
-					authenticated={!!data.user}
-				/>
-			</div>
-		</div>
-
-		<div class="flex items-start justify-between gap-4">
-			<div class="min-w-0">
-				<div class="mb-1 flex items-start gap-2">
-					<PageTitle class="wrap-break-word">
-						{formatName(player.fullName)}
-					</PageTitle>
-					<ClassBadge classification={currentClass} size="lg" class="mt-0.5 shrink-0" />
-				</div>
-				<p class="text-sm text-muted-foreground">
-					{player.currentClubName ?? 'No Club'}
-				</p>
-			</div>
-
-			<div class="flex shrink-0 flex-col items-end gap-1">
-				{#if displayElo}
-					<span class="font-mono text-4xl leading-none font-black tabular-nums">{displayElo}</span>
-					{#if syncing}
-						<span class="flex items-center gap-1 text-xs tracking-widest text-muted-foreground">
-							<Spinner class="size-3.5" aria-label={$_('player.syncing')} />
-							{$_('player.syncing')}
-						</span>
-					{:else}
-						<span class="text-xs tracking-widest text-muted-foreground uppercase"> ELO </span>
-					{/if}
-				{/if}
-			</div>
-		</div>
-
-		{#if canCompare}
-			<InfoItem
-				variant="muted"
-				size="sm"
-				icon={ScalesIcon}
-				title={$_('h2h.compare_with_me')}
-				onclick={() => compareWithMe(data.player.id)}
-			/>
-		{/if}
-	</header>
+	<PlayerHeader
+		{player}
+		{syncing}
+		{canCompare}
+		authenticated={!!data.user}
+		bind:following
+		bind:followId
+		bind:notify
+	/>
 
 	{#if !data.user}
 		<InfoItem
@@ -306,12 +245,8 @@
 					{/if}
 				{/await}
 			{:else}
-				<PaywallTeaser
-					title={$_('career.paywall_title')}
-					description={$_('career.paywall_desc')}
-				/>
+				<PaywallTeaser title={$_('career.paywall_title')} description={$_('career.paywall_desc')} />
 			{/if}
 		</Tabs.Content>
 	</Tabs.Root>
 </div>
-

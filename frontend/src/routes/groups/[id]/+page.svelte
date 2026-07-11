@@ -2,17 +2,17 @@
 	import type { PageData } from './$types';
 	import type { Match } from '$lib/api';
 	import * as Tabs from '$lib/components/ui/tabs/index.js';
-	import * as Table from '$lib/components/ui/table/index.js';
 	import MatchCard from '$lib/components/MatchCard.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
-	import StatCard from '$lib/components/StatCard.svelte';
+	import StatTile from '$lib/components/StatTile.svelte';
 	import FollowButton from '$lib/components/FollowButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
-	import { CaretRightIcon } from 'phosphor-svelte';
+	import StandingsTable from '$lib/components/group/StandingsTable.svelte';
+	import ScheduledMatchCard from '$lib/components/group/ScheduledMatchCard.svelte';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
-	import { _, locale } from 'svelte-i18n';
+	import { _ } from 'svelte-i18n';
 
 	let { data }: { data: PageData } = $props();
 
@@ -30,6 +30,9 @@
 		else url.searchParams.set('tab', value);
 		replaceState(url, page.state);
 	}
+
+	// Synced in an effect (not just initialised) so client-side navigation between
+	// groups — which reuses this component — picks up the new group's follow state.
 	let following = $state(false);
 	let followId = $state<string | null>(null);
 	let notify = $state(false);
@@ -39,8 +42,6 @@
 		followId = data.followId;
 		notify = data.notify;
 	});
-
-	const sorted = $derived([...data.standings].sort((a, b) => a.position - b.position));
 
 	// Standings position per team, for annotating scheduled fixtures.
 	const posByTeam = $derived(new Map(data.standings.map((s) => [s.teamId, s.position])));
@@ -61,18 +62,6 @@
 			)
 	);
 
-	function zone(pos: number): 'promotion' | 'relegation' | null {
-		const { promotionSpots, relegationSpots } = data.group;
-		if (promotionSpots && pos <= promotionSpots) return 'promotion';
-		if (relegationSpots && pos > sorted.length - relegationSpots) return 'relegation';
-		return null;
-	}
-
-	function diff(won: number, lost: number): string {
-		const d = won - lost;
-		return d > 0 ? `+${d}` : `${d}`;
-	}
-
 	const homeWinPct = $derived.by(() => {
 		if (completedMatches.length === 0) return null;
 		const homeGames = completedMatches.reduce((s: number, m: Match) => s + (m.homeScore ?? 0), 0);
@@ -87,21 +76,12 @@
 		const draws = completedMatches.filter((m: Match) => m.homeScore === m.awayScore).length;
 		return `${Math.round((draws / completedMatches.length) * 100)}%`;
 	});
-
-	function formatDate(dateStr: string | null): string {
-		if (!dateStr) return $_('group.tbd');
-		return new Date(dateStr).toLocaleDateString($locale ?? 'de', {
-			day: '2-digit',
-			month: '2-digit',
-			year: '2-digit'
-		});
-	}
 </script>
 
 <div class="space-y-6">
 	<header class="space-y-4">
 		<div class="flex items-center justify-between">
-			<BackButton class="" />
+			<BackButton />
 			<div class="flex items-center">
 				<FollowButton
 					bind:following
@@ -137,66 +117,12 @@
 		</Tabs.List>
 
 		<Tabs.Content value="standings" class="mt-4 space-y-3">
-			<div class="overflow-hidden rounded-xl border border-border">
-				<Table.Root>
-					<Table.Header>
-						<Table.Row class="border-border hover:bg-transparent">
-							<Table.Head class="w-8 pl-4 text-xs">{$_('group.pos')}</Table.Head>
-							<Table.Head class="text-xs">{$_('group.team')}</Table.Head>
-							<Table.Head class="w-10 text-center text-xs">{$_('group.played')}</Table.Head>
-							<Table.Head class="w-10 text-center text-xs">{$_('group.points')}</Table.Head>
-							<Table.Head class="w-12 pr-4 text-right text-xs">{$_('group.diff')}</Table.Head>
-						</Table.Row>
-					</Table.Header>
-					<Table.Body>
-						{#each sorted as row (row.teamId)}
-							{@const z = zone(row.position)}
-							<Table.Row class="border-border">
-								<Table.Cell
-									class="border-l-2 pl-4 font-mono font-semibold tabular-nums
-								{z === 'promotion'
-										? 'border-l-win'
-										: z === 'relegation'
-											? 'border-l-loss'
-											: 'border-l-transparent'}"
-								>
-									{row.position}
-								</Table.Cell>
-
-								<Table.Cell class="text-sm font-semibold">
-									<a href="/teams/{row.teamId}" class="hover:underline">
-										{row.team}
-									</a>
-								</Table.Cell>
-
-								<Table.Cell class="text-center font-mono tabular-nums">
-									{row.played}
-								</Table.Cell>
-
-								<Table.Cell class="text-center font-mono font-semibold tabular-nums">
-									{row.points}
-								</Table.Cell>
-
-								<Table.Cell
-									class="pr-4 text-right font-mono font-semibold tabular-nums
-                       {row.gamesWon - row.gamesLost > 0
-										? 'text-win'
-										: row.gamesWon - row.gamesLost < 0
-											? 'text-loss'
-											: 'text-muted-foreground'}"
-								>
-									{diff(row.gamesWon, row.gamesLost)}
-								</Table.Cell>
-							</Table.Row>
-						{/each}
-					</Table.Body>
-				</Table.Root>
-			</div>
+			<StandingsTable standings={data.standings} group={data.group} />
 
 			{#if completedMatches.length > 0}
 				<div class="grid grid-cols-2 gap-3 pt-1">
-					<StatCard label={$_('group.home_advantage')} value={homeWinPct} />
-					<StatCard label={$_('group.draw_rate')} value={drawPct} />
+					<StatTile label={$_('group.home_advantage')} value={homeWinPct} />
+					<StatTile label={$_('group.draw_rate')} value={drawPct} />
 				</div>
 			{/if}
 		</Tabs.Content>
@@ -216,36 +142,7 @@
 				<p class="py-12 text-center text-sm text-muted-foreground">{$_('group.no_schedule')}</p>
 			{:else}
 				{#each scheduledMatches as match (match.id)}
-					<a
-						href="/matches/{match.id}"
-						class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
-					>
-						<div class="flex min-w-0 flex-1 flex-col gap-1">
-							<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-								{$_('group.round_label', { values: { round: match.round } })} · {formatDate(
-									match.playedAt
-								)}
-							</span>
-							<div class="flex min-w-0 items-center gap-2 text-sm">
-								<span class="min-w-0 truncate font-semibold">
-									{#if posByTeam.get(match.homeTeamId)}<span
-											class="font-mono text-2xs text-muted-foreground tabular-nums"
-											>#{posByTeam.get(match.homeTeamId)}</span
-										>
-									{/if}{match.homeTeam}
-								</span>
-								<span class="shrink-0 text-muted-foreground">vs</span>
-								<span class="min-w-0 truncate font-semibold">
-									{#if posByTeam.get(match.awayTeamId)}<span
-											class="font-mono text-2xs text-muted-foreground tabular-nums"
-											>#{posByTeam.get(match.awayTeamId)}</span
-										>
-									{/if}{match.awayTeam}
-								</span>
-							</div>
-						</div>
-						<CaretRightIcon size="16" class="shrink-0 text-muted-foreground" />
-					</a>
+					<ScheduledMatchCard {match} {posByTeam} />
 				{/each}
 			{/if}
 		</Tabs.Content>

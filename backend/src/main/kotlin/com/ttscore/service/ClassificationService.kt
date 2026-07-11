@@ -41,6 +41,18 @@ object ClassificationService {
 
     fun localDateOf(at: OffsetDateTime): LocalDate = at.atZoneSameInstant(swissZone).toLocalDate()
 
+    /**
+     * The reclassification date a class in the given [half] of season "a/b" took effect:
+     * first half → Jul 1 of year a, second half → Jan 1 of year b.
+     */
+    fun effectiveDateOf(
+        seasonName: String,
+        half: Half,
+    ): LocalDate {
+        val (a, b) = seasonName.split("/").map { it.toInt() }
+        return if (half == Half.FIRST) LocalDate.of(a, 7, 1) else LocalDate.of(b, 1, 1)
+    }
+
     private fun column(half: Half): Column<String?> =
         if (half == Half.FIRST) PlayerClassifications.firstHalfClass else PlayerClassifications.secondHalfClass
 

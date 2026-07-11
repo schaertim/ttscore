@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { FeedItem } from './feed-types';
-	import { cn, classificationColors, timeAgo } from '$lib/utils';
-	import { _ } from 'svelte-i18n';
+	import { cn, classificationColors } from '$lib/utils';
+	import { relativeTime } from '$lib/date';
+	import { _, locale } from 'svelte-i18n';
 	import {
 		UserIcon,
 		UsersThreeIcon,
@@ -37,11 +38,9 @@
 
 	function getBadge(i: FeedItem): BadgeSpec {
 		if (i.kind === 'player_match') {
-			const wins = parseInt(i.matchScore.split('–')[0]);
-			const up = !isNaN(wins) && wins >= 2;
-			return up
-				? { icon: TrendUpIcon, bg: 'bg-win/15', text: 'text-win' }
-				: { icon: TrendDownIcon, bg: 'bg-loss/15', text: 'text-loss' };
+			if (i.result === 'WIN') return { icon: TrendUpIcon, bg: 'bg-win/15', text: 'text-win' };
+			if (i.result === 'LOSS') return { icon: TrendDownIcon, bg: 'bg-loss/15', text: 'text-loss' };
+			return { icon: HandshakeIcon, bg: 'bg-muted', text: 'text-muted-foreground' };
 		}
 		if (i.kind === 'team_match') {
 			if (i.result === 'WIN') return { icon: ThumbsUpIcon, bg: 'bg-win/15', text: 'text-win' };
@@ -63,13 +62,13 @@
 	function getDescription(i: FeedItem): string {
 		switch (i.kind) {
 			case 'player_match': {
-				const [myStr, oppStr] = i.matchScore.split('–');
-				const myWins = parseInt(myStr);
-				const oppWins = parseInt(oppStr);
-				const won = !isNaN(myWins) && myWins >= 2;
-				const higher = !isNaN(myWins) && !isNaN(oppWins) ? Math.max(myWins, oppWins) : null;
-				const prefix = won ? $_('feed.won') : $_('feed.lost');
-				return `${prefix}${higher !== null ? ` ${higher}` : ''} ${$_('feed.vs')} ${i.opponentTeam}`;
+				const prefix =
+					i.result === 'WIN'
+						? $_('feed.won')
+						: i.result === 'LOSS'
+							? $_('feed.lost')
+							: $_('feed.drew');
+				return `${prefix} ${i.matchScore} ${$_('feed.vs')} ${i.opponentTeam}`;
 			}
 			case 'class_change':
 				return i.direction === 'UP'
@@ -93,18 +92,13 @@
 
 	// Relative time label. Past events read "2 days ago"; an upcoming fixture counts down ("in 5h").
 	function displayTime(i: FeedItem): string | null {
-		if (i.kind === 'class_change') return null;
+		if (i.kind === 'class_change') return relativeTime(i.effectiveDate, $locale);
 		if (i.kind === 'upcoming_match') {
-			if (!i.playedAt) return null;
-			const diffMs = new Date(i.playedAt).getTime() - Date.now();
-			if (diffMs <= 0) return null;
-			const hours = Math.round(diffMs / 3_600_000);
-			const days = Math.round(diffMs / 86_400_000);
-			const lang = typeof navigator !== 'undefined' ? navigator.language : 'de';
-			const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
-			return hours < 24 ? rtf.format(hours, 'hour') : rtf.format(days, 'day');
+			// Only a genuinely future throw-off gets a countdown; anything past reads nothing.
+			if (!i.playedAt || new Date(i.playedAt).getTime() <= Date.now()) return null;
+			return relativeTime(i.playedAt, $locale);
 		}
-		return i.playedAt ? timeAgo(i.playedAt) : null;
+		return i.playedAt ? relativeTime(i.playedAt, $locale) : null;
 	}
 
 	const badge = $derived(getBadge(item));
@@ -117,7 +111,7 @@
 	class="group flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-accent"
 >
 	<div class="flex h-9 w-7 shrink-0 items-center justify-center rounded-lg">
-		<EntityIcon size="20" class="text-muted-foreground" />
+		<EntityIcon size={20} class="text-muted-foreground" />
 	</div>
 
 	<!-- Center: name + description + timestamp -->
@@ -139,6 +133,6 @@
 			badge.bg === 'bg-muted' && 'group-hover:ring-border'
 		)}
 	>
-		<badge.icon size="16" class={badge.text} weight="bold" />
+		<badge.icon size={16} class={badge.text} weight="bold" />
 	</div>
 </a>

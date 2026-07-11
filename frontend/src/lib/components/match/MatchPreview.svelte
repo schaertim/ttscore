@@ -6,7 +6,11 @@
 	import { TargetIcon, ClockCounterClockwiseIcon } from 'phosphor-svelte';
 	import { _ } from 'svelte-i18n';
 
-	let { preview }: { preview: MatchPreview } = $props();
+	interface Props {
+		preview: MatchPreview;
+	}
+
+	let { preview }: Props = $props();
 
 	const pm = $derived(preview.previousMeeting);
 </script>

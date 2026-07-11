@@ -6,9 +6,10 @@
 	import * as Carousel from '$lib/components/ui/carousel/index.js';
 	import type { CarouselAPI } from '$lib/components/ui/carousel/context.js';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import { STORAGE_KEYS } from '$lib/storageKeys';
 	import { _ } from 'svelte-i18n';
 
-	const STORAGE_KEY = 'ttscore_onboarded';
+	const STORAGE_KEY = STORAGE_KEYS.onboarded;
 
 	const slides = [
 		{ icon: TrophyIcon, headline: 'onboarding.slide1_headline', body: 'onboarding.slide1_body' },
@@ -76,7 +77,7 @@
 					<Carousel.Item>
 						<div class="flex flex-col items-center gap-4 px-2 pt-2 text-center">
 							<div class="rounded-2xl bg-primary/10 p-4">
-								<SlideIcon size="32" class="text-primary" weight="fill" />
+								<SlideIcon size={32} class="text-primary" weight="fill" />
 							</div>
 							<div class="space-y-2">
 								<h2 class="text-xl font-black tracking-tight">{$_(slide.headline)}</h2>

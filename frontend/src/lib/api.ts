@@ -196,6 +196,17 @@ export type CompetitionStat = {
 	isTournament: boolean;
 };
 
+/** Radar-chart source counts, over a rolling 1-year window rather than the current season. */
+export type RadarSource = {
+	opponentBuckets: OpponentBucket[];
+	deuceSetsWon: number;
+	deuceSetsTotal: number;
+	tightGameWins: number;
+	tightGames: number;
+	comeFromBehindWins: number;
+	comeFromBehindGames: number;
+};
+
 export type PlayerSeasonStats = {
 	seasonName: string;
 	totalGames: number;
@@ -220,6 +231,7 @@ export type PlayerSeasonStats = {
 	bestWinOpponentName: string | null;
 	bestWinOpponentClass: string | null;
 	competitions: CompetitionStat[];
+	radar: RadarSource;
 };
 
 export type H2HRecord = {
@@ -424,6 +436,7 @@ export type NextMatch = {
 export type ClassHistoryEntry = {
 	classification: string;
 	seasonName: string;
+	effectiveDate: string;
 };
 
 export type LeagueContext = {

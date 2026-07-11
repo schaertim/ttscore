@@ -11,6 +11,7 @@ export type ClassChangeItem = {
 	direction: 'UP' | 'DOWN';
 	from: string;
 	to: string;
+	effectiveDate: string;
 };
 
 export type TeamMatchItem = {

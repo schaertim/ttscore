@@ -1,4 +1,6 @@
-const STORAGE_KEY = 'ttscore:recent-players';
+import { STORAGE_KEYS } from '$lib/storageKeys';
+
+const STORAGE_KEY = STORAGE_KEYS.recentPlayers;
 const MAX_ENTRIES = 10;
 
 export interface RecentPlayer {

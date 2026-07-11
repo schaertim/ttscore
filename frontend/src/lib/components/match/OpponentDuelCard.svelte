@@ -9,7 +9,11 @@
 	// Single-sided variant of MatchupCard for the player preview: homePlayer is always the
 	// focus player, so only the opponent is shown. Record and win% read from the focus
 	// player's perspective.
-	let { duel }: { duel: PreviewMatchup } = $props();
+	interface Props {
+		duel: PreviewMatchup;
+	}
+
+	let { duel }: Props = $props();
 
 	const opp = $derived(duel.awayPlayer);
 	const pct = $derived(

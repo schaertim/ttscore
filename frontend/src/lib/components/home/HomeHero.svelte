@@ -36,7 +36,9 @@
 		const maxVal = Math.max(...pts.map((p) => p.value));
 		const range = Math.max(maxVal - minVal, 10);
 
-		const xScale = scaleLinear().domain([0, pts.length - 1]).range([0, width - RIGHT_PAD]);
+		const xScale = scaleLinear()
+			.domain([0, pts.length - 1])
+			.range([0, width - RIGHT_PAD]);
 		const yScale = scaleLinear()
 			.domain([minVal - range * 0.3, maxVal + range * 0.08])
 			.range([CHART_HEIGHT, 0]);
@@ -105,20 +107,20 @@
 				<p class="mb-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
 					{$_('home.elo_rating')}
 				</p>
-				<p class="font-mono text-6xl font-black tabular-nums leading-none">{displayElo}</p>
+				<p class="font-mono text-6xl leading-none font-black tabular-nums">{displayElo}</p>
 				{#await recentMatches then matches}
 					{@const delta = monthDelta(matches)}
 					{@const rounded = Math.round(delta)}
 					{#if rounded !== 0}
 						<p
 							class="mt-2 inline-flex items-center gap-1 text-sm font-semibold {delta > 0
-								? 'text-emerald-500'
-								: 'text-red-500'}"
+								? 'text-win'
+								: 'text-loss'}"
 						>
 							{#if delta > 0}
-								<ArrowUpIcon size="13" weight="bold" />+{rounded} {$_('home.this_month')}
+								<ArrowUpIcon size={13} weight="bold" />+{rounded} {$_('home.this_month')}
 							{:else}
-								<ArrowDownIcon size="13" weight="bold" />{rounded} {$_('home.this_month')}
+								<ArrowDownIcon size={13} weight="bold" />{rounded} {$_('home.this_month')}
 							{/if}
 						</p>
 					{/if}
@@ -145,12 +147,7 @@
 									stroke-linecap="round"
 								/>
 								<!-- solid dot -->
-								<circle
-									cx={sparkline.dotX}
-									cy={sparkline.dotY}
-									r="6"
-									fill={classificationVar}
-								/>
+								<circle cx={sparkline.dotX} cy={sparkline.dotY} r="6" fill={classificationVar} />
 							</svg>
 						{/if}
 					{/if}

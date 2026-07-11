@@ -15,7 +15,7 @@
 		ClockIcon,
 		TrophyIcon
 	} from 'phosphor-svelte';
-	import StatCard from '$lib/components/StatCard.svelte';
+	import StatTile from '$lib/components/StatTile.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { _ } from 'svelte-i18n';
 
@@ -28,6 +28,8 @@
 
 	let { seasons, federations, banner }: Props = $props();
 
+	// Deliberate initial-value capture: default to the newest season once, then the user owns it.
+	// svelte-ignore state_referenced_locally
 	let selectedSeasonId = $state(seasons[0]?.id ?? '');
 
 	const selectedSeason = $derived(seasons.find((s: Season) => s.id === selectedSeasonId));
@@ -76,7 +78,7 @@
 <div class="space-y-6">
 	<header class="flex items-end justify-between px-1">
 		<div>
-			<p class="text-xs font-semibold tracking-widest text-muted-foreground uppercase mb-1">
+			<p class="mb-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
 				{$_('leagues.browser_label')}
 			</p>
 			<PageTitle>{$_('leagues.title')}</PageTitle>
@@ -114,14 +116,14 @@
 						>
 							<div class="flex items-center gap-3">
 								{#if isNational}
-									<GlobeIcon size="20" class="text-muted-foreground" />
+									<GlobeIcon size={20} class="text-muted-foreground" />
 								{:else}
-									<MapTrifoldIcon size="20" class="text-muted-foreground" />
+									<MapTrifoldIcon size={20} class="text-muted-foreground" />
 								{/if}
 								<span class="font-semibold">{fed.name}</span>
 							</div>
 							<CaretDownIcon
-								size="20"
+								size={20}
 								class="text-muted-foreground transition-transform duration-200
 								{isExpanded ? 'rotate-180' : ''}"
 							/>
@@ -139,16 +141,20 @@
 												<p
 													class="mt-1 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
 												>
-													{#if group.teamCount > 0}{$_('leagues.teams', { values: { count: group.teamCount } })}{/if}
+													{#if group.teamCount > 0}{$_('leagues.teams', {
+															values: { count: group.teamCount }
+														})}{/if}
 													{#if group.teamCount > 0 && group.totalRounds > 0}
 														&nbsp;·&nbsp;
 													{/if}
-													{#if group.totalRounds > 0}{$_('leagues.round', { values: { played: group.roundsPlayed, total: group.totalRounds } })}{/if}
+													{#if group.totalRounds > 0}{$_('leagues.round', {
+															values: { played: group.roundsPlayed, total: group.totalRounds }
+														})}{/if}
 												</p>
 											{/if}
 										</div>
 										<CaretRightIcon
-											size="16"
+											size={16}
 											class="shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
 										/>
 									</a>
@@ -162,24 +168,24 @@
 	</section>
 
 	<section class="grid grid-cols-2 gap-3">
-		<StatCard
+		<StatTile
 			label={$_('leagues.players_active')}
 			value={loadingStats || !stats ? null : stats.activePlayers.toLocaleString()}
 		>
 			{#snippet footer()}
-				<TrendUpIcon size="16" />
+				<TrendUpIcon size={16} />
 				<span class="text-2xs font-semibold">{selectedSeason?.name ?? ''}</span>
 			{/snippet}
-		</StatCard>
+		</StatTile>
 
-		<StatCard
+		<StatTile
 			label={$_('leagues.matches_played')}
 			value={loadingStats || !stats ? null : stats.matchesLast24h}
 		>
 			{#snippet footer()}
-				<ClockIcon size="16" />
+				<ClockIcon size={16} />
 				<span class="text-2xs font-semibold">{$_('leagues.last_24h')}</span>
 			{/snippet}
-		</StatCard>
+		</StatTile>
 	</section>
 </div>

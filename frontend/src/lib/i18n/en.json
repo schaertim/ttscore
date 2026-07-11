@@ -20,15 +20,10 @@
 	"set_player": {
 		"banner_title": "Make it yours",
 		"banner_desc": "Set your player to see your ELO, next match, and recent results right here.",
-		"banner_cta": "Set your player →",
 		"is_this_you": "Is this you?",
 		"sign_in_prompt": "Sign in to track your ELO and season results.",
-		"sign_in_cta": "Sign in →",
-		"your_player": "Your player",
 		"set_title": "Set as your player",
-		"set_desc": "See your ELO and results on your home screen.",
-		"set_cta": "Set →",
-		"setting": "Setting…"
+		"set_desc": "See your ELO and results on your home screen."
 	},
 	"home": {
 		"elo_rating": "ELO Rating",
@@ -40,7 +35,6 @@
 		"games_sublabel": "History & upcoming matches",
 		"my_league": "My League",
 		"my_team": "My Team",
-		"upcoming": "{count, number} upcoming",
 		"favorite_feed": "Favorite Feed",
 		"no_recent_activity": "No recent activity in your feed.",
 		"show_full_feed": "Show full feed"
@@ -63,9 +57,6 @@
 		"game_history": "Game History",
 		"syncing": "Updating",
 		"no_matches": "No matches found.",
-		"wins": "Wins",
-		"losses": "Losses",
-		"win_pct": "Win %",
 		"show_full_history": "Show Full History",
 		"games_count": "{count, number} {count, plural, one {Game} other {Games}}",
 		"no_games": "No games found.",
@@ -73,11 +64,11 @@
 		"tab_overview": "Overview",
 		"tab_stats": "Stats",
 		"tab_career": "Career",
-		"career_coming_soon": "Career arc coming soon.",
 		"games_title": "Games",
 		"tab_history": "History",
 		"tab_upcoming": "Upcoming",
-		"no_upcoming": "No upcoming matches."
+		"no_upcoming": "No upcoming matches.",
+		"no_club": "No club"
 	},
 	"career": {
 		"class": "Class",
@@ -89,7 +80,6 @@
 		"seasons": "Seasons",
 		"opponents": "Opponents",
 		"clubs": "Clubs",
-		"active_range": "Active {from}–{to}",
 		"milestones": "Milestones",
 		"peak_class": "Peak class",
 		"longest_streak": "Longest streak",
@@ -108,47 +98,26 @@
 		"record": "Record",
 		"win_rate": "Win rate",
 		"games": "Games",
-		"recent_form": "Last 10",
 		"by_opponent": "Win rate by opponent",
-		"higher_class": "Higher",
-		"lower_class": "Lower",
 		"how_games_end": "How games end",
-		"fine_margins": "The fine margins",
-		"set_win_rate": "Set win rate",
-		"deuce_sets": "Deuce sets",
-		"deuce_sub": "sets at 10–10",
-		"tight_games": "Tight games (3:2 / 4:3 etc.)",
-		"comeback_wins": "Comeback wins",
 		"wins": "Wins",
 		"losses": "Losses",
-		"player_profile": "Player Profile",
 		"radar_form": "Form",
 		"radar_consistency": "Consistency",
 		"radar_clutch": "Clutch",
 		"radar_resilience": "Resilience",
-		"radar_five_set": "5th Set",
+		"radar_grit": "Grit",
 		"radar_punch": "Punch",
 		"by_month": "By month",
 		"highlights": "Season highlights",
 		"best_win": "Best win",
 		"longest_streak": "Longest streak",
-		"current_streak": "Current streak",
-		"competitions": "Competitions",
-		"league": "League",
-		"tournament": "Tournament"
+		"current_streak": "Current streak"
 	},
 	"h2h": {
 		"compare_with_me": "Compare with me",
 		"compare": "Compare",
-		"title": "Head to head",
-		"direct_record": "Direct record",
-		"no_encounters": "No direct encounters yet.",
 		"recent_encounters": "Recent encounters",
-		"select_player": "Compare players",
-		"select_second": "Pick a second player",
-		"comparing_with": "Comparing with {name}",
-		"all_time": "all-time",
-		"this_season": "this season",
 		"sets": "Sets",
 		"points": "Points",
 		"duels": "Duels",
@@ -162,8 +131,10 @@
 		"relegated": "Relegated",
 		"vs": "vs.",
 		"upcoming": "Upcoming",
-		"latest": "Latest",
-		"unknown_date": "Unknown date"
+		"title": "Feed",
+		"empty_title": "Nothing in your feed yet",
+		"empty_desc": "Star players, teams, or divisions to see their activity here.",
+		"manage_favorites": "Manage favorites"
 	},
 	"group": {
 		"standings": "Standings",
@@ -178,8 +149,7 @@
 		"draw_rate": "Draw Rate",
 		"no_results": "No results yet",
 		"no_schedule": "No upcoming matches",
-		"round_label": "Rd {round}",
-		"tbd": "TBD"
+		"round_label": "Rd {round}"
 	},
 	"preview": {
 		"pro_title": "Match preview is a Pro feature",
@@ -188,13 +158,9 @@
 		"vs": "vs",
 		"home": "Home",
 		"away": "Away",
-		"position": "Position",
 		"diff": "Diff",
-		"form": "Form",
 		"first_leg": "Earlier meeting",
 		"key_duels": "Key duels",
-		"key_duels_hint": "Projected from both rosters — lineups aren't confirmed yet.",
-		"rosters": "Rosters",
 		"meetings": "{count, number} {count, plural, one {meeting} other {meetings}}",
 		"first_meeting": "First meeting",
 		"duels": "Duels"
@@ -216,7 +182,6 @@
 		"subtitle": "Profile & Settings",
 		"my_player": "My Player",
 		"search_placeholder": "Search for your player…",
-		"searching": "Searching…",
 		"favorites": "Favorites",
 		"appearance": "Appearance",
 		"dark_mode": "Dark mode",
@@ -246,12 +211,10 @@
 		"signin_desc": "Sign in to follow your player, teams and leagues.",
 		"signup_desc": "Free account — set your player and track your ELO.",
 		"or": "Or",
-		"or_continue": "Or continue with",
 		"email": "Email",
 		"password": "Password",
 		"confirm_password": "Confirm password",
 		"password_mismatch": "Passwords don't match.",
-		"loading": "Loading…",
 		"check_email": "Check your email to confirm your account."
 	},
 	"search": {
@@ -265,12 +228,19 @@
 		"no_results": "No players found."
 	},
 	"common": {
+		"tbd": "TBD",
 		"remove": "Remove",
 		"back": "Back",
-		"unknown_player": "Unknown player",
 		"leagues_label": "Leagues",
 		"teams_label": "Teams",
-		"players_label": "Players"
+		"players_label": "Players",
+		"follow": "Follow",
+		"unfollow": "Unfollow",
+		"sign_in_to_follow": "Sign in to follow",
+		"notifications_on": "Turn on notifications",
+		"notifications_off": "Turn off notifications",
+		"sign_in_to_notify": "Sign in to turn on notifications",
+		"dismiss": "Dismiss"
 	},
 	"pro": {
 		"unlock": "Unlock with Pro",
@@ -291,7 +261,6 @@
 		"subscribe": "Subscribe",
 		"checkout_note": "Pay with card or TWINT. Cancel anytime.",
 		"checkout_cancelled": "Checkout cancelled. No charge was made.",
-		"checkout_soon": "Checkout coming soon",
 		"already_pro": "You're Pro — thank you!",
 		"already_pro_desc": "You have full access to everything ttscore has to offer.",
 		"feature_h2h_title": "Head-to-head vs anyone",
@@ -302,5 +271,10 @@
 		"feature_career_desc": "Season-by-season classifications, clubs, milestones and rivalries.",
 		"feature_follow_notify_title": "Unlimited follows & notifications",
 		"feature_follow_notify_desc": "Follow every player, team and league you care about — and know the moment new results land."
+	},
+	"error": {
+		"not_found": "Page not found",
+		"generic": "Something went wrong",
+		"go_home": "Back to home"
 	}
 }

@@ -1,15 +1,13 @@
 <script lang="ts">
-	import { classificationColors } from '$lib/utils';
+	import { classificationColors, cn } from '$lib/utils';
 
-	let {
-		classification,
-		size = 'sm',
-		class: className = ''
-	}: {
+	interface Props {
 		classification: string | null | undefined;
 		size?: 'sm' | 'md' | 'lg';
 		class?: string;
-	} = $props();
+	}
+
+	let { classification, size = 'sm', class: className = '' }: Props = $props();
 
 	const sizeClasses = {
 		sm: 'px-1.5 py-0.5 text-2xs',
@@ -20,9 +18,12 @@
 
 {#if classification}
 	<span
-		class="shrink-0 rounded-full font-black tracking-wide ring-1 ring-current/30 {sizeClasses[
-			size
-		]} {classificationColors(classification)} {className}"
+		class={cn(
+			'shrink-0 rounded-full font-black tracking-wide ring-1 ring-current/30',
+			sizeClasses[size],
+			classificationColors(classification),
+			className
+		)}
 	>
 		{classification}
 	</span>

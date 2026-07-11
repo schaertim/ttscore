@@ -4,13 +4,14 @@ import type { LayoutLoad } from './$types';
 import '$lib/i18n'; // registers all locale loaders
 import { locale, waitLocale } from 'svelte-i18n';
 import { resolveLocale } from '$lib/i18n';
+import { STORAGE_KEYS } from '$lib/storageKeys';
 
 export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 	depends('supabase:auth');
 
 	// Initialise locale: server picks from cookie/Accept-Language; browser may refine
 	const activeLocale = isBrowser()
-		? resolveLocale(localStorage.getItem('ttscore_locale') ?? navigator.language)
+		? resolveLocale(localStorage.getItem(STORAGE_KEYS.locale) ?? navigator.language)
 		: data.locale;
 	locale.set(activeLocale);
 	await waitLocale();
@@ -28,7 +29,7 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 	// +layout.server.ts (which called getUser()). Never touch session.user here —
 	// that object comes from cookie storage and triggers the Supabase SDK warning.
 	//
-	// On the browser: getSession() is fine â€” we're reading from localStorage/memory,
+	// On the browser: getSession() is fine — we're reading from localStorage/memory,
 	// not untrusted cookie storage.
 	if (!isBrowser()) {
 		return {

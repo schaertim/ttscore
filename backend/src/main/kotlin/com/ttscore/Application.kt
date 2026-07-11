@@ -36,7 +36,7 @@ fun Application.module() {
     val currentSeason = environment.config.property("scraper.currentSeason").getString()
 
     if (environment.config.property("jobs.enabled").getString().toBoolean()) {
-       // scheduleJobs(currentSeason)
+       scheduleJobs(currentSeason)
     }
 }
 

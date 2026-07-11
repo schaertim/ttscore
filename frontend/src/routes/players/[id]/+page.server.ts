@@ -6,7 +6,7 @@ import { followAction, unfollowAction, setNotifyAction } from '$lib/server/follo
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const player = await api.players.get(params.id).catch(() => null);
-	if (!player) throw error(404, 'Player not found');
+	if (!player) error(404, 'Player not found');
 
 	const { session } = await locals.safeGetSession();
 

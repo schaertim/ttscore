@@ -11,7 +11,10 @@ const ASSETS = [...build, ...files];
 // Cache static assets on install
 self.addEventListener('install', (event) => {
 	event.waitUntil(
-		caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+		caches
+			.open(CACHE)
+			.then((cache) => cache.addAll(ASSETS))
+			.then(() => self.skipWaiting())
 	);
 });
 
@@ -71,15 +74,13 @@ self.addEventListener('notificationclick', (event) => {
 	const targetUrl = (event.notification.data as { url: string }).url;
 
 	event.waitUntil(
-		self.clients
-			.matchAll({ type: 'window', includeUncontrolled: true })
-			.then((clientList) => {
-				for (const client of clientList) {
-					if (client.url === targetUrl && 'focus' in client) {
-						return client.focus();
-					}
+		self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+			for (const client of clientList) {
+				if (client.url === targetUrl && 'focus' in client) {
+					return client.focus();
 				}
-				return self.clients.openWindow(targetUrl);
-			})
+			}
+			return self.clients.openWindow(targetUrl);
+		})
 	);
 });

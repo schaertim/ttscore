@@ -2,7 +2,11 @@
 	import type { CareerSeasonEntry } from '$lib/api';
 	import { classColorVar, classificationRank } from '$lib/utils';
 
-	let { seasons }: { seasons: CareerSeasonEntry[] } = $props();
+	interface Props {
+		seasons: CareerSeasonEntry[];
+	}
+
+	let { seasons }: Props = $props();
 
 	type Stint = {
 		clubName: string;

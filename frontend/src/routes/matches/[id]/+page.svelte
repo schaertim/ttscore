@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { api, type MatchPreview as MatchPreviewData } from '$lib/api';
+	import { ProResource } from '$lib/proResource.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import GameCard from '$lib/components/GameCard.svelte';
 	import MatchPreview from '$lib/components/match/MatchPreview.svelte';
@@ -12,30 +13,19 @@
 
 	const isScheduled = $derived(data.match.status === 'SCHEDULED');
 
-	let preview = $state<MatchPreviewData | null>(null);
-	let loading = $state(false);
-	let error = $state(false);
-
-	// Preview is Pro-gated — only Pro users fetch it (non-Pro see the paywall). Fetched client-side
-	// so we can forward the Supabase access token, mirroring the H2H drawer.
+	// Preview is Pro-gated — only Pro users fetch it (non-Pro see the paywall). Fetched
+	// client-side so we can forward the Supabase access token, mirroring the H2H drawer.
+	const preview = new ProResource<MatchPreviewData>();
 	$effect(() => {
 		if (!isScheduled || !data.isPro) return;
 		const id = data.match.id;
-		loading = true;
-		error = false;
-		preview = null;
-		data.supabase.auth
-			.getSession()
-			.then(({ data: s }) => api.matches.preview(id, s.session?.access_token ?? ''))
-			.then((res) => (preview = res))
-			.catch(() => (error = true))
-			.finally(() => (loading = false));
+		preview.load(data.supabase, (token) => api.matches.preview(id, token));
 	});
 </script>
 
 <div class="space-y-6">
 	<header class="space-y-4">
-		<BackButton class="" />
+		<BackButton />
 
 		{#if !isScheduled}
 			<div class="flex items-center gap-4">
@@ -55,20 +45,20 @@
 	{#if !isScheduled}
 		<div class="space-y-3">
 			{#each data.match.games as game, i (i)}
-				<GameCard mode="match" {game} />
+				<GameCard {game} />
 			{/each}
 		</div>
 	{:else if !data.isPro}
 		<PaywallTeaser title={$_('preview.pro_title')} description={$_('preview.pro_desc')} />
-	{:else if loading}
+	{:else if preview.loading}
 		<div class="space-y-4">
 			<Skeleton class="h-24 w-full rounded-xl" />
 			<Skeleton class="h-32 w-full rounded-xl" />
 			<Skeleton class="h-40 w-full rounded-xl" />
 		</div>
-	{:else if error || !preview}
+	{:else if preview.error || !preview.data}
 		<p class="py-12 text-center text-sm text-muted-foreground">{$_('preview.unavailable')}</p>
 	{:else}
-		<MatchPreview {preview} />
+		<MatchPreview preview={preview.data} />
 	{/if}
 </div>

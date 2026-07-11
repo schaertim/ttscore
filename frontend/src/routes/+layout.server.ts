@@ -1,6 +1,7 @@
 ﻿import type { LayoutServerLoad } from './$types';
 import { authedKtor } from '$lib/server/ktor';
 import { resolveLocale } from '$lib/i18n';
+import { STORAGE_KEYS } from '$lib/storageKeys';
 import { api } from '$lib/api';
 
 export const load: LayoutServerLoad = async ({
@@ -15,7 +16,7 @@ export const load: LayoutServerLoad = async ({
 
 	const { session, user } = await safeGetSession();
 	const locale = resolveLocale(
-		cookies.get('ttscore_locale') ?? request.headers.get('accept-language')
+		cookies.get(STORAGE_KEYS.locale) ?? request.headers.get('accept-language')
 	);
 
 	let hasHomePlayer = false;

@@ -1,3 +1,5 @@
+import { STORAGE_KEYS } from '$lib/storageKeys';
+
 let dark = $state(false);
 
 export const theme = {
@@ -5,14 +7,14 @@ export const theme = {
 		return dark;
 	},
 	init() {
-		const stored = localStorage.getItem('theme');
+		const stored = localStorage.getItem(STORAGE_KEYS.theme);
 		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 		dark = stored === 'dark' || (!stored && prefersDark);
 		apply();
 	},
 	toggle() {
 		dark = !dark;
-		localStorage.setItem('theme', dark ? 'dark' : 'light');
+		localStorage.setItem(STORAGE_KEYS.theme, dark ? 'dark' : 'light');
 		apply();
 	}
 };

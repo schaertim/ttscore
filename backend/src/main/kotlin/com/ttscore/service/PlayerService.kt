@@ -260,6 +260,18 @@ object PlayerService {
             bestWinOpponentName = null,
             bestWinOpponentClass = null,
             competitions = emptyList(),
+            radar = emptyRadar(),
+        )
+
+    private fun emptyRadar() =
+        RadarSourceResponse(
+            opponentBuckets = emptyList(),
+            deuceSetsWon = 0,
+            deuceSetsTotal = 0,
+            tightGameWins = 0,
+            tightGames = 0,
+            comeFromBehindWins = 0,
+            comeFromBehindGames = 0,
         )
 
     suspend fun getSeasonStats(playerId: String): PlayerSeasonStatsResponse? {
@@ -524,6 +536,8 @@ object PlayerService {
                     }
                 }
 
+            val radar = computeRadarSource(uuid, playerCurrentRank)
+
             PlayerSeasonStatsResponse(
                 seasonName = seasonName,
                 totalGames = overall.games,
@@ -561,8 +575,139 @@ object PlayerService {
                     comps.entries
                         .sortedByDescending { it.value.games }
                         .map { CompetitionStatResponse(it.key, it.value.wins, it.value.games, it.value.tournament) },
+                radar = radar,
             )
         }
+    }
+
+    /**
+     * Radar-chart source (everything but Form): a rolling 1-year window rather than the
+     * current-season scope, so it stays stable across the season rollover and isn't skewed by a
+     * small early-season sample. Opponent buckets use a tighter cutoff than [getSeasonStats]'s
+     * own buckets — 2+ ranks (not 3+) fold into HIGHER/LOWER, leaving same-class-or-adjacent as
+     * the "Consistency" pool. Must run inside the same transaction as its caller.
+     */
+    private fun computeRadarSource(uuid: UUID, playerCurrentRank: Int?): RadarSourceResponse {
+        val cutoff = OffsetDateTime.now(swissZone).minusYears(1)
+        val rows =
+            Games
+                .select(
+                    Games.id,
+                    Games.homePlayer1Id,
+                    Games.awayPlayer1Id,
+                    Games.homeSets,
+                    Games.awaySets,
+                    Games.result,
+                    Games.playedAt,
+                )
+                .where {
+                    ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
+                        (Games.gameType eq GameType.SINGLES) and
+                        (Games.result neq GameResult.NOT_PLAYED) and
+                        (Games.playedAt greaterEq cutoff)
+                }
+                .toList()
+
+        if (rows.isEmpty()) return emptyRadar()
+
+        val gameIds = rows.map { it[Games.id] }
+        val setsByGame =
+            GameSets
+                .select(GameSets.gameId, GameSets.setNumber, GameSets.homePoints, GameSets.awayPoints)
+                .where { GameSets.gameId inList gameIds }
+                .orderBy(GameSets.setNumber to SortOrder.ASC)
+                .groupBy { it[GameSets.gameId] }
+
+        val opponentIds =
+            rows.mapNotNull { row ->
+                val isHome = row[Games.homePlayer1Id] == uuid
+                if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
+            }.toSet()
+        val seasonNames =
+            rows.mapNotNull { row ->
+                row[Games.playedAt]?.let {
+                    ClassificationService.seasonNameOf(ClassificationService.localDateOf(it))
+                }
+            }.toSet()
+        val badges = ClassificationService.classBadges(opponentIds + uuid, seasonNames)
+
+        var deuceWon = 0
+        var deuceTotal = 0
+        var tightWins = 0
+        var tightGames = 0
+        var comeFromBehindWins = 0
+        var comeFromBehindGames = 0
+        val tiers = linkedMapOf<String, WinAcc>()
+
+        for (row in rows) {
+            val isHome = row[Games.homePlayer1Id] == uuid
+            val won =
+                (row[Games.result] == GameResult.HOME && isHome) ||
+                    (row[Games.result] == GameResult.AWAY && !isHome)
+
+            val playedAt = row[Games.playedAt]
+            if (playedAt != null) {
+                val date = ClassificationService.localDateOf(playedAt)
+                val oppId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
+                val oppClass = oppId?.let { ClassificationService.classOf(badges, it, date) }
+                if (oppClass != null) tiers.getOrPut(oppClass) { WinAcc() }.add(won)
+            }
+
+            val ps = if (isHome) row[Games.homeSets]?.toInt() else row[Games.awaySets]?.toInt()
+            val os = if (isHome) row[Games.awaySets]?.toInt() else row[Games.homeSets]?.toInt()
+            if (ps != null && os != null && abs(ps - os) == 1) {
+                tightGames++
+                if (won) tightWins++
+            }
+
+            val gameSets = setsByGame[row[Games.id]].orEmpty()
+            if (gameSets.isNotEmpty()) {
+                var playerSetsRunning = 0; var oppSetsRunning = 0; var wasBehind = false
+                for (s in gameSets) {
+                    val homeP = s[GameSets.homePoints].toInt()
+                    val awayP = s[GameSets.awayPoints].toInt()
+                    val my = if (isHome) homeP else awayP
+                    val op = if (isHome) awayP else homeP
+                    if (my > op) playerSetsRunning++ else oppSetsRunning++
+                    if (homeP >= 10 && awayP >= 10) { deuceTotal++; if (my > op) deuceWon++ }
+                    if (oppSetsRunning > playerSetsRunning) wasBehind = true
+                }
+                if (wasBehind) { comeFromBehindGames++; if (won) comeFromBehindWins++ }
+            }
+        }
+
+        val opponentBuckets: List<OpponentBucketResponse> =
+            if (playerCurrentRank == null) {
+                emptyList()
+            } else {
+                var higherW = 0; var higherG = 0
+                var lowerW = 0; var lowerG = 0
+                val mid = mutableListOf<Pair<String, WinAcc>>()
+                for ((cls, acc) in tiers) {
+                    val r = classRank(cls) ?: continue
+                    when {
+                        r - playerCurrentRank >= 2 -> { higherW += acc.wins; higherG += acc.games }
+                        r - playerCurrentRank <= -2 -> { lowerW += acc.wins; lowerG += acc.games }
+                        else -> mid.add(cls to acc)
+                    }
+                }
+                buildList {
+                    if (higherG > 0) add(OpponentBucketResponse("HIGHER", higherW, higherG))
+                    mid.sortedByDescending { classRank(it.first) ?: Int.MIN_VALUE }
+                        .forEach { (cls, acc) -> add(OpponentBucketResponse(cls, acc.wins, acc.games)) }
+                    if (lowerG > 0) add(OpponentBucketResponse("LOWER", lowerW, lowerG))
+                }
+            }
+
+        return RadarSourceResponse(
+            opponentBuckets = opponentBuckets,
+            deuceSetsWon = deuceWon,
+            deuceSetsTotal = deuceTotal,
+            tightGameWins = tightWins,
+            tightGames = tightGames,
+            comeFromBehindWins = comeFromBehindWins,
+            comeFromBehindGames = comeFromBehindGames,
+        )
     }
 
     /**
@@ -672,13 +817,18 @@ object PlayerService {
                 .limit(5)
                 .mapNotNull { row ->
                     // One entry per season — the latest known half (second falls back to first).
+                    val secondHalf = row[PlayerClassifications.secondHalfClass]
                     val classification =
-                        row[PlayerClassifications.secondHalfClass]
+                        secondHalf
                             ?: row[PlayerClassifications.firstHalfClass]
                             ?: return@mapNotNull null
+                    val half =
+                        if (secondHalf != null) ClassificationService.Half.SECOND else ClassificationService.Half.FIRST
+                    val seasonName = row[Seasons.name]
                     ClassHistoryEntryResponse(
                         classification = classification,
-                        seasonName = row[Seasons.name],
+                        seasonName = seasonName,
+                        effectiveDate = ClassificationService.effectiveDateOf(seasonName, half).toString(),
                     )
                 }
         }

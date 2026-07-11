@@ -4,6 +4,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
+	import { Button } from '$lib/components/ui/button/index.js';
 	import { classColorVar } from '$lib/utils';
 	import {
 		SparkleIcon,
@@ -71,7 +72,7 @@
 			class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ring-1 ring-current/25"
 			style="background: color-mix(in srgb, {accent} 15%, transparent); color: {accent};"
 		>
-			<SparkleIcon size="28" weight="fill" />
+			<SparkleIcon size={28} weight="fill" />
 		</div>
 		<PageTitle>{$_('pro.page_title')}</PageTitle>
 		<p class="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">{$_('pro.page_subtitle')}</p>
@@ -120,7 +121,7 @@
 						</span>
 					</span>
 					<span class="shrink-0 text-right">
-						<span class="block font-mono text-lg font-black tabular-nums leading-none">25 CHF</span>
+						<span class="block font-mono text-lg leading-none font-black tabular-nums">25 CHF</span>
 						<span class="mt-0.5 block text-xs text-muted-foreground">{$_('pro.per_year')}</span>
 					</span>
 				</label>
@@ -134,7 +135,7 @@
 					></span>
 					<span class="min-w-0 flex-1 text-sm font-semibold">{$_('pro.plan_monthly')}</span>
 					<span class="shrink-0 text-right">
-						<span class="block font-mono text-lg font-black tabular-nums leading-none">3 CHF</span>
+						<span class="block font-mono text-lg leading-none font-black tabular-nums">3 CHF</span>
 						<span class="mt-0.5 block text-xs text-muted-foreground">{$_('pro.per_month')}</span>
 					</span>
 				</label>
@@ -148,7 +149,7 @@
 						class="mt-0.5 shrink-0 rounded-xl p-2"
 						style="background: color-mix(in srgb, {accent} 12%, transparent); color: {accent};"
 					>
-						<feature.icon size="20" weight="duotone" />
+						<feature.icon size={20} weight="duotone" />
 					</div>
 					<div class="min-w-0 space-y-0.5">
 						<p class="text-sm font-semibold">{feature.title}</p>
@@ -160,14 +161,14 @@
 
 		{#if !showAsPro}
 			<div class="px-4 pb-4">
-				<button
+				<Button
 					type="submit"
 					form="pro-checkout-form"
-					class="w-full rounded-full py-2.5 text-sm font-bold transition-opacity hover:opacity-90"
+					class="h-auto w-full rounded-full py-2.5 font-bold transition-opacity hover:opacity-90"
 					style="background: {accent}; color: var(--card);"
 				>
 					{$_('pro.subscribe')}
-				</button>
+				</Button>
 			</div>
 		{/if}
 	</div>

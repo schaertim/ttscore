@@ -2,19 +2,17 @@
 	import { _ } from 'svelte-i18n';
 	import type { PlayerSeasonStats } from '$lib/api';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
-	import StatTile from '$lib/components/StatTile.svelte';
-	import ScoreLine from '$lib/components/ScoreLine.svelte';
+	import RecordOverview from '$lib/components/RecordOverview.svelte';
 	import OpponentBreakdown from './OpponentBreakdown.svelte';
 	import SetDistributionRadial from './SetDistributionRadial.svelte';
 	import MonthlyForm from './MonthlyForm.svelte';
 	import SeasonHighlights from './SeasonHighlights.svelte';
 	import {
 		UsersThreeIcon,
-		PingPongIcon,
-		CalendarBlankIcon,
 		MedalIcon,
 		ChartDonutIcon,
-		CalendarDotsIcon, PresentationChartIcon
+		CalendarDotsIcon,
+		PresentationChartIcon
 	} from 'phosphor-svelte';
 
 	interface Props {
@@ -24,9 +22,6 @@
 	let { stats }: Props = $props();
 
 	const losses = $derived(stats.overall.games - stats.overall.wins);
-	const winPct = $derived(
-		stats.overall.games > 0 ? Math.round((stats.overall.wins / stats.overall.games) * 100) : 0
-	);
 </script>
 
 {#if stats.totalGames === 0}
@@ -35,18 +30,12 @@
 	<div class="space-y-6">
 		<section class="space-y-3">
 			<SectionLabel label={$_('stats.overview')} icon={PresentationChartIcon} />
-			<div class="grid grid-cols-3 gap-3">
-				<StatTile label={$_('stats.games')} labelPosition="bottom" align="center" value={stats.totalGames} />
-				<StatTile label={$_('stats.record')} labelPosition="bottom" align="center">
-					<ScoreLine
-						segments={[
-							{ value: stats.overall.wins, tone: 'win' },
-							{ value: losses, tone: 'loss' }
-						]}
-					/>
-				</StatTile>
-				<StatTile label={$_('stats.win_rate')} labelPosition="bottom" align="center" value={`${winPct}%`} />
-			</div>
+			<RecordOverview
+				totalLabel={$_('stats.games')}
+				total={stats.totalGames}
+				wins={stats.overall.wins}
+				{losses}
+			/>
 		</section>
 
 		{#if stats.setDistribution.length > 0}

@@ -34,7 +34,8 @@ export async function unfollowAction({ locals, request }: RequestEvent) {
 	if (!session) return fail(401, { error: 'Not authenticated' });
 
 	const formData = await request.formData();
-	await authedKtor(session.access_token).delete(`/follows/${formData.get('followId')}`);
+	const res = await authedKtor(session.access_token).delete(`/follows/${formData.get('followId')}`);
+	if (!res.ok) return fail(500, { error: 'Failed' });
 	return { success: true };
 }
 

@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { _ } from 'svelte-i18n';
 	import type { PlayerSeasonStats } from '$lib/api';
-	import ClassBadge from '$lib/components/ClassBadge.svelte';
+	import BestWinTile from '$lib/components/BestWinTile.svelte';
 	import StatTile from '$lib/components/StatTile.svelte';
 	import ScoreLine from '$lib/components/ScoreLine.svelte';
-	import { formatName } from '$lib/utils';
 
 	interface Props {
 		stats: PlayerSeasonStats;
@@ -15,18 +14,12 @@
 
 <div class="space-y-3">
 	{#if stats.bestWinOpponentName}
-		<StatTile label={$_('stats.best_win')}>
-			<p class="flex items-center gap-1.5 text-xl font-semibold">
-				{#if stats.bestWinOpponentId}
-					<a href="/players/{stats.bestWinOpponentId}" class="truncate hover:underline">
-						{formatName(stats.bestWinOpponentName)}
-					</a>
-				{:else}
-					<span class="truncate">{formatName(stats.bestWinOpponentName)}</span>
-				{/if}
-				<ClassBadge classification={stats.bestWinOpponentClass} />
-			</p>
-		</StatTile>
+		<BestWinTile
+			label={$_('stats.best_win')}
+			opponentId={stats.bestWinOpponentId}
+			opponentName={stats.bestWinOpponentName}
+			opponentClass={stats.bestWinOpponentClass}
+		/>
 	{/if}
 
 	<div class="grid grid-cols-2 gap-3">

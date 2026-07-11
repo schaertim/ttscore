@@ -325,6 +325,9 @@ data class NextMatchResponse(
 data class ClassHistoryEntryResponse(
     val classification: String,
     val seasonName: String,
+    // ISO date (Swiss reclassification boundary) the shown class took effect: Jul 1 for a
+    // first-half class, Jan 1 for a second-half class. Lets the feed date & sort class changes.
+    val effectiveDate: String,
 )
 
 // ── Match preview (Pro) — neutral, roster-based look-ahead at a scheduled fixture ──
@@ -469,6 +472,23 @@ data class OpponentBucketResponse(
     val farClass: String? = null,
 )
 
+/**
+ * Radar-chart source counts, computed over a rolling 1-year window (crosses season boundaries)
+ * rather than the current-season scope the rest of [PlayerSeasonStatsResponse] uses. Opponent
+ * buckets fold classes 2+ ranks above/below into "HIGHER"/"LOWER"; same-class-or-one-rank-either-
+ * side opponents stay as individual tiers (the "Consistency" pool).
+ */
+@Serializable
+data class RadarSourceResponse(
+    val opponentBuckets: List<OpponentBucketResponse>,
+    val deuceSetsWon: Int,
+    val deuceSetsTotal: Int,
+    val tightGameWins: Int,
+    val tightGames: Int,
+    val comeFromBehindWins: Int,
+    val comeFromBehindGames: Int,
+)
+
 @Serializable
 data class MonthlyFormResponse(
     val month: String,
@@ -517,6 +537,8 @@ data class PlayerSeasonStatsResponse(
     val bestWinOpponentName: String?,
     val bestWinOpponentClass: String?,
     val competitions: List<CompetitionStatResponse>,
+    /** Rolling 1-year source for the strengths radar (all fields except Form). */
+    val radar: RadarSourceResponse,
 )
 
 /**

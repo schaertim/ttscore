@@ -3,7 +3,12 @@
 	import { scaleLinear, scaleUtc } from 'd3-scale';
 	import { curveMonotoneX } from 'd3-shape';
 	import * as Chart from '$lib/components/ui/chart/index.js';
-	import { ELO_THRESHOLDS, classColorVar } from '$lib/utils';
+	import {
+		ELO_THRESHOLDS,
+		bandGradientStops,
+		classColorVar,
+		type GradientContext
+	} from '$lib/utils';
 	import { _, locale } from 'svelte-i18n';
 	import type { EloEntry } from '$lib/api';
 
@@ -14,7 +19,11 @@
 		history: EloEntry[];
 	}
 
-	let { series }: { series: EloChartSeries[] } = $props();
+	interface Props {
+		series: EloChartSeries[];
+	}
+
+	let { series }: Props = $props();
 
 	const PAD = 30;
 
@@ -36,6 +45,7 @@
 
 	// Union of all recorded timestamps, ascending.
 	const dates = $derived.by(() => {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local temp, discarded after the computation
 		const seen = new Map<number, Date>();
 		for (const s of parsed) for (const p of s.points) seen.set(p.date.getTime(), p.date);
 		return [...seen.values()].sort((a, b) => a.getTime() - b.getTime());
@@ -62,7 +72,9 @@
 		parsed.map((s, i) => ({ key: `p${i}`, label: s.label, color: s.color }))
 	);
 	const chartConfig = $derived(
-		Object.fromEntries(parsed.map((s, i) => [`p${i}`, { label: s.label, color: s.color }])) as Chart.ChartConfig
+		Object.fromEntries(
+			parsed.map((s, i) => [`p${i}`, { label: s.label, color: s.color }])
+		) as Chart.ChartConfig
 	);
 
 	const visibleThresholds = $derived(ELO_THRESHOLDS.filter(([elo]) => elo > yMin && elo < yMax));
@@ -82,25 +94,16 @@
 		return muted ? faded(c) : c;
 	};
 
-	// Vertical gradient stops that switch colour hard wherever the class *letter* changes across
-	// the visible ELO range, so the line takes each class band's colour by height.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function gradientStops(context: any, muted: boolean): [number, string][] {
-		const total = context.height + context.padding.top + context.padding.bottom;
-		const offset = (v: number) => context.yScale(v) / total;
-		const stops: [number, string][] = [];
-		let bandAbove = eloColor(yMax, muted);
-		stops.push([0, bandAbove]);
-		for (const [min] of ELO_THRESHOLDS) {
-			if (min <= yMin || min >= yMax) continue;
-			const bandBelow = eloColor(min - 1, muted);
-			if (bandBelow === bandAbove) continue; // same colour, no visible edge
-			const o = offset(min);
-			stops.push([o, bandAbove], [o, bandBelow]); // duplicate offset = hard edge
-			bandAbove = bandBelow;
-		}
-		stops.push([1, bandAbove]);
-		return stops;
+	// The line takes each class band's colour by height — colour switches hard wherever the
+	// class letter changes across the visible ELO range.
+	function gradientStops(context: GradientContext, muted: boolean): [number, string][] {
+		return bandGradientStops(
+			context,
+			yMin,
+			yMax,
+			eloColor(yMax, muted),
+			ELO_THRESHOLDS.map(([min]) => ({ boundary: min, color: eloColor(min - 1, muted) }))
+		);
 	}
 </script>
 
@@ -152,7 +155,10 @@
 						{label}
 						labelPlacement="right"
 						props={{
-							line: { style: 'stroke: var(--foreground); stroke-opacity: 0.3', 'stroke-dasharray': '4 3' },
+							line: {
+								style: 'stroke: var(--foreground); stroke-opacity: 0.3',
+								'stroke-dasharray': '4 3'
+							},
 							label: { class: 'fill-foreground/30 text-2xs' }
 						}}
 					/>
@@ -161,7 +167,10 @@
 
 			{#snippet highlight({ context })}
 				{#if singleSeries && context.tooltip.data}
-					<Highlight lines points={{ r: 4, fill: eloColor(context.y(context.tooltip.data), false) }} />
+					<Highlight
+						lines
+						points={{ r: 4, fill: eloColor(context.y(context.tooltip.data), false) }}
+					/>
 				{:else}
 					<Highlight lines points={{ r: 4 }} />
 				{/if}

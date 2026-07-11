@@ -7,7 +7,12 @@
 	import { ScalesIcon } from 'phosphor-svelte';
 	import Autoplay from 'embla-carousel-autoplay';
 
-	let { rivals, playerId }: { rivals: CareerRival[]; playerId: string } = $props();
+	interface Props {
+		rivals: CareerRival[];
+		playerId: string;
+	}
+
+	let { rivals, playerId }: Props = $props();
 
 	// Show the top 10 rivals as carousel cards.
 	const topRivals = $derived(rivals.slice(0, 10));
@@ -36,7 +41,7 @@
 						/>
 					{/snippet}
 					{#snippet corner()}
-						<ScalesIcon size="16" class="text-muted-foreground/40" />
+						<ScalesIcon size={16} class="text-muted-foreground/40" />
 					{/snippet}
 				</PlayerTile>
 			</Carousel.Item>

@@ -3,11 +3,21 @@
 	import { scaleLinear, scaleUtc } from 'd3-scale';
 	import { curveLinear } from 'd3-shape';
 	import * as Chart from '$lib/components/ui/chart/index.js';
-	import { classColorVar, classificationRank, classLabelForRank } from '$lib/utils';
+	import {
+		bandGradientStops,
+		classColorVar,
+		classificationRank,
+		classLabelForRank,
+		type GradientContext
+	} from '$lib/utils';
 	import { _, locale } from 'svelte-i18n';
 	import type { CareerClassPoint } from '$lib/api';
 
-	let { progression }: { progression: CareerClassPoint[] } = $props();
+	interface Props {
+		progression: CareerClassPoint[];
+	}
+
+	let { progression }: Props = $props();
 
 	// Each (season, half) maps to a representative date: first half ≈ Oct (season start year),
 	// second half ≈ Mar (following year). y is the class ladder rank (1–22).
@@ -26,7 +36,9 @@
 	);
 
 	// Fallback stroke colour (the gradient overrides it): the latest class.
-	const color = $derived(classColorVar(points.at(-1) ? classLabelForRank(points.at(-1)!.rank) : null));
+	const color = $derived(
+		classColorVar(points.at(-1) ? classLabelForRank(points.at(-1)!.rank) : null)
+	);
 
 	const ranks = $derived(points.map((p) => p.rank));
 	const yMin = $derived(ranks.length ? Math.max(1, Math.min(...ranks) - 1) : 1);
@@ -38,23 +50,14 @@
 	const BAND_BOUNDARIES = [15.5, 10.5, 5.5];
 	const bandColor = (rank: number) => classColorVar(classLabelForRank(Math.round(rank)));
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	function gradientStops(context: any): [number, string][] {
-		const total = context.height + context.padding.top + context.padding.bottom;
-		const offset = (rank: number) => context.yScale(rank) / total;
-		const stops: [number, string][] = [];
-		// Top of the domain downward; higher rank sits nearer the top (offset 0).
-		let bandAbove = bandColor(yMax);
-		stops.push([0, bandAbove]);
-		for (const boundary of BAND_BOUNDARIES) {
-			if (boundary <= yMin || boundary >= yMax) continue;
-			const o = offset(boundary);
-			const bandBelow = bandColor(boundary - 0.5);
-			stops.push([o, bandAbove], [o, bandBelow]); // duplicate offset = hard edge
-			bandAbove = bandBelow;
-		}
-		stops.push([1, bandAbove]);
-		return stops;
+	function gradientStops(context: GradientContext): [number, string][] {
+		return bandGradientStops(
+			context,
+			yMin,
+			yMax,
+			bandColor(yMax),
+			BAND_BOUNDARIES.map((b) => ({ boundary: b, color: bandColor(b - 0.5) }))
+		);
 	}
 
 	// Dashed reference lines, labelled on the right — mirrors the ELO chart's threshold

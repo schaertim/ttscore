@@ -5,7 +5,11 @@
 	import { formatShortName } from '$lib/utils';
 	import { _ } from 'svelte-i18n';
 
-	let { matchup }: { matchup: PreviewMatchup } = $props();
+	interface Props {
+		matchup: PreviewMatchup;
+	}
+
+	let { matchup }: Props = $props();
 
 	// ELO-implied edge for the home player (null when either rating is unknown).
 	const homePct = $derived(
@@ -22,7 +26,9 @@
 		<!-- Home player -->
 		<div class="min-w-0">
 			<div class="flex min-w-0 items-center gap-1.5">
-				<p class="min-w-0 truncate text-sm font-semibold">{formatShortName(matchup.homePlayer.fullName)}</p>
+				<p class="min-w-0 truncate text-sm font-semibold">
+					{formatShortName(matchup.homePlayer.fullName)}
+				</p>
 				<ClassBadge classification={matchup.homePlayer.classification} />
 			</div>
 			<span class="mt-1 block font-mono text-2xs text-muted-foreground tabular-nums">
@@ -54,7 +60,9 @@
 		<div class="min-w-0 text-right">
 			<div class="flex min-w-0 items-center justify-end gap-1.5">
 				<ClassBadge classification={matchup.awayPlayer.classification} />
-				<p class="min-w-0 truncate text-sm font-semibold">{formatShortName(matchup.awayPlayer.fullName)}</p>
+				<p class="min-w-0 truncate text-sm font-semibold">
+					{formatShortName(matchup.awayPlayer.fullName)}
+				</p>
 			</div>
 			<span class="mt-0.5 block font-mono text-2xs text-muted-foreground tabular-nums">
 				{#if matchup.awayPlayer.elo != null}{matchup.awayPlayer.elo} ELO{:else}&nbsp;{/if}

@@ -3,7 +3,8 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import PlayerCard from '$lib/components/PlayerCard.svelte';
 	import MatchCard from '$lib/components/MatchCard.svelte';
-	import { CheckCircleIcon, XCircleIcon, MinusCircleIcon, UsersThreeIcon, PingPongIcon } from 'phosphor-svelte';
+	import FormPills from '$lib/components/FormPills.svelte';
+	import { UsersThreeIcon, PingPongIcon } from 'phosphor-svelte';
 	import BackButton from '$lib/components/BackButton.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import FollowButton from '$lib/components/FollowButton.svelte';
@@ -15,18 +16,34 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const [won, drawn, lost] = data.team.record.split('-').map(Number);
-	let following = $state(data.following);
-	let followId = $state(data.followId);
-	let notify = $state(data.notify);
+	const record = $derived(data.team.record.split('-').map(Number));
+
+	// Synced in an effect (not just initialised) so client-side navigation between
+	// teams — which reuses this component — picks up the new team's follow state.
+	let following = $state(false);
+	let followId = $state<string | null>(null);
+	let notify = $state(false);
+
+	$effect.pre(() => {
+		following = data.following;
+		followId = data.followId;
+		notify = data.notify;
+	});
 </script>
 
 <div class="space-y-6">
 	<header class="space-y-4">
 		<div class="flex items-center justify-between">
-			<BackButton class="" />
+			<BackButton />
 			<div class="flex items-center">
-				<FollowButton bind:following bind:followId bind:notify targetType="team" targetId={data.team.id} authenticated={!!data.user} />
+				<FollowButton
+					bind:following
+					bind:followId
+					bind:notify
+					targetType="team"
+					targetId={data.team.id}
+					authenticated={!!data.user}
+				/>
 				<NotifyButton {following} {followId} bind:notify authenticated={!!data.user} />
 			</div>
 		</div>
@@ -37,7 +54,9 @@
 				<p class="text-sm text-muted-foreground">{data.team.groupName}</p>
 			</div>
 			{#if data.team.position > 0}
-				<span class="shrink-0 font-mono text-6xl leading-none font-black text-muted-foreground/15 tabular-nums">
+				<span
+					class="shrink-0 font-mono text-6xl leading-none font-black text-muted-foreground/15 tabular-nums"
+				>
 					#{data.team.position}
 				</span>
 			{/if}
@@ -48,32 +67,22 @@
 		<StatTile label={$_('team.record')}>
 			<ScoreLine
 				segments={[
-					{ value: won, tone: 'win' },
-					{ value: drawn, tone: 'neutral' },
-					{ value: lost, tone: 'loss' }
+					{ value: record[0], tone: 'win' },
+					{ value: record[1], tone: 'neutral' },
+					{ value: record[2], tone: 'loss' }
 				]}
 			/>
 		</StatTile>
 
 		{#if data.team.lastResults.length > 0}
 			<StatTile label={$_('team.last_5')}>
-				<div class="flex flex-wrap">
-					{#each data.team.lastResults.toReversed() as result}
-						{#if result === 'W'}
-							<CheckCircleIcon weight="fill" size="20" class="text-win" />
-						{:else if result === 'L'}
-							<XCircleIcon weight="fill" size="20" class="text-loss" />
-						{:else}
-							<MinusCircleIcon weight="fill" size="20" class="text-muted-foreground/50" />
-						{/if}
-					{/each}
-				</div>
+				<FormPills form={data.team.lastResults} size={20} class="flex-wrap" />
 			</StatTile>
 		{/if}
 	</div>
 
 	<section class="space-y-3">
-		<SectionLabel label={$_("team.roster")} icon={UsersThreeIcon} />
+		<SectionLabel label={$_('team.roster')} icon={UsersThreeIcon} />
 
 		<div class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border bg-card">
 			{#await data.streamed.roster}
@@ -102,7 +111,7 @@
 	</section>
 
 	<section class="space-y-3">
-		<SectionLabel label={$_("team.match_history")} icon={PingPongIcon} />
+		<SectionLabel label={$_('team.match_history')} icon={PingPongIcon} />
 
 		{#await data.streamed.matches}
 			<Skeleton class="h-16 w-full rounded-xl" />

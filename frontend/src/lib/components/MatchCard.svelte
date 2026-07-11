@@ -1,8 +1,9 @@
 <script lang="ts">
 	import type { Match } from '$lib/api';
 	import { cn } from '$lib/utils';
+	import { dateNumeric } from '$lib/date';
 	import { HouseLineIcon, TrainIcon } from 'phosphor-svelte';
-	import { locale } from 'svelte-i18n';
+	import { _, locale } from 'svelte-i18n';
 
 	interface Props {
 		match: Match;
@@ -41,15 +42,6 @@
 
 	const isHome = $derived(perspectiveTeam === match.homeTeam);
 	const opponent = $derived(perspectiveTeam ? (isHome ? match.awayTeam : match.homeTeam) : null);
-
-	function formatDate(dateStr: string | null): string {
-		if (!dateStr) return 'TBD';
-		return new Date(dateStr).toLocaleDateString($locale ?? 'de', {
-			day: '2-digit',
-			month: '2-digit',
-			year: '2-digit'
-		});
-	}
 </script>
 
 <a
@@ -60,15 +52,16 @@
 	<div class="flex min-w-0 flex-col gap-1">
 		<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
 			{#if match.round}Rd {match.round} ·
-			{/if} {formatDate(match.playedAt)}
+			{/if}
+			{dateNumeric(match.playedAt, $locale) ?? $_('common.tbd')}
 		</span>
 
 		{#if perspectiveTeam}
 			<div class="flex min-w-0 items-center gap-2">
 				{#if isHome}
-					<HouseLineIcon weight="fill" size="16" class="text-muted-foreground/60" />
+					<HouseLineIcon weight="fill" size={16} class="text-muted-foreground/60" />
 				{:else}
-					<TrainIcon weight="fill" size="16" class="text-muted-foreground/60" />
+					<TrainIcon weight="fill" size={16} class="text-muted-foreground/60" />
 				{/if}
 				<span class="truncate text-sm font-semibold">{opponent}</span>
 			</div>
@@ -83,7 +76,7 @@
 
 	<span
 		class={cn(
-			'min-w-12 shrink-0 rounded-md border px-1 py-1 text-center font-mono tracking-tight text-sm font-semibold tabular-nums',
+			'min-w-12 shrink-0 rounded-md border px-1 py-1 text-center font-mono text-sm font-semibold tracking-tight tabular-nums',
 			scoreClass
 		)}
 	>

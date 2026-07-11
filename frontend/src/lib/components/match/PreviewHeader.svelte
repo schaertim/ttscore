@@ -3,27 +3,18 @@
 	import FormPills from '$lib/components/FormPills.svelte';
 	import { HouseIcon, AirplaneTiltIcon } from 'phosphor-svelte';
 	import { _, locale } from 'svelte-i18n';
+	import { relativeTime, dateWeekday } from '$lib/date';
 
-	let { fixture }: { fixture: PreviewFixture } = $props();
-
-	function shortDate(dateStr: string | null): string {
-		if (!dateStr) return $_('group.tbd');
-		return new Date(dateStr).toLocaleDateString($locale ?? 'de', {
-			weekday: 'short',
-			day: 'numeric',
-			month: 'short'
-		});
+	interface Props {
+		fixture: PreviewFixture;
 	}
 
-	// Relative "in 2 days" / "in 5 hours" countdown to throw-off.
+	let { fixture }: Props = $props();
+
+	// Relative "in 2 days" / "in 5 hours" countdown to throw-off; empty once it's under way.
 	function countdown(dateStr: string | null): string {
-		if (!dateStr) return '';
-		const diffMs = new Date(dateStr).getTime() - Date.now();
-		if (diffMs <= 0) return '';
-		const hours = Math.round(diffMs / 3_600_000);
-		const days = Math.round(diffMs / 86_400_000);
-		const rtf = new Intl.RelativeTimeFormat($locale ?? 'de', { numeric: 'auto' });
-		return hours < 24 ? rtf.format(hours, 'hour') : rtf.format(days, 'day');
+		if (!dateStr || new Date(dateStr).getTime() <= Date.now()) return '';
+		return relativeTime(dateStr, $locale);
 	}
 
 	// Home's share of a mirrored comparison bar, centred at 50%. The split reflects the gap between
@@ -48,7 +39,7 @@
 		<a href="/groups/{fixture.groupId}" class="min-w-0 truncate hover:text-foreground">
 			{fixture.groupName}
 		</a>
-		<span class="shrink-0">{shortDate(fixture.playedAt)}</span>
+		<span class="shrink-0">{dateWeekday(fixture.playedAt, $locale) ?? $_('common.tbd')}</span>
 	</div>
 
 	<div class="grid grid-cols-[1fr_auto_1fr] items-stretch gap-3">
@@ -73,7 +64,7 @@
 						class="inline-flex items-center gap-1 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
 					>
 						{$_('preview.home')}
-						<HouseIcon size="12" weight="fill" />
+						<HouseIcon size={12} weight="fill" />
 					</span>
 				</div>
 			</div>
@@ -106,7 +97,7 @@
 						class="inline-flex items-center gap-1 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
 					>
 						{$_('preview.away')}
-						<AirplaneTiltIcon size="12" weight="fill" />
+						<AirplaneTiltIcon size={12} weight="fill" />
 					</span>
 				</div>
 				{#if fixture.away.position > 0}

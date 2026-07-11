@@ -7,7 +7,13 @@
 	import { h2h, closeH2H } from '$lib/h2h.svelte';
 	import H2HDrawer from '$lib/components/player/H2HDrawer.svelte';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
-	import { HouseIcon, TrophyIcon, MagnifyingGlassIcon, UserCircleIcon, SignInIcon } from 'phosphor-svelte';
+	import {
+		HouseIcon,
+		TrophyIcon,
+		MagnifyingGlassIcon,
+		UserCircleIcon,
+		SignInIcon
+	} from 'phosphor-svelte';
 	import type { Component } from 'svelte';
 	import { _ } from 'svelte-i18n';
 	import { classColorVar } from '$lib/utils';
@@ -16,8 +22,12 @@
 
 	// Drawer open state: set by the h2h store, cleared when the drawer is swiped away.
 	let drawerOpen = $state(false);
-	$effect(() => { if (h2h.rightId) drawerOpen = true; });
-	$effect(() => { if (!drawerOpen) closeH2H(); });
+	$effect(() => {
+		if (h2h.rightId) drawerOpen = true;
+	});
+	$effect(() => {
+		if (!drawerOpen) closeH2H();
+	});
 
 	type NavItem = { href: string; label: string; icon: Component };
 
@@ -92,7 +102,7 @@
 				class="flex w-16 flex-col items-center justify-center gap-1 text-muted-foreground [@media(hover:hover)]:hover:text-foreground"
 				style={active ? `color: ${activeColor}` : ''}
 			>
-				<item.icon size="22" weight={active ? 'fill' : 'regular'} />
+				<item.icon size={22} weight={active ? 'fill' : 'regular'} />
 				{#if active}
 					<span class="text-xs font-semibold tracking-wide">{item.label}</span>
 				{/if}

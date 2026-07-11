@@ -11,7 +11,7 @@ export type ResolvedEvent = {
 	entityName: string;
 	entityHref: string;
 	item: FeedItem;
-	sortKey: string; // ISO date string; '9999' for undated (class changes)
+	sortKey: string; // ISO date string (class changes use their reclassification date)
 };
 
 // Upcoming matches surface in the feed starting one day before throw-off.
@@ -50,9 +50,10 @@ async function fetchPlayerEvents(fav: FollowResponse): Promise<ResolvedEvent[]> 
 				kind: 'class_change',
 				direction,
 				from: history[1].classification,
-				to: history[0].classification
+				to: history[0].classification,
+				effectiveDate: history[0].effectiveDate
 			},
-			sortKey: '9999'
+			sortKey: history[0].effectiveDate
 		});
 	}
 

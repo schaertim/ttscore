@@ -8,7 +8,12 @@
 		tone?: Tone;
 	}
 
-	let { segments, class: className = '' }: { segments: Segment[]; class?: string } = $props();
+	interface Props {
+		segments: Segment[];
+		class?: string;
+	}
+
+	let { segments, class: className = '' }: Props = $props();
 
 	const TONE_CLASS: Record<Tone, string> = {
 		win: 'text-win',
@@ -20,7 +25,12 @@
 
 <!-- A row of colored, dash-separated numbers (e.g. W–D–L, sets, points).
      Sized to match StatTile's default value so it reads as the card value. -->
-<p class={cn('inline-flex items-baseline gap-0.5 font-mono text-xl leading-none font-black tabular-nums', className)}>
+<p
+	class={cn(
+		'inline-flex items-baseline gap-0.5 font-mono text-xl leading-none font-black tabular-nums',
+		className
+	)}
+>
 	{#each segments as segment, i (i)}
 		{#if i > 0}
 			<span class="font-normal text-muted-foreground/40">–</span>

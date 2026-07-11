@@ -20,15 +20,10 @@
 	"set_player": {
 		"banner_title": "Personnalisez",
 		"banner_desc": "Sélectionnez votre joueur pour voir votre ELO, votre prochain match et vos derniers résultats ici.",
-		"banner_cta": "Choisir mon joueur →",
 		"is_this_you": "C'est vous ?",
 		"sign_in_prompt": "Connectez-vous pour suivre votre ELO et vos résultats de saison.",
-		"sign_in_cta": "Se connecter →",
-		"your_player": "Votre joueur",
 		"set_title": "Définir comme votre joueur",
-		"set_desc": "Voyez votre ELO et vos résultats sur votre écran d'accueil.",
-		"set_cta": "Définir →",
-		"setting": "En cours…"
+		"set_desc": "Voyez votre ELO et vos résultats sur votre écran d'accueil."
 	},
 	"home": {
 		"elo_rating": "Classement ELO",
@@ -40,7 +35,6 @@
 		"games_sublabel": "Historique et matchs à venir",
 		"my_league": "Ma ligue",
 		"my_team": "Mon équipe",
-		"upcoming": "{count, number} à venir",
 		"favorite_feed": "Fil des favoris",
 		"no_recent_activity": "Aucune activité récente dans votre fil.",
 		"show_full_feed": "Voir le fil complet"
@@ -63,9 +57,6 @@
 		"game_history": "Historique des matchs",
 		"syncing": "Mise à jour",
 		"no_matches": "Aucun match trouvé.",
-		"wins": "Victoires",
-		"losses": "Défaites",
-		"win_pct": "% victoires",
 		"show_full_history": "Voir tout l'historique",
 		"games_count": "{count, number} {count, plural, one {Match} other {Matchs}}",
 		"no_games": "Aucun match trouvé.",
@@ -73,7 +64,8 @@
 		"games_title": "Matchs",
 		"tab_history": "Historique",
 		"tab_upcoming": "À venir",
-		"no_upcoming": "Aucun match à venir."
+		"no_upcoming": "Aucun match à venir.",
+		"no_club": "Sans club"
 	},
 	"feed": {
 		"won": "Gagné",
@@ -83,8 +75,10 @@
 		"relegated": "Relégué",
 		"vs": "vs",
 		"upcoming": "À venir",
-		"latest": "Récents",
-		"unknown_date": "Date inconnue"
+		"title": "Fil d'actualité",
+		"empty_title": "Rien dans votre fil pour l’instant",
+		"empty_desc": "Suivez des joueurs, des équipes ou des ligues pour voir leur activité ici.",
+		"manage_favorites": "Gérer les favoris"
 	},
 	"group": {
 		"standings": "Classement",
@@ -99,8 +93,7 @@
 		"draw_rate": "Taux de nuls",
 		"no_results": "Pas encore de résultats",
 		"no_schedule": "Aucun match à venir",
-		"round_label": "J {round}",
-		"tbd": "À déterminer"
+		"round_label": "J {round}"
 	},
 	"preview": {
 		"pro_title": "L'aperçu du match est une fonctionnalité Pro",
@@ -109,13 +102,9 @@
 		"vs": "vs",
 		"home": "Domicile",
 		"away": "Extérieur",
-		"position": "Classement",
 		"diff": "Diff",
-		"form": "Forme",
 		"first_leg": "Rencontre précédente",
 		"key_duels": "Duels clés",
-		"key_duels_hint": "Projeté à partir des deux effectifs — les compositions ne sont pas confirmées.",
-		"rosters": "Effectifs",
 		"meetings": "{count, number} {count, plural, one {confrontation} other {confrontations}}",
 		"first_meeting": "Première confrontation",
 		"duels": "Duels"
@@ -137,7 +126,6 @@
 		"subtitle": "Profil & Paramètres",
 		"my_player": "Mon joueur",
 		"search_placeholder": "Rechercher votre joueur…",
-		"searching": "Recherche…",
 		"favorites": "Favoris",
 		"appearance": "Apparence",
 		"dark_mode": "Mode sombre",
@@ -167,12 +155,10 @@
 		"signin_desc": "Connectez-vous pour suivre votre joueur, vos équipes et vos ligues.",
 		"signup_desc": "Compte gratuit — choisissez votre joueur et suivez votre ELO.",
 		"or": "Ou",
-		"or_continue": "Ou continuer avec",
 		"email": "E-mail",
 		"password": "Mot de passe",
 		"confirm_password": "Confirmer le mot de passe",
 		"password_mismatch": "Les mots de passe ne correspondent pas.",
-		"loading": "Chargement…",
 		"check_email": "Vérifiez vos e-mails pour confirmer votre compte."
 	},
 	"search": {
@@ -186,12 +172,19 @@
 		"no_results": "Aucun joueur trouvé."
 	},
 	"common": {
+		"tbd": "À déterminer",
 		"remove": "Supprimer",
 		"back": "Retour",
-		"unknown_player": "Joueur inconnu",
 		"leagues_label": "Ligues",
 		"teams_label": "Équipes",
-		"players_label": "Joueurs"
+		"players_label": "Joueurs",
+		"follow": "Suivre",
+		"unfollow": "Ne plus suivre",
+		"sign_in_to_follow": "Connectez-vous pour suivre",
+		"notifications_on": "Activer les notifications",
+		"notifications_off": "Désactiver les notifications",
+		"sign_in_to_notify": "Connectez-vous pour activer les notifications",
+		"dismiss": "Fermer"
 	},
 	"pro": {
 		"unlock": "Débloquer avec Pro",
@@ -212,7 +205,6 @@
 		"subscribe": "S'abonner",
 		"checkout_note": "Payez par carte ou TWINT. Annulable à tout moment.",
 		"checkout_cancelled": "Paiement annulé. Aucun montant n'a été débité.",
-		"checkout_soon": "Paiement bientôt disponible",
 		"already_pro": "Vous êtes Pro — merci!",
 		"already_pro_desc": "Vous avez accès à tout ce que ttscore propose.",
 		"feature_h2h_title": "Face-à-face contre tous",
@@ -223,5 +215,10 @@
 		"feature_career_desc": "Classements, clubs, jalons et rivalités — saison par saison.",
 		"feature_follow_notify_title": "Suivis illimités et notifications",
 		"feature_follow_notify_desc": "Suivez tous les joueurs, équipes et ligues qui vous intéressent — et soyez averti dès qu'un résultat tombe."
+	},
+	"error": {
+		"not_found": "Page introuvable",
+		"generic": "Une erreur est survenue",
+		"go_home": "Retour à l'accueil"
 	}
 }
