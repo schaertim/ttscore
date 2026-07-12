@@ -2,7 +2,7 @@
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY } from '$env/static/public';
 import type { LayoutLoad } from './$types';
 import '$lib/i18n'; // registers all locale loaders
-import { locale, waitLocale } from 'svelte-i18n';
+import { locale } from 'svelte-i18n';
 import { resolveLocale } from '$lib/i18n';
 import { STORAGE_KEYS } from '$lib/storageKeys';
 
@@ -13,8 +13,14 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
 	const activeLocale = isBrowser()
 		? resolveLocale(localStorage.getItem(STORAGE_KEYS.locale) ?? navigator.language)
 		: data.locale;
-	locale.set(activeLocale);
-	await waitLocale();
+	// Await locale.set directly rather than the old `locale.set(x); await waitLocale()`
+	// pattern. When the locale dictionary isn't cached yet (the client's very first load),
+	// set() is async and only assigns $locale once the dictionary has loaded — but
+	// waitLocale() resolved immediately (getCurrentLocale() was still null and no
+	// initialLocale is configured), so the layout rendered and formatted nav labels while
+	// $locale was null, throwing "[svelte-i18n] Cannot format a message without first
+	// setting the initial locale." Awaiting set() waits for both the load and the assignment.
+	await locale.set(activeLocale);
 
 	const supabase = isBrowser()
 		? createBrowserClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_PUBLISHABLE_KEY, {
