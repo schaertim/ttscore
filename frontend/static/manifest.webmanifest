@@ -1,7 +1,7 @@
 {
-  "name": "TTFeed",
-  "short_name": "TTFeed",
-  "description": "Table tennis match feed — follow players, teams, and leagues",
+  "name": "TTScore",
+  "short_name": "TTScore",
+  "description": "Live table tennis scores, ELO ratings, and career stats — follow players, teams, and leagues",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

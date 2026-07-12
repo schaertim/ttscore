@@ -55,7 +55,7 @@
 	--radius-3xl: calc(var(--radius) * 2.2);
 	--radius-4xl: calc(var(--radius) * 2.6);
 
-	/* TTFeed additions → Tailwind classes: bg-win, text-win, bg-class-b etc. */
+	/* App-specific additions → Tailwind classes: bg-win, text-win, bg-class-b etc. */
 	--color-win: var(--win);
 	--color-loss: var(--loss);
 
@@ -99,7 +99,7 @@
 	--sidebar-border: oklch(0.92 0.004 286.32);
 	--sidebar-ring: oklch(0.705 0.015 286.067);
 
-	/* ── TTFeed additions ─────────────────────────────────────
+	/* ── App-specific additions ───────────────────────────────
        win/loss for match results, class-* for player tiers.
        ──────────────────────────────────────────────────────── */
 

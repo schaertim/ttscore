@@ -11,7 +11,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 					event.cookies.set(name, value, { ...options, path: '/' });
 				});
 			}
-		}
+		},
+		// Route Supabase's internal auth requests (getUser / token refresh) through
+		// SvelteKit's managed fetch so they don't trip the "Avoid calling fetch
+		// eagerly during server-side rendering" warning.
+		global: { fetch: event.fetch }
 	});
 
 	/**
@@ -29,9 +33,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 			data: { user },
 			error
 		} = await event.locals.supabase.auth.getUser();
-		if (error) return { session: null, user: null };
+		if (error || !user) return { session: null, user: null };
 
-		return { session, user };
+		// getUser() returns the server-verified user. Swap it into the session so
+		// nothing downstream (including SvelteKit serialising the load data) ever
+		// touches the unverified, cookie-derived user object that getSession()
+		// attaches — reading a property off that proxy is what logs Supabase's
+		// "Using the user object as returned from getSession()… could be insecure" warning.
+		return { session: { ...session, user }, user };
 	};
 
 	return resolve(event, {
