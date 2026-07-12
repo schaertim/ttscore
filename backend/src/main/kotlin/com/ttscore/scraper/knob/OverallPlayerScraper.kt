@@ -19,10 +19,14 @@ class OverallPlayerScraper(
 ) {
     private val logger = LoggerFactory.getLogger(OverallPlayerScraper::class.java)
 
+    /**
+     * Always scrapes the full 1989-present range. Each season's page only lists players who
+     * transferred that season, so a player who last transferred years ago only ever appears on
+     * that one page — narrowing the range causes most players to never get a licenceNr, which
+     * permanently breaks click-tt player matching (see ClickTtIdBackfillJob).
+     */
     suspend fun run() {
-        // Always scrape all seasons up to the latest one in the DB so that a partial
-        // backfill (e.g. a single season for debugging) still gets the full transfer
-        // history needed to link licence numbers.
+        val fromYear = 1989
         val latestSeasonName =
             transaction {
                 Seasons.select(Seasons.name)
@@ -38,7 +42,7 @@ class OverallPlayerScraper(
         }
 
         val toYear = latestSeasonName.substringBefore("/").toInt()
-        val seasons = generateSeasons(fromYear = 1989, toYear = toYear)
+        val seasons = generateSeasons(fromYear = fromYear, toYear = toYear)
 
         logger.info("OverallPlayerScraper: scraping all ${seasons.size} seasons up to $latestSeasonName")
 

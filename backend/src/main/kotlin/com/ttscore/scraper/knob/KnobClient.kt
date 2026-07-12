@@ -1,7 +1,7 @@
 ﻿package com.ttscore.scraper.knob
 
 import io.ktor.client.*
-import io.ktor.client.engine.cio.*
+import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -13,7 +13,7 @@ class KnobClient {
     private val logger = LoggerFactory.getLogger(KnobClient::class.java)
 
     private val client =
-        HttpClient(CIO) {
+        HttpClient(OkHttp) {
             install(HttpTimeout) {
                 connectTimeoutMillis = 10_000
                 requestTimeoutMillis = 30_000
@@ -59,7 +59,6 @@ class KnobClient {
         url: String,
         maxAttempts: Int = 3,
     ): String {
-        delay(10)
         var lastException: Exception? = null
         repeat(maxAttempts) { attempt ->
             try {

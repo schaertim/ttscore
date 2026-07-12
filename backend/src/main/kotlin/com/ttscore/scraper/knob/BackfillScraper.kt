@@ -1,5 +1,7 @@
 ﻿package com.ttscore.scraper.knob
 
+import org.slf4j.LoggerFactory
+
 class BackfillScraper(client: KnobClient, parser: KnobParser) {
     companion object {
         fun create(): BackfillScraper {
@@ -8,6 +10,8 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
             return BackfillScraper(client, parser)
         }
     }
+
+    private val logger = LoggerFactory.getLogger(BackfillScraper::class.java)
 
     private val groupScraper = GroupScraper(client, parser)
     private val matchScraper = MatchScraper(client, parser)
@@ -30,6 +34,35 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
         federations: Collection<String>? = null,
     ) {
         groupScraper.run(listOf(season), federations)
+        matchScraper.run()
+        licenceScraper.run()
+    }
+
+    /**
+     * Multi-season backfill scoped to [fromYear]..[toYear] (defaults to [KNOB_LAST_SEASON_YEAR],
+     * knob's last owned season) — a quick correctness/speed test of a small season window before
+     * committing to the full 1989 run. Unlike [runForSeason]'s single season, the group/match
+     * scrape here can span multiple years, but the licence pass always covers the full
+     * 1989-present range regardless of [fromYear] — see [OverallPlayerScraper.run] for why
+     * narrowing it silently breaks click-tt player matching.
+     *
+     * [toYear] is clamped to [KNOB_LAST_SEASON_YEAR] regardless of what's passed in — knob and
+     * click-tt own a strict, non-overlapping split of seasons (see [KNOB_LAST_SEASON_YEAR]), and
+     * this scraper must never reach into click-tt's range.
+     */
+    suspend fun runFromYear(
+        fromYear: Int,
+        toYear: Int = KNOB_LAST_SEASON_YEAR,
+    ) {
+        val clampedToYear = toYear.coerceAtMost(KNOB_LAST_SEASON_YEAR)
+        if (toYear > KNOB_LAST_SEASON_YEAR) {
+            logger.warn(
+                "runFromYear: requested toYear=$toYear exceeds knob's last owned season " +
+                    "($KNOB_LAST_SEASON_YEAR/${KNOB_LAST_SEASON_YEAR + 1}) — clamping to " +
+                    "$clampedToYear. Seasons after that belong to click-tt.",
+            )
+        }
+        groupScraper.run(generateSeasons(fromYear, clampedToYear))
         matchScraper.run()
         licenceScraper.run()
     }

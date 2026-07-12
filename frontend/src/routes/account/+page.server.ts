@@ -13,10 +13,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 
 	const ktor = authedKtor(session.access_token);
 
-	const [profileRes, followsRes] = await Promise.all([
-		ktor.get('/users/me'),
-		ktor.get('/follows')
-	]);
+	const [profileRes, followsRes] = await Promise.all([ktor.get('/users/me'), ktor.get('/follows')]);
 
 	const profile = profileRes.ok
 		? await profileRes.json()
@@ -25,7 +22,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	const follows = followsRes.ok ? await followsRes.json() : [];
 
 	const homePlayer = profile.homePlayerId
-		? await ktor.get(`/players/${profile.homePlayerId}`).then(r => r.ok ? r.json() : null)
+		? await ktor.get(`/players/${profile.homePlayerId}`).then((r) => (r.ok ? r.json() : null))
 		: null;
 
 	return { profile, follows, homePlayer };

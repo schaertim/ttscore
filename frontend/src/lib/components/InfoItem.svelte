@@ -69,10 +69,10 @@
 					variant === 'primary' ? 'bg-primary/10' : 'bg-muted'
 				)}
 			>
-				<Icon size="20" class="text-primary" />
+				<Icon size={20} class="text-primary" />
 			</div>
 		{:else}
-			<Icon size="16" class="shrink-0 text-primary" />
+			<Icon size={16} class="shrink-0 text-primary" />
 		{/if}
 	{/if}
 

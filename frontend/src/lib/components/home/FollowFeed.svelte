@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { FollowResponse } from '$lib/api';
 	import { resolveFeed } from '$lib/feed';
-	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import FeedItemCard from '$lib/components/home/FeedItemCard.svelte';
+	import FeedItemSkeleton from '$lib/components/home/FeedItemSkeleton.svelte';
 	import { StarIcon } from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { _ } from 'svelte-i18n';
@@ -16,7 +16,7 @@
 
 	const PREVIEW_COUNT = 5;
 
-	const feedPromise = follows.then(resolveFeed);
+	const feedPromise = $derived(follows.then(resolveFeed));
 </script>
 
 {#await follows then items}
@@ -26,14 +26,7 @@
 			{#await feedPromise}
 				<div class="space-y-3">
 					{#each [1, 2, 3] as i (i)}
-						<div class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-							<Skeleton class="h-10 w-10 shrink-0 rounded-xl" />
-							<div class="flex-1 space-y-2">
-								<Skeleton class="h-3.5 w-32 rounded" />
-								<Skeleton class="h-3 w-48 rounded" />
-							</div>
-							<Skeleton class="h-9 w-9 shrink-0 rounded-xl" />
-						</div>
+						<FeedItemSkeleton />
 					{/each}
 				</div>
 			{:then events}

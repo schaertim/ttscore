@@ -24,9 +24,11 @@
 			// Wins: 100% (most dominant, darkest) → 40% (closest, lightest)
 			// Losses: 40% (closest, lightest) → 100% (most decisive, darkest)
 			const op =
-				n <= 1 ? 75 : isWin
-					? Math.round(100 - (idx / (n - 1)) * 60)
-					: Math.round(40 + (idx / (n - 1)) * 60);
+				n <= 1
+					? 75
+					: isWin
+						? Math.round(100 - (idx / (n - 1)) * 60)
+						: Math.round(40 + (idx / (n - 1)) * 60);
 			const base = isWin ? 'var(--color-win)' : 'var(--color-loss)';
 			return {
 				label: `${b.playerSets}:${b.opponentSets}`,
@@ -76,11 +78,11 @@
 							y={ly}
 							text-anchor="middle"
 							dominant-baseline="middle"
-							font-size="11"
+							font-size={11}
 							font-weight="700"
 							fill="white"
-							class="pointer-events-none select-none"
-						>{seg.label}</text>
+							class="pointer-events-none select-none">{seg.label}</text
+						>
 					{/if}
 				{/snippet}
 				{#snippet aboveMarks()}

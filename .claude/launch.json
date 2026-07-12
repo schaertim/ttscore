@@ -2,11 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "frontend",
+      "name": "frontend-dev",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--dir", "frontend", "dev", "--port", "5199", "--strictPort"],
-      "port": 5199,
-      "autoPort": false
+      "runtimeArgs": ["exec", "vite", "dev", "--port", "5188", "--strictPort"],
+      "cwd": "frontend",
+      "port": 5188
     }
   ]
 }

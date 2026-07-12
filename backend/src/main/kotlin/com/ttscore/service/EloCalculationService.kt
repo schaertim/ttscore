@@ -26,6 +26,15 @@ object EloCalculationService {
         }
     }
 
+    /**
+     * Probability that a player rated [eloA] beats one rated [eloB], on the Swiss-TT 200-point
+     * scale (a 200-ELO edge ≈ 91% expected score). Exposed for the match-preview matchup odds.
+     */
+    fun winProbability(
+        eloA: Int,
+        eloB: Int,
+    ): Double = calculateProbability(eloA, eloB)
+
     private fun calculateProbability(
         eloA: Int,
         eloB: Int,

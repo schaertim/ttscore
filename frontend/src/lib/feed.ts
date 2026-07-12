@@ -11,8 +11,19 @@ export type ResolvedEvent = {
 	entityName: string;
 	entityHref: string;
 	item: FeedItem;
-	sortKey: string; // ISO date string; '9999' for undated (class changes)
+	sortKey: string; // ISO date string (class changes use their reclassification date)
 };
+
+// Upcoming matches surface in the feed starting one day before throw-off.
+const UPCOMING_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function isUpcomingSoon(playedAt: string | null): boolean {
+	if (!playedAt) return false;
+	const t = new Date(playedAt).getTime();
+	if (Number.isNaN(t)) return false;
+	const now = Date.now();
+	return t > now && t - now <= UPCOMING_WINDOW_MS;
+}
 
 // ── Per-entity event fetchers ─────────────────────────────────────────────────
 
@@ -35,8 +46,14 @@ async function fetchPlayerEvents(fav: FollowResponse): Promise<ResolvedEvent[]> 
 			entityType: 'player',
 			entityName: formatName(fav.targetName),
 			entityHref: `/players/${fav.targetId}`,
-			item: { kind: 'class_change', direction, from: history[1].classification, to: history[0].classification },
-			sortKey: '9999'
+			item: {
+				kind: 'class_change',
+				direction,
+				from: history[1].classification,
+				to: history[0].classification,
+				effectiveDate: history[0].effectiveDate
+			},
+			sortKey: history[0].effectiveDate
 		});
 	}
 
@@ -84,55 +101,101 @@ async function fetchPlayerEvents(fav: FollowResponse): Promise<ResolvedEvent[]> 
 
 async function fetchTeamEvents(fav: FollowResponse): Promise<ResolvedEvent[]> {
 	const matches = await api.teams.matches(fav.targetId).catch((): Match[] => []);
-	return matches
-		.filter((m) => m.status !== 'SCHEDULED')
-		.map((m) => {
-			const isHome = m.homeTeamId === fav.targetId;
-			const myScore = isHome ? m.homeScore : m.awayScore;
-			const oppScore = isHome ? m.awayScore : m.homeScore;
-			const result =
-				myScore != null && oppScore != null
-					? myScore > oppScore
-						? 'WIN'
-						: myScore < oppScore
-							? 'LOSS'
-							: 'DRAW'
-					: 'DRAW';
-			return {
-				key: `${fav.id}-match-${m.id}`,
-				entityType: 'team' as const,
-				entityName: fav.targetName,
-				entityHref: `/matches/${m.id}`,
-				item: {
-					kind: 'team_match' as const,
-					result,
-					opponent: isHome ? m.awayTeam : m.homeTeam,
-					score: myScore != null && oppScore != null ? `${myScore}–${oppScore}` : '?–?',
-					playedAt: m.playedAt
-				},
-				sortKey: m.playedAt ?? ''
-			};
+	const events: ResolvedEvent[] = [];
+
+	for (const m of matches) {
+		// Upcoming fixture (within a day of throw-off) → a look-ahead card.
+		if (m.status === 'SCHEDULED') {
+			if (isUpcomingSoon(m.playedAt)) {
+				events.push({
+					key: `${fav.id}-upcoming-${m.id}`,
+					entityType: 'team',
+					entityName: fav.targetName,
+					entityHref: `/matches/${m.id}`,
+					item: {
+						kind: 'upcoming_match',
+						homeTeam: m.homeTeam,
+						awayTeam: m.awayTeam,
+						playedAt: m.playedAt
+					},
+					sortKey: m.playedAt ?? ''
+				});
+			}
+			continue;
+		}
+
+		const isHome = m.homeTeamId === fav.targetId;
+		const myScore = isHome ? m.homeScore : m.awayScore;
+		const oppScore = isHome ? m.awayScore : m.homeScore;
+		const result =
+			myScore != null && oppScore != null
+				? myScore > oppScore
+					? 'WIN'
+					: myScore < oppScore
+						? 'LOSS'
+						: 'DRAW'
+				: 'DRAW';
+		events.push({
+			key: `${fav.id}-match-${m.id}`,
+			entityType: 'team',
+			entityName: fav.targetName,
+			entityHref: `/matches/${m.id}`,
+			item: {
+				kind: 'team_match',
+				result,
+				opponent: isHome ? m.awayTeam : m.homeTeam,
+				score: myScore != null && oppScore != null ? `${myScore}–${oppScore}` : '?–?',
+				playedAt: m.playedAt
+			},
+			sortKey: m.playedAt ?? ''
 		});
+	}
+
+	return events;
 }
 
 async function fetchGroupEvents(fav: FollowResponse): Promise<ResolvedEvent[]> {
 	const matches = await api.groups.matches(fav.targetId).catch((): Match[] => []);
-	return matches
-		.filter((m) => m.status !== 'SCHEDULED' && m.homeScore != null && m.awayScore != null)
-		.map((m) => ({
+	const events: ResolvedEvent[] = [];
+
+	for (const m of matches) {
+		if (m.status === 'SCHEDULED') {
+			if (isUpcomingSoon(m.playedAt)) {
+				events.push({
+					key: `${fav.id}-upcoming-${m.id}`,
+					entityType: 'division_group',
+					entityName: fav.targetName,
+					entityHref: `/matches/${m.id}`,
+					item: {
+						kind: 'upcoming_match',
+						homeTeam: m.homeTeam,
+						awayTeam: m.awayTeam,
+						playedAt: m.playedAt
+					},
+					sortKey: m.playedAt ?? ''
+				});
+			}
+			continue;
+		}
+
+		if (m.homeScore == null || m.awayScore == null) continue;
+		events.push({
 			key: `${fav.id}-match-${m.id}`,
-			entityType: 'division_group' as const,
+			entityType: 'division_group',
 			entityName: fav.targetName,
 			entityHref: `/matches/${m.id}`,
 			item: {
-				kind: 'group_match' as const,
+				kind: 'group_match',
 				homeTeam: m.homeTeam,
 				awayTeam: m.awayTeam,
 				score: `${m.homeScore}–${m.awayScore}`,
 				playedAt: m.playedAt
 			},
 			sortKey: m.playedAt ?? ''
-		}));
+		});
+	}
+
+	return events;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────

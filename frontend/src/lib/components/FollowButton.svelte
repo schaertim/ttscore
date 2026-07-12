@@ -7,6 +7,7 @@
 	import { toast } from 'svelte-sonner';
 	import { _ } from 'svelte-i18n';
 	import { get } from 'svelte/store';
+	import IconButton from '$lib/components/IconButton.svelte';
 
 	interface Props {
 		following: boolean;
@@ -21,6 +22,7 @@
 	let {
 		following = $bindable(),
 		followId = $bindable(),
+		// eslint-disable-next-line no-useless-assignment -- write-only here; the parent reads it via the binding
 		notify = $bindable(),
 		targetType,
 		targetId,
@@ -69,37 +71,22 @@
 </script>
 
 {#if !authenticated}
-	<button
-		type="button"
-		onclick={redirectToSignIn}
-		title="Sign in to follow"
-		class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-	>
-		<StarIcon size="20" />
-	</button>
+	<IconButton onclick={redirectToSignIn} title={$_('common.sign_in_to_follow')}>
+		<StarIcon size={20} />
+	</IconButton>
 {:else if following}
 	<form method="POST" action="?/unfollow" use:enhance={unfollowEnhance}>
 		<input type="hidden" name="followId" value={followId} />
-		<button
-			type="submit"
-			disabled={loading}
-			title="Unfollow"
-			class="flex items-center justify-center rounded-full p-2 text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-		>
-			<StarIcon size="20" weight="fill" />
-		</button>
+		<IconButton type="submit" tone="foreground" disabled={loading} title={$_('common.unfollow')}>
+			<StarIcon size={20} weight="fill" />
+		</IconButton>
 	</form>
 {:else}
 	<form method="POST" action="?/follow" use:enhance={followEnhance}>
 		<input type="hidden" name="targetType" value={targetType} />
 		<input type="hidden" name="targetId" value={targetId} />
-		<button
-			type="submit"
-			disabled={loading}
-			title="Follow"
-			class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
-		>
-			<StarIcon size="20" />
-		</button>
+		<IconButton type="submit" disabled={loading} title={$_('common.follow')}>
+			<StarIcon size={20} />
+		</IconButton>
 	</form>
 {/if}

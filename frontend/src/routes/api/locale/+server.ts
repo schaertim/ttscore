@@ -1,5 +1,6 @@
 ﻿import type { RequestHandler } from './$types';
 import { SUPPORTED_LOCALES } from '$lib/i18n';
+import { STORAGE_KEYS } from '$lib/storageKeys';
 
 export const POST: RequestHandler = async ({ request, cookies }) => {
 	const { locale } = await request.json();
@@ -8,7 +9,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		return new Response('Unsupported locale', { status: 400 });
 	}
 
-	cookies.set('ttscore_locale', locale, {
+	cookies.set(STORAGE_KEYS.locale, locale, {
 		path: '/',
 		maxAge: 60 * 60 * 24 * 365, // 1 year
 		httpOnly: false,

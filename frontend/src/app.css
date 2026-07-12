@@ -155,15 +155,58 @@
 @layer base {
 	* {
 		@apply border-border outline-ring/50;
+		/* Native-feel: no gray tap flash — pressable elements provide their own
+		   :active feedback instead (see the hover:bg-accent active rule below). */
+		-webkit-tap-highlight-color: transparent;
+		/* Native-feel: no iOS "Copy/Share" callout when long-pressing UI chrome. */
+		-webkit-touch-callout: none;
+	}
+	html {
+		@apply font-sans;
+		/* Native-feel: contain overscroll so pull-to-refresh / swipe-back gestures
+		   don't leak into the browser. */
+		overscroll-behavior-y: contain;
 	}
 	body {
 		@apply bg-background text-foreground;
+		overscroll-behavior-y: contain;
+		/* Native-feel: crisper text rendering, no accidental UI text-selection. */
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		-webkit-user-select: none;
+		user-select: none;
+	}
+	/* Keep real form fields editable/selectable. */
+	input,
+	textarea,
+	[contenteditable] {
+		-webkit-user-select: text;
+		user-select: text;
+	}
+	/* Native-feel: instant taps (no ~300ms delay) and no double-tap-to-zoom on
+	   interactive chrome. Content stays pinch-zoomable. */
+	button,
+	a,
+	label,
+	summary,
+	[role='button'],
+	input,
+	select,
+	textarea {
+		touch-action: manipulation;
 	}
 	button:not(:disabled),
 	[role='button']:not(:disabled) {
 		cursor: pointer;
 	}
-	html {
-		@apply font-sans;
+}
+
+/* Native-feel: on touch devices, mirror `hover:bg-accent` as a pressed state so
+   tappable rows/cards give feedback on tap (hover never fires on touch). Reuses
+   the existing hover colour and is inert on pointer/desktop. Unlayered so it wins
+   over the layered hover utility during :active. */
+@media (hover: none) {
+	.hover\:bg-accent:active {
+		background-color: var(--accent);
 	}
 }

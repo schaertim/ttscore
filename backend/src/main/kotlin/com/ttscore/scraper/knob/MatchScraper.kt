@@ -2,11 +2,15 @@
 
 import com.ttscore.database.*
 import com.ttscore.model.MatchStatus
+import com.ttscore.scraper.knob.model.ParsedMatchDetail
 import com.ttscore.service.ClassificationService
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import java.util.*
+
+/** Matches fetched+parsed concurrently, then written, per batch — bounds in-memory parsed detail. */
+private const val MATCH_BATCH = 200
 
 class MatchScraper(
     private val client: KnobClient,
@@ -62,29 +66,46 @@ class MatchScraper(
 
         logger.info("MatchScraper: ${matches.size} completed matches without game details")
 
-        for ((index, match) in matches.withIndex()) {
-            try {
-                scrapeMatch(match)
-                if (index % 100 == 0) {
-                    logger.info("Progress: $index / ${matches.size} matches scraped")
+        // Process in batches: fetch + parse each batch concurrently (network/CPU only), then
+        // write the batch serially. Batching bounds how many parsed details are held in memory
+        // at once; the concurrent fetch is what removes the per-match network wait.
+        var done = 0
+        for (batch in matches.chunked(MATCH_BATCH)) {
+            val parsed =
+                batch.mapConcurrent(SCRAPE_CONCURRENCY) { match ->
+                    try {
+                        val html =
+                            client.fetchMatchDetail(match.knobGruppe, match.knobMatchId, match.season, match.rvid)
+                        match to parser.parseMatchDetail(html, match.knobMatchId)
+                    } catch (e: Exception) {
+                        logger.error("Failed matchId=${match.knobMatchId} gruppe=${match.knobGruppe}: ${e.message}")
+                        null
+                    }
+                }.filterNotNull()
+
+            for ((match, detail) in parsed) {
+                try {
+                    if (detail.games.isEmpty()) {
+                        logger.debug("No games found for matchId=${match.knobMatchId}")
+                        continue
+                    }
+                    writeMatchGames(match, detail)
+                } catch (e: Exception) {
+                    logger.error("Failed matchId=${match.knobMatchId} gruppe=${match.knobGruppe}: ${e.message}")
                 }
-            } catch (e: Exception) {
-                logger.error("Failed matchId=${match.knobMatchId} gruppe=${match.knobGruppe}: ${e.message}")
             }
+
+            done += batch.size
+            logger.info("Progress: ${done.coerceAtMost(matches.size)} / ${matches.size} matches processed")
         }
 
         logger.info("MatchScraper complete")
     }
 
-    private suspend fun scrapeMatch(match: MatchToScrape) {
-        val html = client.fetchMatchDetail(match.knobGruppe, match.knobMatchId, match.season, match.rvid)
-        val detail = parser.parseMatchDetail(html, match.knobMatchId)
-
-        if (detail.games.isEmpty()) {
-            logger.debug("No games found for matchId=${match.knobMatchId}")
-            return
-        }
-
+    private fun writeMatchGames(
+        match: MatchToScrape,
+        detail: ParsedMatchDetail,
+    ) {
         transaction {
             for (game in detail.games) {
                 val homePlayer1Id =

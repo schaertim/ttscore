@@ -1,7 +1,12 @@
 <script lang="ts">
 	import type { CareerSeasonEntry } from '$lib/api';
+	import { classColorVar, classificationRank } from '$lib/utils';
 
-	let { seasons }: { seasons: CareerSeasonEntry[] } = $props();
+	interface Props {
+		seasons: CareerSeasonEntry[];
+	}
+
+	let { seasons }: Props = $props();
 
 	type Stint = {
 		clubName: string;
@@ -9,7 +14,15 @@
 		lastSeason: string;
 		seasonCount: number;
 		leagues: string[];
+		topClass: string | null;
 	};
+
+	// Keep whichever class ranks higher on the ladder (null-safe).
+	function higherClass(a: string | null, b: string | null): string | null {
+		if (!a) return b;
+		if (!b) return a;
+		return classificationRank(b) > classificationRank(a) ? b : a;
+	}
 
 	// Collapse consecutive same-club seasons into a single tenure, newest first.
 	const stints = $derived.by<Stint[]>(() => {
@@ -20,6 +33,7 @@
 			if (last && last.clubName === club) {
 				last.lastSeason = s.seasonName;
 				last.seasonCount++;
+				last.topClass = higherClass(last.topClass, s.topClass);
 				if (s.leagueName && !last.leagues.includes(s.leagueName)) last.leagues.push(s.leagueName);
 			} else {
 				out.push({
@@ -27,7 +41,8 @@
 					firstSeason: s.seasonName,
 					lastSeason: s.seasonName,
 					seasonCount: 1,
-					leagues: s.leagueName ? [s.leagueName] : []
+					leagues: s.leagueName ? [s.leagueName] : [],
+					topClass: s.topClass
 				});
 			}
 		}
@@ -47,13 +62,16 @@
 		<div class="flex gap-3">
 			<!-- Timeline rail -->
 			<div class="flex flex-col items-center">
-				<div class="mt-1.5 size-2.5 shrink-0 rounded-full bg-primary"></div>
+				<div
+					class="mt-1.5 size-2.5 shrink-0 rounded-full"
+					style="background-color: {classColorVar(stint.topClass)}"
+				></div>
 				{#if i < stints.length - 1}
 					<div class="w-px flex-1 bg-border"></div>
 				{/if}
 			</div>
 
-			<div class="min-w-0 flex-1 pb-5">
+			<div class="min-w-0 flex-1 {i < stints.length - 1 ? 'pb-5' : ''}">
 				<div class="flex items-baseline justify-between gap-2">
 					<p class="truncate font-semibold">{stint.clubName}</p>
 					<span class="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">

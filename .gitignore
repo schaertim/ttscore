@@ -27,3 +27,7 @@ replay_pid*
 
 # Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
 .kotlin/
+
+# Local Postgres dumps (e.g. backend/dumps/ttscore_dump.custom) — too large for git,
+# uploaded/shared separately (GitHub Release asset, cloud storage, etc.)
+backend/dumps/

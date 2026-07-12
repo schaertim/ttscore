@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { onMount } from 'svelte';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
@@ -13,12 +14,15 @@
 		StarIcon,
 		ScalesIcon
 	} from 'phosphor-svelte';
-	import { h2h } from '$lib/h2h.svelte';
+	import { compareWithMe } from '$lib/h2h.svelte';
+	import { debounce } from '$lib/debounce';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
+	import IconButton from '$lib/components/IconButton.svelte';
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import FollowPlayerCard from '$lib/components/FollowPlayerCard.svelte';
 	import RecentPlayerCard from '$lib/components/RecentPlayerCard.svelte';
 	import PlayerAvatar from '$lib/components/PlayerAvatar.svelte';
+	import * as Carousel from '$lib/components/ui/carousel/index.js';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { _ } from 'svelte-i18n';
 	import { formatName } from '$lib/utils';
@@ -30,38 +34,35 @@
 	let isSearching = $state(false);
 	let currentPage = $state(0);
 	let response = $state<PagedResponse<Player> | null>(null);
+	// Deliberate local copy: optimistic removal on unfollow without waiting for the server.
+	// svelte-ignore state_referenced_locally
 	let favoritePlayers = $state([...data.favoritePlayers]);
 	let recentPlayers = $state<RecentPlayer[]>([]);
 
-	$effect(() => {
+	onMount(() => {
 		recentPlayers = getRecentPlayers();
 	});
 
-	function compareWithMe(playerId: string) {
-		h2h.opponentId = playerId;
-	}
-
 	const PAGE_SIZE = 20;
 
-	let timer: ReturnType<typeof setTimeout>;
+	const runSearch = debounce(async (page: number) => {
+		try {
+			response = await api.players.search(searchQuery, page, PAGE_SIZE);
+			currentPage = page;
+		} catch {
+			response = null;
+		} finally {
+			isSearching = false;
+		}
+	});
 
-	async function search(page = 0) {
+	function search(page = 0) {
 		if (searchQuery.length < 3) {
 			response = null;
 			return;
 		}
 		isSearching = true;
-		clearTimeout(timer);
-		timer = setTimeout(async () => {
-			try {
-				response = await api.players.search(searchQuery, page, PAGE_SIZE);
-				currentPage = page;
-			} catch {
-				response = null;
-			} finally {
-				isSearching = false;
-			}
-		}, 300);
+		runSearch(page);
 	}
 
 	$effect(() => {
@@ -72,7 +73,7 @@
 			response = null;
 			isSearching = false;
 		}
-		return () => clearTimeout(timer);
+		return () => runSearch.cancel();
 	});
 
 	const totalPages = $derived(response ? Math.ceil(response.total / PAGE_SIZE) : 0);
@@ -90,7 +91,7 @@
 			<ClassBadge classification={player.liveClassification ?? player.classification} />
 		</div>
 		<p class="truncate text-2xs tracking-wide text-muted-foreground">
-			{player.currentClubName ?? '-'}
+			{player.currentClubName ?? '—'}
 		</p>
 	</div>
 {/snippet}
@@ -105,7 +106,7 @@
 
 	<div class="relative">
 		<MagnifyingGlassIcon
-			size="16"
+			size={16}
 			class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
 		/>
 		<Input
@@ -118,32 +119,38 @@
 	{#if showRecents}
 		<section class="space-y-3">
 			<SectionLabel label={$_('search.recently_viewed')} icon={ClockIcon} />
-			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
-				{#each filteredRecents as player (player.id)}
-					<RecentPlayerCard
-						id={player.id}
-						fullName={player.fullName}
-						classification={player.classification}
-						onremove={() => {
-							recentPlayers = recentPlayers.filter((p) => p.id !== player.id);
-						}}
-					/>
-				{/each}
-			</div>
+			<Carousel.Root opts={{ align: 'start' }} class="w-full">
+				<Carousel.Content class="-ms-3">
+					{#each filteredRecents as player (player.id)}
+						<Carousel.Item class="basis-1/3 ps-3 md:basis-1/5">
+							<RecentPlayerCard
+								id={player.id}
+								fullName={player.fullName}
+								classification={player.classification}
+								currentClubName={player.currentClubName}
+								onRemove={() => {
+									recentPlayers = recentPlayers.filter((p) => p.id !== player.id);
+								}}
+							/>
+						</Carousel.Item>
+					{/each}
+				</Carousel.Content>
+			</Carousel.Root>
 		</section>
 	{/if}
 
 	{#if showFavorites}
 		<section class="space-y-3">
 			<SectionLabel label={$_('search.favourites')} icon={StarIcon} />
-			<div class="flex gap-3 overflow-x-auto pb-1" style="-webkit-overflow-scrolling: touch;">
+			<div class="grid grid-cols-3 gap-3 md:grid-cols-5">
 				{#each favoritePlayers as player (player.id)}
 					<FollowPlayerCard
 						id={player.id}
 						fullName={player.fullName}
 						classification={player.liveClassification ?? player.classification}
+						currentClubName={player.currentClubName}
 						followId={player.followId}
-						onunfollow={() => {
+						onUnfollow={() => {
 							favoritePlayers = favoritePlayers.filter((p) => p.id !== player.id);
 						}}
 					/>
@@ -197,14 +204,13 @@
 								{@render row(player)}
 							</a>
 							{#if data.homePlayerId && player.id !== data.homePlayerId}
-								<button
-									type="button"
+								<IconButton
 									onclick={() => compareWithMe(player.id)}
-									class="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-									aria-label={$_('h2h.compare')}
+									class="shrink-0 rounded-lg hover:text-primary"
+									ariaLabel={$_('h2h.compare')}
 								>
-									<ScalesIcon size="18" />
-								</button>
+									<ScalesIcon size={18} />
+								</IconButton>
 							{/if}
 						</div>
 					{/each}
@@ -218,7 +224,7 @@
 							disabled={currentPage === 0}
 							onclick={() => search(currentPage - 1)}
 						>
-							<CaretLeftIcon size="16" />
+							<CaretLeftIcon size={16} />
 						</Button>
 
 						<span class="px-2 text-sm text-muted-foreground tabular-nums">
@@ -231,7 +237,7 @@
 							disabled={currentPage >= totalPages - 1}
 							onclick={() => search(currentPage + 1)}
 						>
-							<CaretRightIcon size="16" />
+							<CaretRightIcon size={16} />
 						</Button>
 					</div>
 				{/if}

@@ -256,9 +256,22 @@ object PlayerService {
             monthly = emptyList(),
             longestWinStreak = 0,
             currentWinStreak = 0,
+            bestWinOpponentId = null,
             bestWinOpponentName = null,
             bestWinOpponentClass = null,
             competitions = emptyList(),
+            radar = emptyRadar(),
+        )
+
+    private fun emptyRadar() =
+        RadarSourceResponse(
+            opponentBuckets = emptyList(),
+            deuceSetsWon = 0,
+            deuceSetsTotal = 0,
+            tightGameWins = 0,
+            tightGames = 0,
+            comeFromBehindWins = 0,
+            comeFromBehindGames = 0,
         )
 
     suspend fun getSeasonStats(playerId: String): PlayerSeasonStatsResponse? {
@@ -381,6 +394,7 @@ object PlayerService {
             var comeFromBehindWins = 0
             var comeFromBehindGames = 0
             var bestRank: Int? = null
+            var bestId: UUID? = null
             var bestName: String? = null
             var bestClass: String? = null
             val decidedResults = mutableListOf<Boolean>()
@@ -407,6 +421,7 @@ object PlayerService {
                     if (oppClass != null) tiers.getOrPut(oppClass) { WinAcc() }.add(won)
                     if (won && oppRank != null && (bestRank == null || oppRank > bestRank!!)) {
                         bestRank = oppRank
+                        bestId = oppId
                         bestName =
                             if (isHome) {
                                 row.getOrNull(awayPlayer[Players.fullName])
@@ -521,6 +536,8 @@ object PlayerService {
                     }
                 }
 
+            val radar = computeRadarSource(uuid, playerCurrentRank)
+
             PlayerSeasonStatsResponse(
                 seasonName = seasonName,
                 totalGames = overall.games,
@@ -551,14 +568,146 @@ object PlayerService {
                         .map { MonthlyFormResponse(it.key, it.value[0], it.value[1]) },
                 longestWinStreak = longestStreak,
                 currentWinStreak = currentStreak,
+                bestWinOpponentId = bestId?.toString(),
                 bestWinOpponentName = bestName,
                 bestWinOpponentClass = bestClass,
                 competitions =
                     comps.entries
                         .sortedByDescending { it.value.games }
                         .map { CompetitionStatResponse(it.key, it.value.wins, it.value.games, it.value.tournament) },
+                radar = radar,
             )
         }
+    }
+
+    /**
+     * Radar-chart source (everything but Form): a rolling 1-year window rather than the
+     * current-season scope, so it stays stable across the season rollover and isn't skewed by a
+     * small early-season sample. Opponent buckets use a tighter cutoff than [getSeasonStats]'s
+     * own buckets — 2+ ranks (not 3+) fold into HIGHER/LOWER, leaving same-class-or-adjacent as
+     * the "Consistency" pool. Must run inside the same transaction as its caller.
+     */
+    private fun computeRadarSource(uuid: UUID, playerCurrentRank: Int?): RadarSourceResponse {
+        val cutoff = OffsetDateTime.now(swissZone).minusYears(1)
+        val rows =
+            Games
+                .select(
+                    Games.id,
+                    Games.homePlayer1Id,
+                    Games.awayPlayer1Id,
+                    Games.homeSets,
+                    Games.awaySets,
+                    Games.result,
+                    Games.playedAt,
+                )
+                .where {
+                    ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
+                        (Games.gameType eq GameType.SINGLES) and
+                        (Games.result neq GameResult.NOT_PLAYED) and
+                        (Games.playedAt greaterEq cutoff)
+                }
+                .toList()
+
+        if (rows.isEmpty()) return emptyRadar()
+
+        val gameIds = rows.map { it[Games.id] }
+        val setsByGame =
+            GameSets
+                .select(GameSets.gameId, GameSets.setNumber, GameSets.homePoints, GameSets.awayPoints)
+                .where { GameSets.gameId inList gameIds }
+                .orderBy(GameSets.setNumber to SortOrder.ASC)
+                .groupBy { it[GameSets.gameId] }
+
+        val opponentIds =
+            rows.mapNotNull { row ->
+                val isHome = row[Games.homePlayer1Id] == uuid
+                if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
+            }.toSet()
+        val seasonNames =
+            rows.mapNotNull { row ->
+                row[Games.playedAt]?.let {
+                    ClassificationService.seasonNameOf(ClassificationService.localDateOf(it))
+                }
+            }.toSet()
+        val badges = ClassificationService.classBadges(opponentIds + uuid, seasonNames)
+
+        var deuceWon = 0
+        var deuceTotal = 0
+        var tightWins = 0
+        var tightGames = 0
+        var comeFromBehindWins = 0
+        var comeFromBehindGames = 0
+        val tiers = linkedMapOf<String, WinAcc>()
+
+        for (row in rows) {
+            val isHome = row[Games.homePlayer1Id] == uuid
+            val won =
+                (row[Games.result] == GameResult.HOME && isHome) ||
+                    (row[Games.result] == GameResult.AWAY && !isHome)
+
+            val playedAt = row[Games.playedAt]
+            if (playedAt != null) {
+                val date = ClassificationService.localDateOf(playedAt)
+                val oppId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id]
+                val oppClass = oppId?.let { ClassificationService.classOf(badges, it, date) }
+                if (oppClass != null) tiers.getOrPut(oppClass) { WinAcc() }.add(won)
+            }
+
+            val ps = if (isHome) row[Games.homeSets]?.toInt() else row[Games.awaySets]?.toInt()
+            val os = if (isHome) row[Games.awaySets]?.toInt() else row[Games.homeSets]?.toInt()
+            if (ps != null && os != null && abs(ps - os) == 1) {
+                tightGames++
+                if (won) tightWins++
+            }
+
+            val gameSets = setsByGame[row[Games.id]].orEmpty()
+            if (gameSets.isNotEmpty()) {
+                var playerSetsRunning = 0; var oppSetsRunning = 0; var wasBehind = false
+                for (s in gameSets) {
+                    val homeP = s[GameSets.homePoints].toInt()
+                    val awayP = s[GameSets.awayPoints].toInt()
+                    val my = if (isHome) homeP else awayP
+                    val op = if (isHome) awayP else homeP
+                    if (my > op) playerSetsRunning++ else oppSetsRunning++
+                    if (homeP >= 10 && awayP >= 10) { deuceTotal++; if (my > op) deuceWon++ }
+                    if (oppSetsRunning > playerSetsRunning) wasBehind = true
+                }
+                if (wasBehind) { comeFromBehindGames++; if (won) comeFromBehindWins++ }
+            }
+        }
+
+        val opponentBuckets: List<OpponentBucketResponse> =
+            if (playerCurrentRank == null) {
+                emptyList()
+            } else {
+                var higherW = 0; var higherG = 0
+                var lowerW = 0; var lowerG = 0
+                val mid = mutableListOf<Pair<String, WinAcc>>()
+                for ((cls, acc) in tiers) {
+                    val r = classRank(cls) ?: continue
+                    when {
+                        r - playerCurrentRank >= 2 -> { higherW += acc.wins; higherG += acc.games }
+                        r - playerCurrentRank <= -2 -> { lowerW += acc.wins; lowerG += acc.games }
+                        else -> mid.add(cls to acc)
+                    }
+                }
+                buildList {
+                    if (higherG > 0) add(OpponentBucketResponse("HIGHER", higherW, higherG))
+                    mid.sortedByDescending { classRank(it.first) ?: Int.MIN_VALUE }
+                        .forEach { (cls, acc) -> add(OpponentBucketResponse(cls, acc.wins, acc.games)) }
+                    if (lowerG > 0) add(OpponentBucketResponse("LOWER", lowerW, lowerG))
+                }
+            }
+
+        return RadarSourceResponse(
+            opponentBuckets = opponentBuckets,
+            deuceSetsWon = deuceWon,
+            deuceSetsTotal = deuceTotal,
+            tightGameWins = tightWins,
+            tightGames = tightGames,
+            comeFromBehindWins = comeFromBehindWins,
+            comeFromBehindGames = comeFromBehindGames,
+        )
     }
 
     /**
@@ -668,13 +817,18 @@ object PlayerService {
                 .limit(5)
                 .mapNotNull { row ->
                     // One entry per season — the latest known half (second falls back to first).
+                    val secondHalf = row[PlayerClassifications.secondHalfClass]
                     val classification =
-                        row[PlayerClassifications.secondHalfClass]
+                        secondHalf
                             ?: row[PlayerClassifications.firstHalfClass]
                             ?: return@mapNotNull null
+                    val half =
+                        if (secondHalf != null) ClassificationService.Half.SECOND else ClassificationService.Half.FIRST
+                    val seasonName = row[Seasons.name]
                     ClassHistoryEntryResponse(
                         classification = classification,
-                        seasonName = row[Seasons.name],
+                        seasonName = seasonName,
+                        effectiveDate = ClassificationService.effectiveDateOf(seasonName, half).toString(),
                     )
                 }
         }
@@ -709,6 +863,40 @@ object PlayerService {
                     }
             val peak = classProgression.maxByOrNull { classRank(it.classification) ?: Int.MIN_VALUE }
 
+            // Highest class held per season (by ladder rank) — colours the club timeline dots.
+            val seasonTopClass: Map<String, String> =
+                classProgression
+                    .groupBy { it.seasonName }
+                    .mapValues { (_, pts) ->
+                        pts.maxBy { classRank(it.classification) ?: Int.MIN_VALUE }.classification
+                    }
+
+            // Biggest climb between consecutive seasons' first-half classifications — this
+            // reflects the full prior season's results (promotion/relegation), unlike comparing
+            // first-half to second-half of the same season, which only captures the mid-season
+            // reclass. On ties (same jump size), prefer the one at the highest class level
+            // (highest arrival rank).
+            var jumpSeason: String? = null
+            var jumpFrom: String? = null
+            var jumpTo: String? = null
+            var jumpDelta = 0
+            var jumpToRank = Int.MIN_VALUE
+            val firstHalfPoints = classProgression.filter { it.half == "first" }
+            for (i in 1 until firstHalfPoints.size) {
+                val prev = firstHalfPoints[i - 1]
+                val curr = firstHalfPoints[i]
+                val prevRank = classRank(prev.classification) ?: continue
+                val currRank = classRank(curr.classification) ?: continue
+                val delta = currRank - prevRank
+                if (delta > jumpDelta || (delta == jumpDelta && delta > 0 && currRank > jumpToRank)) {
+                    jumpDelta = delta
+                    jumpToRank = currRank
+                    jumpSeason = curr.seasonName
+                    jumpFrom = prev.classification
+                    jumpTo = curr.classification
+                }
+            }
+
             // ── Club + league per season ──
             val seasonRows =
                 PlayerSeasons
@@ -728,6 +916,7 @@ object PlayerService {
                             seasonName = seasonName,
                             clubName = rows.first()[Clubs.name],
                             leagueName = rows.first()[Groups.name],
+                            topClass = seasonTopClass[seasonName],
                         )
                     }
 
@@ -773,6 +962,7 @@ object PlayerService {
             var debutSeason: String? = null
             var debutOpponentName: String? = null
             var scalpRank: Int? = null
+            var scalpId: UUID? = null
             var scalpName: String? = null
             var scalpClass: String? = null
 
@@ -801,6 +991,7 @@ object PlayerService {
                     val r = classRank(oppClass)
                     if (oppClass != null && r != null && (scalpRank == null || r > scalpRank)) {
                         scalpRank = r
+                        scalpId = oppId
                         scalpName = opponentNames[oppId]
                         scalpClass = oppClass
                     }
@@ -822,7 +1013,7 @@ object PlayerService {
             val rivalries =
                 perOpponent.entries
                     .sortedByDescending { it.value.games }
-                    .take(6)
+                    .take(10)
                     .map { (oppId, acc) ->
                         CareerRival(
                             opponentId = oppId.toString(),
@@ -855,11 +1046,15 @@ object PlayerService {
                         peakClass = peak?.classification,
                         peakClassSeason = peak?.seasonName,
                         longestWinStreak = longestStreak,
+                        bestWinOpponentId = scalpId?.toString(),
                         bestWinOpponentName = scalpName,
                         bestWinOpponentClass = scalpClass,
                         bestSeasonName = bestSeason?.key,
                         bestSeasonWins = bestSeason?.value?.get(0) ?: 0,
                         bestSeasonGames = bestSeason?.value?.get(1) ?: 0,
+                        biggestJumpSeason = jumpSeason,
+                        biggestJumpFrom = jumpFrom,
+                        biggestJumpTo = jumpTo,
                     ),
                 rivalries = rivalries,
             )
@@ -966,6 +1161,67 @@ object PlayerService {
                         groupName = groupName,
                     )
                 }
+        }
+    }
+
+    /** All scheduled fixtures of the player's current-season team, soonest first. */
+    suspend fun getUpcomingMatches(playerId: String): PlayerUpcomingResponse? {
+        val uuid = playerId.toUuidOrNull() ?: return null
+        return dbQuery {
+            val teamRow =
+                PlayerSeasons
+                    .join(Teams, JoinType.INNER, PlayerSeasons.teamId, Teams.id)
+                    .join(Seasons, JoinType.INNER, PlayerSeasons.seasonId, Seasons.id)
+                    .select(Teams.id, Teams.name)
+                    .where { PlayerSeasons.playerId eq uuid }
+                    .orderBy(Seasons.name to SortOrder.DESC)
+                    .firstOrNull() ?: return@dbQuery null
+
+            val teamId = teamRow[Teams.id]
+            val homeTeamAlias = Teams.alias("ht")
+            val awayTeamAlias = Teams.alias("at")
+
+            val matches =
+                Matches
+                    .join(homeTeamAlias, JoinType.INNER, Matches.homeTeamId, homeTeamAlias[Teams.id])
+                    .join(awayTeamAlias, JoinType.INNER, Matches.awayTeamId, awayTeamAlias[Teams.id])
+                    .select(
+                        Matches.id,
+                        Matches.homeTeamId,
+                        Matches.awayTeamId,
+                        homeTeamAlias[Teams.name],
+                        awayTeamAlias[Teams.name],
+                        Matches.homeScore,
+                        Matches.awayScore,
+                        Matches.round,
+                        Matches.playedAt,
+                        Matches.status,
+                    )
+                    .where {
+                        ((Matches.homeTeamId eq teamId) or (Matches.awayTeamId eq teamId)) and
+                            (Matches.status eq MatchStatus.SCHEDULED)
+                    }
+                    .orderBy(Matches.playedAt to SortOrder.ASC_NULLS_LAST)
+                    .map { row ->
+                        MatchResponse(
+                            id = row[Matches.id].toString(),
+                            homeTeamId = row[Matches.homeTeamId].toString(),
+                            awayTeamId = row[Matches.awayTeamId].toString(),
+                            homeTeam = row[homeTeamAlias[Teams.name]],
+                            awayTeam = row[awayTeamAlias[Teams.name]],
+                            homeScore = row[Matches.homeScore]?.toInt(),
+                            awayScore = row[Matches.awayScore]?.toInt(),
+                            round = row[Matches.round],
+                            playedAt = row[Matches.playedAt]?.toString(),
+                            status = row[Matches.status],
+                        )
+                    }
+
+            PlayerUpcomingResponse(
+                teamId = teamId.toString(),
+                teamName = teamRow[Teams.name],
+                matches = matches,
+            )
         }
     }
 

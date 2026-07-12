@@ -1,6 +1,8 @@
 ﻿import type { LayoutServerLoad } from './$types';
 import { authedKtor } from '$lib/server/ktor';
 import { resolveLocale } from '$lib/i18n';
+import { STORAGE_KEYS } from '$lib/storageKeys';
+import { api } from '$lib/api';
 
 export const load: LayoutServerLoad = async ({
 	locals: { safeGetSession },
@@ -14,12 +16,13 @@ export const load: LayoutServerLoad = async ({
 
 	const { session, user } = await safeGetSession();
 	const locale = resolveLocale(
-		cookies.get('ttscore_locale') ?? request.headers.get('accept-language')
+		cookies.get(STORAGE_KEYS.locale) ?? request.headers.get('accept-language')
 	);
 
 	let hasHomePlayer = false;
 	let homePlayerId: string | null = null;
 	let isPro = false;
+	let homePlayerClassification: string | null = null;
 	if (session) {
 		const profileRes = await authedKtor(session.access_token)
 			.get('/users/me')
@@ -30,6 +33,10 @@ export const load: LayoutServerLoad = async ({
 			hasHomePlayer = !!homePlayerId;
 			isPro = profile.isPro ?? false;
 		}
+		if (homePlayerId) {
+			const player = await api.players.get(homePlayerId).catch(() => null);
+			homePlayerClassification = player?.classification ?? null;
+		}
 	}
 
 	return {
@@ -37,6 +44,7 @@ export const load: LayoutServerLoad = async ({
 		user,
 		hasHomePlayer,
 		homePlayerId,
+		homePlayerClassification,
 		isPro,
 		locale,
 		// Pass raw cookies to +layout.ts so it can reconstruct the Supabase client

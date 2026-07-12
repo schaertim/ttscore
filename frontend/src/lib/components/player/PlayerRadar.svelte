@@ -27,7 +27,7 @@
 		const axes: { key: keyof ReturnType<typeof radarMetrics>; label: string }[] = [
 			{ key: 'form', label: $_('stats.radar_form') },
 			{ key: 'clutch', label: $_('stats.radar_clutch') },
-			{ key: 'fiveSet', label: $_('stats.radar_five_set') },
+			{ key: 'grit', label: $_('stats.radar_grit') },
 			{ key: 'punch', label: $_('stats.radar_punch') },
 			{ key: 'resilience', label: $_('stats.radar_resilience') },
 			{ key: 'consistency', label: $_('stats.radar_consistency') }

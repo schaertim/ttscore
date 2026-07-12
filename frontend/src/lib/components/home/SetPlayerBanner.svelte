@@ -6,6 +6,7 @@
 	import type { Player } from '$lib/api';
 	import { setHomePlayer } from '$lib/homePlayer';
 	import SetPlayerSearch from '$lib/components/SetPlayerSearch.svelte';
+	import { STORAGE_KEYS } from '$lib/storageKeys';
 	import { _ } from 'svelte-i18n';
 
 	interface Props {
@@ -14,7 +15,7 @@
 
 	let { supabase }: Props = $props();
 
-	const STORAGE_KEY = 'ttscore_set_player_banner_dismissed';
+	const STORAGE_KEY = STORAGE_KEYS.setPlayerBannerDismissed;
 
 	let visible = $state(false);
 	let submitting = $state(false);
@@ -54,14 +55,14 @@
 		<button
 			type="button"
 			onclick={dismiss}
-			aria-label="Dismiss"
+			aria-label={$_('common.dismiss')}
 			class="absolute top-3 right-3 z-10 rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-foreground"
 		>
-			<XIcon size="16" />
+			<XIcon size={16} />
 		</button>
 		<div class="flex items-start gap-4">
 			<div class="shrink-0 rounded-full bg-primary/10 p-2">
-				<UserCirclePlusIcon size="20" class="text-primary" />
+				<UserCirclePlusIcon size={20} class="text-primary" />
 			</div>
 			<div class="min-w-0 flex-1 pr-6">
 				<p class="text-sm font-semibold">{$_('set_player.banner_title')}</p>

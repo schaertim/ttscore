@@ -1,6 +1,6 @@
-﻿# Frontend Coding Guidelines
+# Frontend Guidelines
 
-This document is the authoritative reference for how the ttscore frontend is written. It covers technical patterns, styling conventions, and code quality rules. Follow it for all new work and treat deviations from it as technical debt.
+This document is the authoritative reference for how the ttscore frontend is written. It covers technical patterns, styling conventions, and code quality rules. Follow it for all new work and treat deviations as technical debt. When the code and this document disagree, fix one of them — never let them drift silently.
 
 ---
 
@@ -8,105 +8,114 @@ This document is the authoritative reference for how the ttscore frontend is wri
 
 | Layer | Tool | Notes |
 |---|---|---|
-| Framework | SvelteKit 2 + Svelte 5 (runes mode) | No legacy Svelte 4 syntax |
-| Language | TypeScript â€” strict mode | `"strict": true` in tsconfig |
+| Framework | SvelteKit 2 + Svelte 5 (runes mode) | No legacy Svelte 4 syntax anywhere |
+| Language | TypeScript, strict mode | `"strict": true` in tsconfig |
 | Styling | Tailwind CSS v4 | Inline `@theme` in `app.css`, no config file |
-| UI primitives | shadcn-svelte v1 + bits-ui v2 | Headless, accessible |
-| Variant system | `tailwind-variants` | Used for multi-variant components |
-| Icons | `phosphor-svelte` | One import per icon used |
-| Font | DM Sans Variable | Loaded via `@fontsource-variable/dm-sans` |
-| Color space | OKLCH throughout | Perceptually uniform, works in dark mode |
-| Toasts | `svelte-sonner` | Use for all user feedback |
+| UI primitives | shadcn-svelte v1 + bits-ui v2 | Vendored under `$lib/components/ui/` |
+| Variant system | `tailwind-variants` | For multi-variant wrapper components |
+| Icons | `phosphor-svelte` | Named imports, numeric `size={n}` |
+| Fonts | DM Sans Variable (UI), DM Mono (numerics) | Via `@fontsource` |
+| Color space | OKLCH throughout | Perceptually uniform, dark-mode friendly |
+| Charts | `layerchart` + `d3-scale`/`d3-shape` | Wrapped by shadcn `Chart.Container` |
+| i18n | `svelte-i18n` | Four locales: de (default), fr, it, en |
+| Toasts | `svelte-sonner` | All transient user feedback |
+| Auth | Supabase (`@supabase/ssr`) | Session validated server-side |
+| Package manager | pnpm | Never `npm install` |
 
 ---
 
 ## 2. Svelte 5 Runes
 
-This project uses Svelte 5's runes API exclusively. Never write Svelte 4-style reactive declarations (`$:`, `export let`, `<slot>`).
+This project uses the runes API exclusively. Never write `$:`, `export let`, `<slot>`, or `createEventDispatcher`.
 
 ### Props
 
-Always declare a typed `interface Props` and destructure with `$props()`.
+Always declare a typed `interface Props` — even for a single prop — and destructure with `$props()`.
 
 ```svelte
 <script lang="ts">
   interface Props {
-    id: string;
-    name: string;
-    klass?: string | null;
+    player: Player;
+    classification?: string | null;
+    /** Fired when the user picks a result. */
     onSelect?: (id: string) => void;
   }
 
-  let { id, name, klass = null, onSelect }: Props = $props();
+  let { player, classification = null, onSelect }: Props = $props();
 </script>
 ```
 
-- Optional props get a default in destructuring, not a separate assignment.
-- Event callbacks are typed function props (`onSelect?: ...`), not `createEventDispatcher`.
+- Optional props get their default in the destructuring, not a separate assignment.
+- Event callbacks are typed function props with a camelCase `on` prefix (`onSelect`, `onUnfollow`, `onRemove`) — never `createEventDispatcher`, never lowercase DOM-style names for component-level callbacks. (Native passthroughs like `onclick` on an element keep their DOM name.)
 - Two-way binding uses `$bindable()`: `let { value = $bindable() }: Props = $props()`.
+- Document non-obvious props with a `/** … */` line — especially bindables and callbacks.
 
-### State
+### State and derived values
 
 ```svelte
-let count = $state(0);
 let open = $state(false);
+const winPct = $derived(total > 0 ? Math.round((wins / total) * 100) : 0);
+const groups = $derived.by(() => { /* multi-statement derivation */ });
 ```
 
-- Use `$state()` for all local reactive state.
-- Never import `writable` from `svelte/store` for component-local state.
+- `$state()` for all local reactive state; never `writable` for component-local state.
+- Anything computable from other state is `$derived` — reach for `$effect` only when you genuinely need a side effect (DOM sync, network call, subscription).
+- Values computed from props at the top level of the script must be `$derived`, not `const` — SvelteKit reuses page components across client-side navigations, so a plain `const` silently goes stale.
 
-### Derived values
+### Initial-value captures
 
-```svelte
-const fullLabel = $derived(`${name} (${klass ?? '?'})`);
+Capturing a prop's initial value into `$state` is occasionally correct (seeding a selection, an optimistic local copy). When it is, say so — justification comment first, then a *bare* ignore line:
+
+```ts
+// Deliberate local copy: optimistic removal on unfollow without waiting for the server.
+// svelte-ignore state_referenced_locally
+let favoritePlayers = $state([...data.favoritePlayers]);
 ```
 
-- Compute derived values with `$derived()`, not inline expressions in templates.
-- For expensive derivations, prefer `$derived.by(() => { ... })`.
+The `svelte-ignore` line must contain only the warning code — trailing prose is parsed as more codes and fails lint.
 
-### Effects
+When state must *track* load data instead (e.g. follow state that changes when navigating between two player pages), sync it in a pre-effect:
 
-```svelte
-$effect(() => {
-  document.title = name;
+```ts
+// Synced in an effect (not just initialised) so client-side navigation between
+// players — which reuses this component — picks up the new player's follow state.
+let following = $state(false);
+
+$effect.pre(() => {
+  following = data.following;
 });
 ```
 
-- Use `$effect()` for side effects that run when state changes (DOM sync, subscriptions).
-- Use `onMount` for one-time initialization, not `$effect`.
-- Avoid `$effect` for logic that can be expressed as `$derived`.
+### Effects
 
-### Children / snippets
+- `$effect` for side effects that re-run with state; `onMount` for one-time browser-only init (localStorage reads, matchMedia).
+- An `$effect` that just assigns to state is usually a `$derived` in disguise — rewrite it.
+- Effects with guards, keys, or async bodies get a comment explaining the lifecycle (see the sync effect in `players/[id]/+page.svelte`).
 
-Use `{@render children?.()}` â€” never `<slot>`.
+### Snippets
+
+Use `{@render children?.()}` — never `<slot>`. Use local snippets aggressively to kill repetition *within* a file before reaching for a new component:
 
 ```svelte
-<script lang="ts">
-  import type { Snippet } from 'svelte';
-  interface Props { children?: Snippet }
-  let { children }: Props = $props();
-</script>
+{#snippet playerName(id: string | null, name: string | null, won: boolean)}
+  …
+{/snippet}
 
-<div>{@render children?.()}</div>
+{@render playerName(game.homePlayerId, game.homePlayerName, homeWon)}
+{@render playerName(game.awayPlayerId, game.awayPlayerName, awayWon)}
 ```
+
+Snippet parameters are typed inline. Named snippet props (`{#snippet footer()}…{/snippet}`) are the idiom for optional component regions — see `StatTile`, `PlayerTile`, `InfoItem`.
 
 ---
 
 ## 3. TypeScript
 
-- **Strict mode** is always on. No implicit `any`, no unchecked indexing.
-- Use `interface` for object shapes, `type` for unions, aliases, and utility types.
-- No `any`. Use `unknown` at system boundaries and narrow before use.
-- API response types are defined in `$lib/api.ts` â€” never redeclare them locally.
-- SvelteKit type augmentations live in `src/app.d.ts` (`App.Locals`, `App.PageData`).
-
-```ts
-// Good
-type Result = { ok: true; data: Player } | { ok: false; error: string };
-
-// Bad
-const data: any = await res.json();
-```
+- No `any`. Use `unknown` at system boundaries and narrow before use. Chart-library contexts that would be `any` get a structural type instead (see `GradientContext` in `$lib/utils`).
+- `interface` for object shapes, `type` for unions, aliases, and utility types.
+- API response types live in `$lib/api.ts` and nowhere else — never redeclare them locally. Document non-obvious fields on the type (`/** Last five decided matches, newest first. */`).
+- `import type { … }` for type-only imports.
+- SvelteKit augmentations (`App.Locals`, `App.PageData`) live in `src/app.d.ts`.
 
 ---
 
@@ -116,121 +125,133 @@ const data: any = await res.json();
 
 ```
 src/lib/components/
-  â”œâ”€â”€ ui/                  shadcn-svelte primitives (don't edit directly)
-  â”œâ”€â”€ home/                home page specific components
-  â”œâ”€â”€ PlayerCard.svelte    shared domain components at root
-  â”œâ”€â”€ GameCard.svelte
-  â””â”€â”€ ...
+  ├── ui/              shadcn-svelte primitives — vendor folder, never edit
+  ├── icons/           brand/custom SVG icons (GoogleIcon)
+  ├── account/         account page sections
+  ├── group/           group page pieces (StandingsTable, ScheduledMatchCard)
+  ├── home/            home page pieces (HomeHero, FollowFeed, FeedItemSkeleton, …)
+  ├── match/           match preview pieces
+  ├── player/          player page pieces (StatsTab, H2HDrawer, MonthAccordion, …)
+  ├── PlayerCard.svelte    cross-page domain components at the root
+  ├── IconButton.svelte
+  └── …
 ```
 
-- Domain components live in `$lib/components/` (root or a subfolder if page-specific).
-- shadcn primitives live in `$lib/components/ui/` â€” treat them as a vendor folder.
-- One component per file. File name matches the exported component in PascalCase.
-- Split when a `.svelte` file exceeds ~150 lines of template+script combined.
+- Shared domain components live at the root of `components/`; page-specific ones live in a subfolder named after the page.
+- Pure logic shared by components ships as a plain `.ts` module next to them (`player/monthGroups.ts`) or in `$lib` when app-wide (`$lib/date.ts`, `$lib/debounce.ts`).
+- One component per file, PascalCase filename matching the component.
+- **Aim for ≤150 lines per `.svelte` file.** When a page grows past that, extract its sections into the page's component subfolder — the account page is the template: a ~70-line page composing `MyPlayerSection`, `FavoritesSection`, `PushSection`, `ProSection`.
 
-### Composition
+### The reuse ladder
 
-Use the shadcn compound pattern for structured UI:
+Before writing markup for an interactive element, check the ladder — hand-rolled `<button>`/`<a>` styling is a code smell:
 
-```svelte
-<Card.Root>
-  <Card.Header>
-    <Card.Title>Player</Card.Title>
-  </Card.Header>
-  <Card.Content>...</Card.Content>
-</Card.Root>
-```
+1. **`Button`** (shadcn) — CTAs, form submits, links styled as buttons (`href` prop renders an `<a>`).
+2. **`IconButton`** — icon-only round buttons (follow star, bell, trash, compare). Handles focus ring, disabled state, and tones.
+3. **`InfoItem`** — full-width tappable rows with icon/title/description/trailing (settings rows, callouts). Renders `<a>` or `<button>` depending on `href`.
+4. Only below that, a bespoke element — with focus-visible styles and a translated label.
+
+Same idea for display primitives: `Overline` (micro label), `PageTitle` (h1), `SectionLabel` (section heading), `StatTile` (labeled stat with skeleton + footer), `ScoreLine` (colored dash-separated numbers), `ClassBadge`, `FormPills`, `PlayerAvatar`, `PlayerTile`.
+
+### When to extract
+
+Extract a shared component or helper when the same pattern appears **3+ times**. Two similar blocks are fine — don't pre-abstract. Within one file, prefer a local snippet over a new file.
 
 ### Class merging
 
-Always use `cn()` from `$lib/utils` when conditionally applying classes. Never concatenate strings.
+Always `cn()` from `$lib/utils` when combining or conditionally applying classes. Never string-interpolate class fragments.
 
 ```svelte
 <!-- Good -->
-<div class={cn('base-class', isActive && 'active-class', extraClass)}>
+<span class={cn('rounded-full px-2', sizeClasses[size], className)}>
 
 <!-- Bad -->
-<div class="base-class {isActive ? 'active-class' : ''} {extraClass}">
+<span class="rounded-full px-2 {sizeClasses[size]} {className}">
 ```
 
 ---
 
 ## 5. Routing & Data Fetching
 
-### When to use which load file
+### Which load file
 
 | File | Use for |
 |---|---|
-| `+page.server.ts` | Auth-protected data, server secrets, SEO-critical content |
+| `+page.server.ts` | Auth-protected data, anything needing the session token, SEO-critical content |
 | `+page.ts` | Public client-renderable data, no secrets |
 | `+layout.server.ts` | Session validation, data needed by all child routes |
 
-### Always fetch in parallel
+### Fetch in parallel, stream the heavy parts
 
 ```ts
-const [player, groups] = await Promise.all([
-  api.players.get(params.id),
-  api.groups.list()
+const [group, standings, matches] = await Promise.all([
+  api.groups.get(id).catch(() => null),
+  api.groups.standings(id).catch(() => null),
+  api.groups.matches(id).catch(() => null)
 ]);
 ```
 
-Use `Promise.allSettled` when some requests are optional â€” but always handle the `rejected` case explicitly, never silently ignore it.
-
-### Streamed data
-
-Use the `streamed` return pattern for heavy secondary data that shouldn't block the initial render:
+Secondary data that shouldn't block first paint goes under a `streamed` key and is awaited in the template:
 
 ```ts
 return {
   player,
   streamed: {
-    history: api.players.matches(params.id)
+    elo: api.players.elo(params.id),
+    matches: api.players.matches(params.id)
   }
 };
 ```
 
-### Auth protection
+With `Promise.allSettled`, always handle the `rejected` branch explicitly.
 
-Check the session at the very top of every protected load or action:
-
-```ts
-export const load: PageServerLoad = async ({ locals }) => {
-  const { session } = await locals.safeGetSession();
-  if (!session) redirect(303, '/signin?redirectTo=/account');
-  // ...
-};
-```
-
-### 404 / error pattern
+### 404s and errors
 
 ```ts
 const player = await api.players.get(params.id).catch(() => null);
-if (!player) throw error(404, 'Player not found');
+if (!player) error(404, 'Player not found');
 ```
 
-Never return `null` page data and let the template handle it â€” throw the error so SvelteKit renders the error page.
+- `error()` throws by itself in SvelteKit 2 — **no `throw` keyword**.
+- Never return `null` page data for the template to deal with; throw so `+error.svelte` renders.
+- Never wrap a whole load in one try/catch — it flattens every failure (including incidental ones) into a single error. Catch per call.
+
+### Auth
+
+Check the session at the top of every protected load or action:
+
+```ts
+const { session } = await locals.safeGetSession();
+if (!session) redirect(303, '/signin?redirectTo=/account');
+```
+
+Server-side calls to Ktor go through `authedKtor(session.access_token)` from `$lib/server/ktor`.
+
+### Pro-gated client fetches
+
+Pro endpoints are fetched from the browser so the Supabase access token can be forwarded. Never hand-roll the loading/error bookkeeping — use `ProResource`:
+
+```ts
+const preview = new ProResource<MatchPreview>();
+
+$effect(() => {
+  if (!data.isPro) return;
+  const id = data.match.id;
+  preview.load(data.supabase, (token) => api.matches.preview(id, token));
+});
+```
+
+Template branches on `preview.loading` / `preview.error` / `preview.data`.
 
 ---
 
-## 6. Form Actions
+## 6. Forms & Actions
 
-- Always use `use:enhance` so forms work without JavaScript.
-- For optimistic updates: update `$state` before the server responds, roll back on failure.
-- Return shape: `{ success: true, data: ... }` or `fail(status, { error: 'message' })`.
-- Pass entity IDs via hidden inputs. Never encode sensitive data in form fields.
-
-```svelte
-<form method="POST" action="?/favorite" use:enhance={() => {
-  // Optimistic update
-  favorited = true;
-  return async ({ result }) => {
-    if (result.type !== 'success') favorited = false; // roll back
-  };
-}}>
-  <input type="hidden" name="targetId" value={id} />
-  <Button type="submit">Favorite</Button>
-</form>
-```
+- Always `use:enhance` so forms work without JavaScript.
+- Optimistic updates: flip `$state` before the server responds, roll back on failure (see `FollowButton`).
+- Return shape: `{ success: true, … }` or `fail(status, { error | reason })`. **Always check `res.ok`** on the backend call — a fire-and-forget delete that "succeeds" while failing server-side is a bug.
+- Follow/unfollow/notify actions are shared: import `followAction` / `unfollowAction` / `setNotifyAction` from `$lib/server/followActions` instead of reimplementing them per page. They translate backend 403 reasons (`follow_limit`, `notify_pro`) into typed `fail(403, { reason })` results that the shared buttons turn into Pro-upsell toasts.
+- Pass entity IDs via hidden inputs; never encode sensitive data in form fields.
 
 ---
 
@@ -238,26 +259,53 @@ Never return `null` page data and let the template handle it â€” throw the 
 
 | Context | Pattern |
 |---|---|
-| Load functions | `.catch(() => null)` â†’ `if (!data) throw error(404, ...)` |
-| Server actions | `if (!session) return fail(401, ...)` â€” explicit fail codes |
-| API client | Check `res.ok` before `res.json()` |
-| AllSettled | Always handle the `rejected` branch â€” no silent drops |
+| Load functions | `.catch(() => null)` per call → `if (!data) error(404, …)` |
+| Server actions | Explicit `fail(status, …)`; check `res.ok` on every backend response |
+| API client | `if (!res.ok) throw new Error(…)` before `res.json()` |
+| `allSettled` | Handle the `rejected` branch — no silent drops |
+| Error page | `src/routes/+error.svelte` renders status + localized message; keep it on-brand |
 
-```ts
-// Good â€” explicit, typed fail
-if (!res.ok) return fail(500, { error: 'Failed to save' });
-
-// Bad â€” silent swallow
-await api.doThing().catch(() => {});
-```
+**No error silencing**: `.catch(() => {})` is acceptable only for fire-and-forget side loads whose failure the UI already tolerates (e.g. optional ELO overlays that hide when empty), and must carry a comment saying why the failure is safe to ignore.
 
 ---
 
-## 8. Design Tokens â€” Color
+## 8. Internationalization
 
-**Rule: never use raw color values in components.** Always use design tokens (CSS variables) via Tailwind's token classes.
+The app ships in German (default, *du* form), French (*vous* form), Italian (*tu* form), and English.
 
-### Semantic tokens (always prefer these)
+- **Every user-facing string goes through `$_()`** — including `title` attributes, `aria-label`s, placeholders, empty states, and error pages. If a reviewer can read English in the rendered DOM of a non-English locale, it's a bug.
+- A new key is added to **all four** locale files in the same commit, matching each file's tone.
+- Keys are `section.key_name`; sections mirror features (`player`, `feed`, `account`, `common`, …). Cross-cutting strings (`common.back`, `common.tbd`, `common.unfollow`) live in `common`.
+- Keys must appear as **literal strings** in code — ternaries between two literals are fine, string concatenation or template-literal keys are not. This keeps unused-key detection a plain grep.
+- Delete keys when their last usage goes; the locale files are code, not an archive.
+- Locale resolution: server reads the `ttscore_locale` cookie (falling back to `Accept-Language`), browser refines from localStorage — both via `STORAGE_KEYS.locale` and `resolveLocale()` from `$lib/i18n`.
+
+---
+
+## 9. Dates & Numbers
+
+All user-facing date formatting goes through `$lib/date` — never call `toLocaleDateString` in a component. Pass the `$locale` store value straight through.
+
+| Helper | Output (de) | Use for |
+|---|---|---|
+| `relativeTime()` | „vor 3 Tagen" / „in 5 Std." | Feed stamps, countdowns (past and future) |
+| `dateNumeric()` | `05.07.26` | Dense list rows (match cards) |
+| `dayMonth()` | `05.07.` | Rows already sitting under a month header |
+| `dateLong()` | `5. Juli 2026` | Prominent single dates, section headers |
+| `dateWeekday()` | `Sa., 5. Juli` | Imminent fixtures where the weekday matters |
+| `monthYear()` | `Juli 2026` | Month group headers |
+
+Calendar helpers return `null` for a missing date — the caller supplies the context-appropriate fallback: `$_('common.tbd')` for fixtures, `'—'` (em dash, never a hyphen) for everything else.
+
+Numbers: stat values use `font-mono` + `tabular-nums`; use `toLocaleString()` for large counts.
+
+---
+
+## 10. Design Tokens — Color
+
+**Never use raw color values or Tailwind palette colors in components.** Always the token classes. The only exceptions are third-party brand marks (the Google logo) and chart code that composes token *variables* with `color-mix()`.
+
+### Semantic tokens
 
 | Purpose | Class |
 |---|---|
@@ -270,214 +318,224 @@ await api.doThing().catch(() => {});
 | Destructive | `text-destructive` / `bg-destructive` |
 | Primary accent | `bg-primary` / `text-primary-foreground` |
 
-### Domain-specific tokens
+### Domain tokens
 
-| Purpose | Class |
+| Purpose | Class / helper |
 |---|---|
-| Win result | `text-win` / `bg-win/15` |
-| Loss result | `text-loss` / `bg-loss/15` |
-| Klass tier badge | Use `klassColors(klass)` from `$lib/utils` |
-
-```svelte
-<!-- Good -->
-<span class={cn('rounded px-2 py-0.5 text-xs font-medium', klassColors(klass))}>
-  {klass}
-</span>
-
-<!-- Bad â€” hardcoded color, breaks dark mode -->
-<span class="bg-violet-400/15 text-violet-400">A</span>
-```
+| Win | `text-win` / `bg-win/15` / `border-win/30` |
+| Loss | `text-loss` / `bg-loss/15` / `border-loss/30` |
+| Classification badge | `ClassBadge` component, or `classificationColors(classification)` from `$lib/utils` |
+| Classification as CSS value | `classColorVar(classification)` → `var(--class-a)` etc., for inline styles and charts |
 
 ### Dark mode
 
-Dark mode is handled by `.dark` on `<html>` + CSS variable overrides in `app.css`. Components that only use semantic token classes automatically support dark mode â€” **no `dark:` prefix needed** for those. Only reach for `dark:` when you must style something that doesn't have a token.
+`.dark` on `<html>` + variable overrides in `app.css`. Components that only use token classes support dark mode automatically — **no `dark:` prefix needed**. Only reach for `dark:` when styling something that has no token (currently: nothing does).
 
 ---
 
-## 9. Typography Scale
+## 11. Typography Scale
 
-Use this scale consistently. No mixing of weights at the same size level.
-
-| Role | Classes |
+| Role | Classes / component |
 |---|---|
-| Page title | `text-3xl font-black tracking-tight` |
-| Section heading | `text-xl font-bold` |
+| Page title | `PageTitle` (`text-3xl font-black tracking-tight leading-none`) |
+| Section heading | `SectionLabel` (uppercase overline style with optional icon) |
 | Subsection / card title | `text-base font-semibold` |
 | Body / default | `text-sm` |
 | Secondary / metadata | `text-xs text-muted-foreground` |
-| Micro label | `text-[10px] font-medium uppercase tracking-wide text-muted-foreground` |
+| Micro label / overline | `Overline` (`text-2xs font-semibold uppercase tracking-widest text-muted-foreground`) |
+| Stat value | `font-mono text-xl font-black tabular-nums leading-none` (default `StatTile` style) |
 
 Rules:
-- `font-black` and `font-extrabold` are not interchangeable â€” use `font-black` for numerics/stats, `font-bold` for headings.
-- Don't introduce arbitrary font sizes. `text-[10px]` is the only exception already in use.
-- Pair `tracking-tight` with large headings (`text-2xl`+), not body text.
-- Use `leading-none` for stat numbers to prevent awkward spacing.
+- `font-black` is for numerics/stats and display headings; `font-bold` for regular headings. Don't mix weights at the same size level.
+- No arbitrary font sizes. `text-2xs` (10px, defined in `app.css`) is the only size below `text-xs`.
+- `tracking-tight` pairs with large headings (`text-2xl`+), not body text.
+- `leading-none` on stat numbers.
 
 ---
 
-## 10. Spacing Scale
+## 12. Spacing Scale
 
-### Internal component spacing (gaps between child elements)
+### Inside components
 
 | Context | Class |
 |---|---|
-| Icon + label, tight | `gap-1` or `gap-1.5` |
-| Between items in a row | `gap-2` |
-| Between items in a column (standard) | `gap-3` |
-| Between distinct sections | `gap-4` |
+| Icon + label, tight | `gap-1` / `gap-1.5` |
+| Items in a row | `gap-2` |
+| Items in a column (standard) | `gap-3` |
+| Distinct sections | `gap-4` |
 
 ### Card padding
 
 | Context | Class |
 |---|---|
-| Compact / list item card | `p-4` |
+| Compact / list-item card | `p-4` |
 | Standard card | `p-5` |
 | Spacious / hero card | `p-6` |
 
-Don't mix asymmetric padding (`px-4 py-3`) unless it's an intentional list-row tap-target pattern. Use `p-*` for uniform cards.
+`px-4 py-3` is reserved for the tappable list-row pattern; uniform cards use `p-*`.
 
-### Page layout rhythm
+### Page rhythm
 
-- `gap-4` between cards in a list/grid
-- `gap-6` between logical page sections
-- `py-4` or `py-6` for page-level vertical padding
+- `space-y-3` between cards in a list, `gap-3` in grids
+- `space-y-6` between logical page sections
+- Components ship **without outer margins** — the parent owns spacing (usually via `space-y-*`). `BackButton` deliberately has no default margin for this reason.
 
 ---
 
-## 11. Icon Usage (Phosphor)
+## 13. Icons (Phosphor)
+
+```ts
+import { StarIcon, TrendUpIcon } from 'phosphor-svelte';
+```
+
+- Named imports from `'phosphor-svelte'`, `*Icon`-suffixed names, only what you use.
+- **Numeric size syntax**: `size={16}`, never `size="16"`.
 
 | Context | Size | Weight |
 |---|---|---|
-| Bottom navigation | `size={22}` | `fill` (active) / `regular` (inactive) |
-| Inline with body text | `size={16}` | `regular` |
+| Bottom navigation | `size={22}` | `fill` active / `regular` inactive |
 | Card / section indicator | `size={20}` | `regular` |
-| Icon-only button | `class="size-4"` | `regular` |
+| Row icon / icon button | `size={18}` | `regular` |
+| Inline with body text | `size={16}` | `regular` |
+| Tiny badges | `size={10–13}` | `bold` |
 
-Rules:
-- Import only the icons you use: `import { House, Star } from 'phosphor-svelte'`
-- Don't mix `size={n}` and `class="size-n"` on the same element â€” pick one.
-- Active/selected state uses `weight="fill"`, default is `weight="regular"`.
+Active/selected state uses `weight="fill"`. Icons passed as props are typed `Component` from `'svelte'`.
 
 ---
 
-## 12. shadcn-svelte Usage
+## 14. shadcn-svelte Usage
 
 ### Importing
 
 ```ts
-// Compound component (Card, Table, etc.)
+// Compound component — namespace import
 import * as Card from '$lib/components/ui/card/index.js';
+import * as Select from '$lib/components/ui/select/index.js';
 
-// Single component (Button, Input, etc.)
+// Single component — named import
 import { Button } from '$lib/components/ui/button/index.js';
 ```
 
+Use the namespace form for anything compound (Card, Select, Tabs, Drawer, Accordion, Table, Dialog, Carousel, Chart) — don't cherry-pick `SelectTrigger`-style named exports.
+
 ### Rules
 
-- **Never edit files in `$lib/components/ui/`** for one-off adjustments â€” pass `class` prop + `cn()` instead.
-- To extend a component with new variants, create a wrapper component in `$lib/components/` that uses `tailwind-variants`. Don't patch the source.
-- Use shadcn's `Button` for all interactive elements, not plain `<button>`. This ensures consistent focus styles, disabled states, and accessibility.
-- Exhaust `size="sm" | "lg"` props before reaching for custom padding overrides.
-- Use `variant="ghost"` for icon-only and low-emphasis actions, `variant="outline"` for secondary CTAs.
+- **`$lib/components/ui/` is a vendor folder.** Never edit it for app needs — pass `class` + `cn()`, or build a wrapper.
+- Wrappers with variants use `tailwind-variants` in a `<script lang="ts" module>` block and export their variant types — `IconButton` and `InfoItem` are the reference implementations:
 
-### Building variant components
+```svelte
+<script lang="ts" module>
+  import { tv, type VariantProps } from 'tailwind-variants';
 
-Use `tailwind-variants` when a component needs multiple variants:
-
-```ts
-import { tv } from 'tailwind-variants';
-
-const chip = tv({
-  base: 'inline-flex items-center rounded-full font-medium ring-1',
-  variants: {
-    variant: {
-      default: 'bg-muted text-muted-foreground ring-border',
-      win: 'bg-win/15 text-win ring-win/30',
-      loss: 'bg-loss/15 text-loss ring-loss/30',
-    },
-    size: {
-      sm: 'px-2 py-0.5 text-xs',
-      md: 'px-2.5 py-1 text-sm',
-    }
-  },
-  defaultVariants: { variant: 'default', size: 'md' }
-});
+  export const iconButtonVariants = tv({
+    base: 'flex items-center justify-center rounded-full p-2 …',
+    variants: { tone: { muted: '…', foreground: '…' } },
+    defaultVariants: { tone: 'muted' }
+  });
+</script>
 ```
 
+- `Button` for every CTA — including link-shaped ones (`<Button href="/pro">`). Exhaust `variant`/`size` props before custom padding. `variant="ghost"` for low-emphasis, `variant="outline"` for secondary CTAs.
+- Toasts via `svelte-sonner`'s `toast.error(title, { description, action })` for actionable failures (see the Pro-upsell toasts in `FollowButton`).
+
 ---
 
-## 13. Loading States
+## 15. Loading States
 
-- Always render `<Skeleton>` for async content â€” never leave a blank area.
-- Size skeletons to match the rendered element dimensions.
-- Use consistent sizing â€” don't invent skeleton heights per page:
+- Every `{#await}` / streamed block renders `<Skeleton>` placeholders — never a blank area, never a spinner-only page.
+- **Skeletons mirror the component they stand in for** — same footprint, same border radius, same internal layout. When a card is skeletonned in more than one place, give it a dedicated skeleton component next to it (`FeedItemSkeleton` mirrors `FeedItemCard`).
+- `StatTile` accepts `value={null}` to render its own skeleton — use that for async stats instead of wrapping the tile.
 
-| Element being loaded | Skeleton class |
+| Element being loaded | Skeleton |
 |---|---|
 | Body text line | `h-4 w-32 rounded` |
-| Small/metadata text | `h-3.5 w-24 rounded` |
-| Heading | `h-6 w-48 rounded` |
-| Card / list item | `h-16 rounded-lg` |
-| Avatar | `size-10 rounded-full` |
+| Small/metadata text | `h-3 w-24 rounded` / `h-3.5 w-32 rounded` |
+| Section heading | `h-4 w-24 rounded` |
+| Card / list row | `h-16 w-full rounded-xl` (match the card's real radius) |
+| Avatar | `h-9 w-9 rounded-full` |
+| Chart | match the chart container height (`h-52 rounded-none` inside a card) |
 
-- Rely on shadcn Skeleton's built-in pulse animation â€” don't add custom `animate-` classes.
+Rely on the shadcn Skeleton's pulse — no custom `animate-*`.
 
 ---
 
-## 14. Naming Conventions
+## 16. Accessibility & Native Feel
+
+- **No nested interactive elements.** A link never contains a button (and vice versa) — make them flex-row siblings, like the account "my player" row and the favorites rows.
+- Every icon-only control gets a **translated** `aria-label` or `title` — `$_('common.unfollow')`, not English literals.
+- Focus-visible rings come free with `Button` / `IconButton` / `InfoItem` — a third reason not to hand-roll interactive elements.
+- Decorative corner icons on tappable tiles use the `pointer-events-none` wrapper + `pointer-events-auto` opt-in pattern from `PlayerTile`.
+- `app.css` centrally handles tap-highlight removal, overscroll containment, `touch-action: manipulation`, and text-selection rules — don't re-add these per component.
+- Dialogs get an accessible name/description even when their visible content is decorative (see `OnboardingModal`'s `sr-only` header).
+
+---
+
+## 17. Browser Storage
+
+All localStorage/cookie key names live in `$lib/storageKeys.ts` — never inline a key string:
+
+```ts
+import { STORAGE_KEYS } from '$lib/storageKeys';
+localStorage.setItem(STORAGE_KEYS.theme, 'dark');
+```
+
+- New keys follow the `ttscore:*` scheme; existing keys keep their historical spelling (renaming silently drops users' settings).
+- Wrap storage access in try/catch when it runs outside `onMount` guards (private browsing throws) — see `$lib/recentPlayers.ts`.
+
+---
+
+## 18. Naming Conventions
 
 | Thing | Convention | Example |
 |---|---|---|
-| Svelte components | PascalCase | `PlayerCard.svelte` |
-| TypeScript utilities/stores | camelCase | `utils.ts`, `theme.svelte.ts` |
+| Svelte components | PascalCase | `PlayerGameCard.svelte` |
+| TS utilities/stores | camelCase | `date.ts`, `theme.svelte.ts` |
+| Rune-using modules | `.svelte.ts` suffix | `proResource.svelte.ts`, `h2h.svelte.ts` |
 | Route segments | kebab-case | `/players/[id]/games` |
-| Boolean props | `is` prefix | `isLoading`, `isOpen`, `isActive` |
-| Event callback props | `on` prefix | `onSelect`, `onChange`, `onClose` |
-| API response types | PascalCase noun | `Player`, `Match`, `Standing` |
-| Tailwind class variables | camelCase | `const baseClass = 'flex items-center'` |
+| Boolean props | bare state adjective; `is` prefix only when needed for clarity | `following`, `disabled`, `loading`; `isPro`, `isHome` |
+| Event callback props | camelCase `on` prefix | `onSelect`, `onUnfollow`, `onRemove` |
+| API response types | PascalCase noun | `Player`, `MatchPreview`, `CareerRival` |
+| i18n keys | `section.snake_case` | `player.no_club`, `common.tbd` |
+| Class-string variables | camelCase | `const nameClass = cn(…)` |
 
 ---
 
-## 15. Code Quality
+## 19. Code Quality
 
-- **Comments**: only for *why*, never for *what*. If removing the comment wouldn't confuse a future reader, don't write it.
-- **Abstractions**: extract a shared helper only when the same pattern appears 3+ times. Two identical blocks are fine.
-- **No dead code**: don't leave `_unused` variables, commented-out blocks, or backwards-compat shims.
+- **Comments explain *why*, never *what*.** If deleting the comment wouldn't confuse a future reader, delete it. Non-obvious effects, sync patterns, and intentional rule-bendings (`svelte-ignore`, empty catches) always get one.
+- **No dead code** — that includes unused icon imports, unused i18n keys, unused `$state`, and commented-out blocks. Lint enforces most of it.
 - **No `console.log`** in committed code.
-- **Line limit**: aim for â‰¤150 lines in a `.svelte` file. If the template alone is approaching that, extract sub-components.
-- **No error silencing**: `.catch(() => {})` with an empty body is a bug waiting to happen.
-- **Linting**: `npm run lint` (Prettier + ESLint) and `npm run check` (svelte-check) must pass before committing.
+- **≤150 lines** per `.svelte` file as a target; extract sections when a page outgrows it.
+- **Extract at 3+ occurrences**; snippets before components; two similar blocks are fine.
+- **Gates**: `pnpm format` before committing; `pnpm lint` (Prettier + ESLint) and `pnpm check` (svelte-check) must pass with zero errors *and zero warnings*. A warning you intend to keep gets an explicit, justified `svelte-ignore` — an unexplained warning is a regression.
 
 ---
 
-## 16. File & Import Hygiene
+## 20. File & Import Hygiene
 
-- Use `$lib/` path aliases everywhere â€” no relative `../` imports that traverse more than one level.
-- Group imports: Svelte/SvelteKit â†’ third-party â†’ `$lib` utilities â†’ `$lib` components.
-- Don't import types at runtime â€” use `import type { ... }` for type-only imports.
-
-```ts
-// Good
-import { onMount } from 'svelte';
-import { cn, klassColors } from '$lib/utils';
-import * as Card from '$lib/components/ui/card/index.js';
-import type { Player } from '$lib/api';
-
-// Bad
-import { cn } from '../../utils';
-import type { Player } from '../../api'; // relative traversal
-```
+- `$lib/` aliases everywhere; relative imports only within the same folder (`./PlayerTile.svelte`).
+- Group imports: Svelte/SvelteKit → third-party → `$lib` modules → `$lib` components → types.
+- `import type` for type-only imports.
 
 ---
 
-## 17. Key Files Reference
+## 21. Key Files Reference
 
 | File | Purpose |
 |---|---|
-| `src/app.css` | All design tokens â€” colors, radius, font â€” defined here |
-| `src/lib/utils.ts` | `cn()`, `klassColors()`, `timeAgo()`, `ordinal()` |
-| `src/lib/api.ts` | Public API client + all response types |
-| `src/lib/server/ktor.ts` | Authenticated server-side HTTP client |
+| `src/app.css` | All design tokens (colors, radius, fonts, `text-2xs`) + native-feel base styles |
+| `src/lib/utils.ts` | `cn()`, name formatting, classification helpers, ELO ladder, `bandGradientStops()` |
+| `src/lib/date.ts` | All user-facing date formatting |
+| `src/lib/api.ts` | Public API client + every response type |
+| `src/lib/debounce.ts` | Cancellable debounce helper |
+| `src/lib/storageKeys.ts` | Registry of localStorage/cookie key names |
+| `src/lib/proResource.svelte.ts` | `ProResource` — state for Pro-gated client fetches |
+| `src/lib/feed.ts` | Follow-feed event resolution |
+| `src/lib/h2h.svelte.ts` | Global H2H drawer state (`compareWithMe`, `comparePlayers`) |
 | `src/lib/theme.svelte.ts` | Dark mode store (`theme.toggle()`, `theme.dark`) |
-| `src/lib/components/ui/` | shadcn-svelte primitives â€” treat as vendor |
-| `src/app.d.ts` | SvelteKit type augmentations (`App.Locals`, `App.PageData`) |
+| `src/lib/i18n/` | Locale registration, `resolveLocale()`, the four locale JSONs |
+| `src/lib/server/ktor.ts` | Authenticated server-side HTTP client (`authedKtor`) |
+| `src/lib/server/followActions.ts` | Shared follow/unfollow/notify form actions |
+| `src/lib/components/ui/` | shadcn-svelte primitives — vendor, never edit |
+| `src/routes/+error.svelte` | Branded, localized error page |
+| `src/app.d.ts` | `App.Locals`, `App.PageData` augmentations |

@@ -1,57 +1,40 @@
 <script lang="ts">
 	import { XIcon } from 'phosphor-svelte';
-	import PlayerAvatar from './PlayerAvatar.svelte';
-	import ClassBadge from './ClassBadge.svelte';
-	import { formatName } from '$lib/utils';
+	import { _ } from 'svelte-i18n';
+	import PlayerTile from './PlayerTile.svelte';
 	import { removeRecentPlayer } from '$lib/recentPlayers';
 
 	interface Props {
 		id: string;
 		fullName: string;
 		classification?: string | null;
-		onremove?: () => void;
+		currentClubName?: string | null;
+		onRemove?: () => void;
 	}
 
-	let { id, fullName, classification, onremove }: Props = $props();
-
-	const formatted = $derived(formatName(fullName));
-	// Abbreviate to "F. Lastname" for compact display — same as FollowPlayerCard
-	const shortName = $derived(
-		formatted.includes(' ')
-			? `${formatted.split(' ')[0][0]}. ${formatted.split(' ').slice(1).join(' ')}`
-			: formatted
-	);
+	let { id, fullName, classification, currentClubName, onRemove }: Props = $props();
 
 	function handleRemove(e: MouseEvent) {
 		e.preventDefault();
 		e.stopPropagation();
 		removeRecentPlayer(id);
-		onremove?.();
+		onRemove?.();
 	}
 </script>
 
-<div class="relative w-32 shrink-0">
-	<a
-		href="/players/{id}"
-		class="flex w-full flex-col items-center gap-2 rounded-2xl border border-border bg-card
-		       p-4 transition-colors hover:bg-accent"
-	>
-		<PlayerAvatar {fullName} size="lg" />
-
-		<p class="w-full truncate text-center text-xs leading-tight font-semibold">
-			{shortName}
+<PlayerTile {fullName} {classification} href={`/players/${id}`}>
+	{#snippet content()}
+		<p class="w-full truncate text-2xs tracking-wide text-muted-foreground">
+			{currentClubName ?? '—'}
 		</p>
-
-		<ClassBadge {classification} />
-	</a>
-
-	<button
-		onclick={handleRemove}
-		class="absolute top-2 right-2 rounded-full p-1 text-foreground/40
-		       transition-colors hover:text-foreground"
-		aria-label="Remove from recently viewed"
-	>
-		<XIcon size="16" />
-	</button>
-
-</div>
+	{/snippet}
+	{#snippet corner()}
+		<button
+			onclick={handleRemove}
+			class="pointer-events-auto rounded-full p-1 text-foreground/40 transition-colors hover:text-foreground"
+			aria-label={$_('common.remove')}
+		>
+			<XIcon size={16} />
+		</button>
+	{/snippet}
+</PlayerTile>

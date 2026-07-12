@@ -1,0 +1,46 @@
+<script lang="ts">
+	import { _, locale } from 'svelte-i18n';
+	import type { Match } from '$lib/api';
+	import { dateNumeric } from '$lib/date';
+	import { CaretRightIcon } from 'phosphor-svelte';
+
+	interface Props {
+		match: Match;
+		/** Standings position per team id, for annotating the fixture. */
+		posByTeam: ReadonlyMap<string, number>;
+	}
+
+	let { match, posByTeam }: Props = $props();
+</script>
+
+<a
+	href="/matches/{match.id}"
+	class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
+>
+	<div class="flex min-w-0 flex-1 flex-col gap-1">
+		<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
+			{$_('group.round_label', { values: { round: match.round } })} · {dateNumeric(
+				match.playedAt,
+				$locale
+			) ?? $_('common.tbd')}
+		</span>
+		<div class="flex min-w-0 items-center gap-2 text-sm">
+			<span class="min-w-0 truncate font-semibold">
+				{#if posByTeam.get(match.homeTeamId)}<span
+						class="font-mono text-2xs text-muted-foreground tabular-nums"
+						>#{posByTeam.get(match.homeTeamId)}</span
+					>
+				{/if}{match.homeTeam}
+			</span>
+			<span class="shrink-0 text-muted-foreground">vs</span>
+			<span class="min-w-0 truncate font-semibold">
+				{#if posByTeam.get(match.awayTeamId)}<span
+						class="font-mono text-2xs text-muted-foreground tabular-nums"
+						>#{posByTeam.get(match.awayTeamId)}</span
+					>
+				{/if}{match.awayTeam}
+			</span>
+		</div>
+	</div>
+	<CaretRightIcon size={16} class="shrink-0 text-muted-foreground" />
+</a>

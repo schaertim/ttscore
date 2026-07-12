@@ -11,6 +11,7 @@ export type ClassChangeItem = {
 	direction: 'UP' | 'DOWN';
 	from: string;
 	to: string;
+	effectiveDate: string;
 };
 
 export type TeamMatchItem = {
@@ -29,4 +30,16 @@ export type GroupMatchItem = {
 	playedAt: string | null;
 };
 
-export type FeedItem = PlayerMatchItem | ClassChangeItem | TeamMatchItem | GroupMatchItem;
+export type UpcomingMatchItem = {
+	kind: 'upcoming_match';
+	homeTeam: string;
+	awayTeam: string;
+	playedAt: string | null;
+};
+
+export type FeedItem =
+	| PlayerMatchItem
+	| ClassChangeItem
+	| TeamMatchItem
+	| GroupMatchItem
+	| UpcomingMatchItem;

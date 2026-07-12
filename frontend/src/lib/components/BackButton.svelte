@@ -7,7 +7,8 @@
 		class?: string;
 	}
 
-	let { class: className = 'mb-4' }: Props = $props();
+	// No default margin — page headers own the spacing (usually via `space-y-*`).
+	let { class: className = '' }: Props = $props();
 </script>
 
 <button
@@ -17,6 +18,6 @@
 		className
 	)}
 >
-	<CaretLeftIcon size="16" />
+	<CaretLeftIcon size={16} />
 	<span class="text-xs font-semibold tracking-widest uppercase">{$_('common.back')}</span>
 </button>

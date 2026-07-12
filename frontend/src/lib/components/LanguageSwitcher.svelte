@@ -2,7 +2,8 @@
 	import { locale, _ } from 'svelte-i18n';
 	import { GlobeIcon } from 'phosphor-svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
-	import { Select, SelectContent, SelectItem, SelectTrigger } from '$lib/components/ui/select/index.js';
+	import * as Select from '$lib/components/ui/select/index.js';
+	import { STORAGE_KEYS } from '$lib/storageKeys';
 
 	const languages: { code: string; native: string }[] = [
 		{ code: 'de', native: 'Deutsch' },
@@ -18,24 +19,29 @@
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ locale: code })
 		});
-		localStorage.setItem('ttscore_locale', code);
+		localStorage.setItem(STORAGE_KEYS.locale, code);
 		locale.set(code);
 	}
 
+	// Seeded from the active locale once; the select owns the value afterwards.
 	let selectedLocale = $state($locale ?? 'de');
-	const currentNative = $derived(languages.find((l) => l.code === selectedLocale)?.native ?? selectedLocale);
+	const currentNative = $derived(
+		languages.find((l) => l.code === selectedLocale)?.native ?? selectedLocale
+	);
 </script>
 
 <section class="space-y-3">
 	<SectionLabel label={$_('account.language')} icon={GlobeIcon} />
-	<Select type="single" bind:value={selectedLocale} onValueChange={setLocale}>
-		<SelectTrigger class="w-full rounded-xl border border-border bg-card px-4 py-3 h-auto font-semibold">
+	<Select.Root type="single" bind:value={selectedLocale} onValueChange={setLocale}>
+		<Select.Trigger
+			class="h-auto w-full rounded-xl border border-border bg-card px-4 py-3 font-semibold"
+		>
 			{currentNative}
-		</SelectTrigger>
-		<SelectContent>
+		</Select.Trigger>
+		<Select.Content>
 			{#each languages as lang (lang.code)}
-				<SelectItem value={lang.code}>{lang.native}</SelectItem>
+				<Select.Item value={lang.code}>{lang.native}</Select.Item>
 			{/each}
-		</SelectContent>
-	</Select>
+		</Select.Content>
+	</Select.Root>
 </section>

@@ -2,6 +2,7 @@
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { MagnifyingGlassIcon } from 'phosphor-svelte';
 	import { api, type Player } from '$lib/api';
+	import { debounce } from '$lib/debounce';
 	import { formatName } from '$lib/utils';
 	import { _ } from 'svelte-i18n';
 
@@ -16,22 +17,19 @@
 
 	let query = $state('');
 	let results = $state<Player[]>([]);
-	let searching = $state(false);
-	let searchTimeout: ReturnType<typeof setTimeout>;
+
+	const runSearch = debounce(async () => {
+		const res = await api.players.search(query, 0, 6);
+		results = res.items;
+	});
 
 	function onInput() {
-		clearTimeout(searchTimeout);
 		results = [];
-		if (!query.trim()) return;
-		searchTimeout = setTimeout(async () => {
-			searching = true;
-			try {
-				const res = await api.players.search(query, 0, 6);
-				results = res.items;
-			} finally {
-				searching = false;
-			}
-		}, 300);
+		if (!query.trim()) {
+			runSearch.cancel();
+			return;
+		}
+		runSearch();
 	}
 
 	async function select(player: Player) {
@@ -44,7 +42,7 @@
 <div class="space-y-3">
 	<div class="relative">
 		<MagnifyingGlassIcon
-			size="16"
+			size={16}
 			class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
 		/>
 		<Input

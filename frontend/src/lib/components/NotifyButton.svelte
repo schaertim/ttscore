@@ -7,9 +7,10 @@
 	import { toast } from 'svelte-sonner';
 	import { _ } from 'svelte-i18n';
 	import { get } from 'svelte/store';
+	import IconButton from '$lib/components/IconButton.svelte';
 
 	interface Props {
-		/** Notifications require an existing follow — the bell is disabled otherwise. */
+		/** Notifications require an existing follow — the bell is hidden otherwise. */
 		following: boolean;
 		followId: string | null;
 		notify: boolean;
@@ -44,38 +45,24 @@
 </script>
 
 {#if !authenticated}
-	<button
-		type="button"
-		onclick={redirectToSignIn}
-		title="Sign in to turn on notifications"
-		class="flex items-center justify-center rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-	>
-		<BellIcon size="20" />
-	</button>
-{:else if !following}
-	<button
-		type="button"
-		disabled
-		title="Follow to enable notifications"
-		class="flex items-center justify-center rounded-full p-2 text-muted-foreground opacity-40"
-	>
-		<BellIcon size="20" />
-	</button>
-{:else}
+	<IconButton onclick={redirectToSignIn} title={$_('common.sign_in_to_notify')}>
+		<BellIcon size={20} />
+	</IconButton>
+{:else if following}
 	<form method="POST" action="?/setNotify" use:enhance={toggleEnhance}>
 		<input type="hidden" name="followId" value={followId} />
 		<input type="hidden" name="notify" value={String(!notify)} />
-		<button
+		<IconButton
 			type="submit"
+			tone="foreground"
 			disabled={loading}
-			title={notify ? 'Turn off notifications' : 'Turn on notifications'}
-			class="flex items-center justify-center rounded-full p-2 text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+			title={$_(notify ? 'common.notifications_off' : 'common.notifications_on')}
 		>
 			{#if notify}
-				<BellRingingIcon size="20" weight="fill" />
+				<BellRingingIcon size={20} weight="fill" />
 			{:else}
-				<BellIcon size="20" />
+				<BellIcon size={20} />
 			{/if}
-		</button>
+		</IconButton>
 	</form>
 {/if}

@@ -16,9 +16,7 @@ register('en', () => import('./en.json'));
 export function resolveLocale(raw: string | null | undefined): SupportedLocale {
 	if (!raw) return DEFAULT_LOCALE;
 	// Accept-Language may look like "de-CH,de;q=0.9,fr;q=0.8"
-	const candidates = raw
-		.split(',')
-		.map((s) => s.split(';')[0].trim().toLowerCase().slice(0, 2));
+	const candidates = raw.split(',').map((s) => s.split(';')[0].trim().toLowerCase().slice(0, 2));
 	for (const c of candidates) {
 		if (SUPPORTED_LOCALES.includes(c as SupportedLocale)) {
 			return c as SupportedLocale;

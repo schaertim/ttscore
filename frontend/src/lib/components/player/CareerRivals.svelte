@@ -1,38 +1,50 @@
 <script lang="ts">
-	import { _ } from 'svelte-i18n';
 	import type { CareerRival } from '$lib/api';
-	import ClassBadge from '$lib/components/ClassBadge.svelte';
+	import * as Carousel from '$lib/components/ui/carousel/index.js';
+	import PlayerTile from '$lib/components/PlayerTile.svelte';
 	import ScoreLine from '$lib/components/ScoreLine.svelte';
-	import { formatName } from '$lib/utils';
-	import { CaretRightIcon } from 'phosphor-svelte';
+	import { comparePlayers } from '$lib/h2h.svelte';
+	import { ScalesIcon } from 'phosphor-svelte';
+	import Autoplay from 'embla-carousel-autoplay';
 
-	let { rivals }: { rivals: CareerRival[] } = $props();
+	interface Props {
+		rivals: CareerRival[];
+		playerId: string;
+	}
+
+	let { rivals, playerId }: Props = $props();
+
+	// Show the top 10 rivals as carousel cards.
+	const topRivals = $derived(rivals.slice(0, 10));
+
+	// Created once so the plugin instance (and its timer) isn't torn down on every render.
+	const autoplay = Autoplay({ delay: 4000, stopOnInteraction: false, stopOnMouseEnter: true });
 </script>
 
-<div class="divide-y divide-border/50 overflow-hidden rounded-2xl border border-border bg-card">
-	{#each rivals as rival (rival.opponentId)}
-		<a
-			href="/players/{rival.opponentId}"
-			class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
-		>
-			<div class="min-w-0 flex-1">
-				<div class="flex items-center gap-1.5">
-					<span class="truncate text-sm font-semibold">{formatName(rival.opponentName)}</span>
-					<ClassBadge classification={rival.opponentClass} />
-				</div>
-				<p class="text-2xs tracking-wide text-muted-foreground">
-					{$_('career.meetings', { values: { count: rival.meetings } })}
-				</p>
-			</div>
-
-			<ScoreLine
-				class="text-base"
-				segments={[
-					{ value: rival.wins, tone: 'win' },
-					{ value: rival.losses, tone: 'loss' }
-				]}
-			/>
-			<CaretRightIcon size="16" class="shrink-0 text-muted-foreground" />
-		</a>
-	{/each}
-</div>
+<Carousel.Root opts={{ align: 'start', loop: true }} plugins={[autoplay]} class="w-full">
+	<Carousel.Content class="-ms-3">
+		{#each topRivals as rival (rival.opponentId)}
+			<Carousel.Item class="basis-1/3 ps-3 md:basis-1/5">
+				<PlayerTile
+					fullName={rival.opponentName}
+					classification={rival.opponentClass}
+					onclick={() => comparePlayers(playerId, rival.opponentId)}
+					cornerPosition="bottom-right"
+				>
+					{#snippet content()}
+						<ScoreLine
+							class="text-sm"
+							segments={[
+								{ value: rival.wins, tone: 'win' },
+								{ value: rival.losses, tone: 'loss' }
+							]}
+						/>
+					{/snippet}
+					{#snippet corner()}
+						<ScalesIcon size={16} class="text-muted-foreground/40" />
+					{/snippet}
+				</PlayerTile>
+			</Carousel.Item>
+		{/each}
+	</Carousel.Content>
+</Carousel.Root>
