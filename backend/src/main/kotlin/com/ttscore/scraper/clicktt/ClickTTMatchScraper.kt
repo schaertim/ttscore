@@ -47,10 +47,16 @@ class ClickTTMatchScraper(
         transaction {
             val homeTeam = Teams.alias("home_team")
             val awayTeam = Teams.alias("away_team")
+            // "Completed matches with no game rows yet", expressed as a LEFT JOIN … IS NULL anti-join.
+            // A plain `id NOT IN (SELECT match_id FROM game)` is wrong here: tournament/cup games carry
+            // match_id = NULL, and `x NOT IN (… NULL …)` is never true, so that form silently matched
+            // nothing once any tournament game existed. The anti-join also drops a full distinct scan
+            // of the 1.3M-row game table in favour of an index probe on idx_game_match.
             val rows =
                 (Matches innerJoin Groups innerJoin Federations innerJoin Seasons)
                     .join(homeTeam, JoinType.LEFT, Matches.homeTeamId, homeTeam[Teams.id])
                     .join(awayTeam, JoinType.LEFT, Matches.awayTeamId, awayTeam[Teams.id])
+                    .join(Games, JoinType.LEFT, Matches.id, Games.matchId)
                     .select(
                         Matches.id,
                         Matches.clickttMatchId,
@@ -69,7 +75,7 @@ class ClickTTMatchScraper(
                             (Matches.status eq MatchStatus.COMPLETED) and
                                 (Matches.clickttMatchId.isNotNull()) and
                                 (Groups.clickttId.isNotNull()) and
-                                (Matches.id notInSubQuery Games.select(Games.matchId).withDistinct())
+                                Games.matchId.isNull()
                         if (filterIds != null) base and (Matches.id inList filterIds) else base
                     }
 

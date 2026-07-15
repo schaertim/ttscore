@@ -75,7 +75,7 @@
 		"relegated": "Retrocesso",
 		"vs": "vs.",
 		"upcoming": "In arrivo",
-		"title": "Feed",
+		"title": "Il tuo feed",
 		"empty_title": "Ancora niente nel tuo feed",
 		"empty_desc": "Segui giocatori, squadre o campionati per vedere qui la loro attività.",
 		"manage_favorites": "Gestisci i preferiti"
@@ -142,7 +142,7 @@
 		"pro_renews": "Si rinnova il {date}",
 		"manage_billing": "Gestisci abbonamento",
 		"pro_upgrade": "Passa a Pro",
-		"pro_upgrade_desc": "Testa a testa, statistiche di carriera e preferiti illimitati"
+		"pro_upgrade_desc": "Testa a testa, anteprime partite e preferiti illimitati"
 	},
 	"auth": {
 		"welcome_back": "Bentornato",
@@ -187,13 +187,13 @@
 		"dismiss": "Chiudi"
 	},
 	"pro": {
-		"unlock": "Sblocca con Pro",
+		"unlock": "Pro",
 		"h2h_title": "Il confronto diretto è una funzione Pro",
 		"h2h_desc": "Guarda i confronti diretti completi, i bilanci dei set e lo storico ELO comune contro qualsiasi avversario.",
 		"follow_limit_title": "Limite di elementi seguiti raggiunto",
-		"follow_limit_desc": "Gli account gratuiti possono seguire fino a 3 elementi oltre al proprio giocatore. Passa a Pro per seguire senza limiti.",
-		"notify_title": "Le notifiche sono una funzione Pro",
-		"notify_desc": "Gli account gratuiti ricevono notifiche solo per il proprio giocatore. Passa a Pro per essere avvisato su ogni elemento seguito.",
+		"follow_limit_desc": "Gli account gratuiti seguono fino a 3. Illimitato con Pro.",
+		"notify_title": "Le notifiche sono Pro",
+		"notify_desc": "Gli account gratuiti ricevono notifiche solo per il proprio giocatore.",
 		"page_title": "TTScore Pro",
 		"page_subtitle": "Statistiche più approfondite, senza limiti — e aiuti TTScore a crescere.",
 		"plan_monthly": "Mensile",
@@ -211,8 +211,6 @@
 		"feature_h2h_desc": "Bilanci completi, set e storico ELO comune contro qualsiasi avversario.",
 		"feature_preview_title": "Anteprime delle partite",
 		"feature_preview_desc": "Confronto tra squadre, formazioni, forma e duelli chiave prima di ogni partita in programma.",
-		"feature_career_title": "Percorso di carriera",
-		"feature_career_desc": "Classifiche, club, traguardi e rivalità — stagione per stagione.",
 		"feature_follow_notify_title": "Segui senza limiti, con notifiche",
 		"feature_follow_notify_desc": "Segui tutti i giocatori, le squadre e le leghe che ti interessano — e scopri subito quando arrivano nuovi risultati."
 	},

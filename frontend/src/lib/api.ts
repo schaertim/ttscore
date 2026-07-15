@@ -44,6 +44,7 @@ export type Group = {
 export type TeamSummary = {
 	id: string;
 	name: string;
+	groupId: string;
 	groupName: string;
 	position: number;
 	record: string;
@@ -123,6 +124,8 @@ export type Player = {
 	fullName: string;
 	licenceNr: string;
 	currentClubName: string | null;
+	/** STT age/eligibility category ("Aktive", "O50", "U17", …), null if unknown. */
+	category: string | null;
 	classification: string | null;
 	liveClassification: string | null;
 	currentElo: number | null;
@@ -510,6 +513,7 @@ export const api = {
 		matchPreview: (playerId: string, matchId: string, accessToken: string) =>
 			getAuthed<PlayerMatchPreview>(`/players/${playerId}/preview/${matchId}`, accessToken),
 		seasonStats: (playerId: string) => get<PlayerSeasonStats>(`/players/${playerId}/stats`),
+		career: (playerId: string) => get<Career>(`/players/${playerId}/career`),
 		headToHead: (playerId: string, opponentId: string, accessToken: string) =>
 			getAuthed<HeadToHead>(`/players/${playerId}/h2h/${opponentId}`, accessToken),
 		leagueContext: (playerId: string) => get<LeagueContext>(`/players/${playerId}/league-context`),

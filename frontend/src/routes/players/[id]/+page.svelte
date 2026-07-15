@@ -11,7 +11,6 @@
 	import PlayerHeader from '$lib/components/player/PlayerHeader.svelte';
 	import StatsTab from '$lib/components/player/StatsTab.svelte';
 	import CareerTab from '$lib/components/player/CareerTab.svelte';
-	import PaywallTeaser from '$lib/components/PaywallTeaser.svelte';
 
 	import { ChartLineIcon, ClockCounterClockwiseIcon, UserCirclePlusIcon } from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
@@ -106,21 +105,31 @@
 </script>
 
 {#snippet eloCard(history: EloEntry[])}
-	<div class="h-52">
-		<EloChart series={[{ label: 'ELO', color: classColorVar(currentClass), history }]} />
-	</div>
+	{#if history.length === 0 && syncing}
+		<Skeleton class="h-52 rounded-none" />
+	{:else}
+		<div class="h-52">
+			<EloChart series={[{ label: 'ELO', color: classColorVar(currentClass), history }]} />
+		</div>
+	{/if}
 {/snippet}
 
 {#snippet gameHistory(matches: PlayerGame[])}
 	<section class="space-y-3">
 		<SectionLabel label={$_('player.game_history')} icon={ClockCounterClockwiseIcon} />
 
-		{#if matches.length === 0}
+		{#if matches.length === 0 && syncing}
+			<div class="space-y-3">
+				{#each [1, 2, 3] as n (n)}
+					<Skeleton class="h-16 w-full rounded-2xl" />
+				{/each}
+			</div>
+		{:else if matches.length === 0}
 			<p class="py-8 text-center text-sm text-muted-foreground">{$_('player.no_matches')}</p>
 		{:else}
 			<div class="space-y-3">
 				{#each matches.slice(0, 3) as game (game.gameId)}
-					<PlayerGameCard {game} />
+					<PlayerGameCard {game} {syncing} />
 				{/each}
 			</div>
 			{#if matches.length > 3}
@@ -230,23 +239,19 @@
 		</Tabs.Content>
 
 		<Tabs.Content value="career" class="mt-4">
-			{#if data.isPro}
-				{#await data.streamed.career}
-					<div class="space-y-6">
-						<Skeleton class="h-56 w-full rounded-2xl" />
-						<Skeleton class="h-24 w-full rounded-2xl" />
-						<Skeleton class="h-40 w-full rounded-2xl" />
-					</div>
-				{:then career}
-					{#if career}
-						<CareerTab {career} playerId={player.id} />
-					{:else}
-						<p class="py-12 text-center text-sm text-muted-foreground">{$_('career.no_data')}</p>
-					{/if}
-				{/await}
-			{:else}
-				<PaywallTeaser title={$_('career.paywall_title')} description={$_('career.paywall_desc')} />
-			{/if}
+			{#await data.streamed.career}
+				<div class="space-y-6">
+					<Skeleton class="h-56 w-full rounded-2xl" />
+					<Skeleton class="h-24 w-full rounded-2xl" />
+					<Skeleton class="h-40 w-full rounded-2xl" />
+				</div>
+			{:then career}
+				{#if career}
+					<CareerTab {career} playerId={player.id} />
+				{:else}
+					<p class="py-12 text-center text-sm text-muted-foreground">{$_('career.no_data')}</p>
+				{/if}
+			{/await}
 		</Tabs.Content>
 	</Tabs.Root>
 </div>

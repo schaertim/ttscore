@@ -75,7 +75,7 @@
 		"relegated": "Relégué",
 		"vs": "vs",
 		"upcoming": "À venir",
-		"title": "Fil d'actualité",
+		"title": "Votre fil",
 		"empty_title": "Rien dans votre fil pour l’instant",
 		"empty_desc": "Suivez des joueurs, des équipes ou des ligues pour voir leur activité ici.",
 		"manage_favorites": "Gérer les favoris"
@@ -142,7 +142,7 @@
 		"pro_renews": "Renouvellement le {date}",
 		"manage_billing": "Gérer l'abonnement",
 		"pro_upgrade": "Passer à Pro",
-		"pro_upgrade_desc": "Face-à-face, stats de carrière & favoris illimités"
+		"pro_upgrade_desc": "Face-à-face, avant-matchs & favoris illimités"
 	},
 	"auth": {
 		"welcome_back": "Bon retour",
@@ -187,13 +187,13 @@
 		"dismiss": "Fermer"
 	},
 	"pro": {
-		"unlock": "Débloquer avec Pro",
+		"unlock": "Pro",
 		"h2h_title": "Le face-à-face est une fonction Pro",
 		"h2h_desc": "Consultez les confrontations directes complètes, les bilans de sets et l'historique ELO commun contre n'importe quel adversaire.",
 		"follow_limit_title": "Limite de suivis atteinte",
-		"follow_limit_desc": "Les comptes gratuits peuvent suivre jusqu'à 3 entités en plus de votre joueur. Passez à Pro pour des suivis illimités.",
-		"notify_title": "Les notifications sont une fonction Pro",
-		"notify_desc": "Les comptes gratuits reçoivent des notifications uniquement pour votre joueur. Passez à Pro pour être notifié de chaque suivi.",
+		"follow_limit_desc": "Les comptes gratuits suivent jusqu'à 3. Illimité avec Pro.",
+		"notify_title": "Les notifications sont Pro",
+		"notify_desc": "Les comptes gratuits ne sont notifiés que pour leur propre joueur.",
 		"page_title": "TTScore Pro",
 		"page_subtitle": "Des stats plus poussées, des suivis illimités — et vous faites vivre TTScore.",
 		"plan_monthly": "Mensuel",
@@ -211,8 +211,6 @@
 		"feature_h2h_desc": "Bilans complets, sets et historique ELO commun contre n'importe quel adversaire.",
 		"feature_preview_title": "Avant-matchs",
 		"feature_preview_desc": "Comparatif des équipes, effectifs, forme et duels clés avant chaque match programmé.",
-		"feature_career_title": "Parcours de carrière",
-		"feature_career_desc": "Classements, clubs, jalons et rivalités — saison par saison.",
 		"feature_follow_notify_title": "Suivis illimités et notifications",
 		"feature_follow_notify_desc": "Suivez tous les joueurs, équipes et ligues qui vous intéressent — et soyez averti dès qu'un résultat tombe."
 	},

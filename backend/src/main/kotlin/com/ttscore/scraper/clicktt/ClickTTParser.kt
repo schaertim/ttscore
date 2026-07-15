@@ -10,23 +10,28 @@ import org.jsoup.nodes.Document
 class ClickTTParser {
     /**
      * Returns all player-game season URLs from a portrait page:
-     * - Cup seasons (season contains "Cup"): keep mode=CHAMPIONSHIP — the cup data lives there
-     * - Regular seasons: replace mode=CHAMPIONSHIP with mode=TOURNAMENT
+     * - Cup seasons: the "Saisons" column's mode=CHAMPIONSHIP link whose season param says "Cup"
+     * - Tournament seasons: the separate "Turniersaison" column's mode=TOURNAMENT link
      *
-     * The current tournament season has no direct link on the portrait, so deriving it from
-     * the championship link is the only way to reach it.
+     * Both are real hrefs already present on the page — do not derive one from the other. A
+     * mode=CHAMPIONSHIP link's season param is "Cup 2025/26"; naively swapping only the mode to
+     * TOURNAMENT keeps the "Cup" season value and produces a URL matching no real page (the
+     * genuine tournament link's season param has no "Cup" prefix), so every derived "tournament"
+     * fetch came back empty.
      * Previous-season pages that require login will return empty results when parsed — fine.
      */
     fun extractPlayerGameUrls(portraitHtml: String): List<String> {
         val doc = Jsoup.parse(portraitHtml)
         val base = "https://www.click-tt.ch"
-        return doc.select("a[href*='mode=CHAMPIONSHIP']")
-            .map { link ->
-                val href = link.attr("href")
-                val season = extractParam(href, "season") ?: ""
-                if (season.contains("Cup", ignoreCase = true)) href
-                else href.replace("mode=CHAMPIONSHIP", "mode=TOURNAMENT")
-            }
+
+        val cupUrls =
+            doc.select("a[href*='mode=CHAMPIONSHIP']")
+                .map { it.attr("href") }
+                .filter { href -> (extractParam(href, "season") ?: "").contains("Cup", ignoreCase = true) }
+
+        val tournamentUrls = doc.select("a[href*='mode=TOURNAMENT']").map { it.attr("href") }
+
+        return (cupUrls + tournamentUrls)
             .map { if (it.startsWith("http")) it else "$base$it" }
             .distinct()
     }

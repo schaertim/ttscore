@@ -6,13 +6,7 @@
 	import BackButton from '$lib/components/BackButton.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { classColorVar } from '$lib/utils';
-	import {
-		SparkleIcon,
-		TargetIcon,
-		BinocularsIcon,
-		ChartLineUpIcon,
-		StarIcon
-	} from 'phosphor-svelte';
+	import { SparkleIcon, TargetIcon, BinocularsIcon, StarIcon } from 'phosphor-svelte';
 
 	const isPro = $derived(!!page.data.isPro);
 	const checkoutStatus = $derived(page.data.checkoutStatus as string | null);
@@ -43,11 +37,6 @@
 			icon: BinocularsIcon,
 			title: $_('pro.feature_preview_title'),
 			desc: $_('pro.feature_preview_desc')
-		},
-		{
-			icon: ChartLineUpIcon,
-			title: $_('pro.feature_career_title'),
-			desc: $_('pro.feature_career_desc')
 		},
 		{
 			icon: StarIcon,

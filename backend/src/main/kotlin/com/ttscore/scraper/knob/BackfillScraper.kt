@@ -15,12 +15,14 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
 
     private val groupScraper = GroupScraper(client, parser)
     private val matchScraper = MatchScraper(client, parser)
+    private val classScraper = KnobPlayerClassScraper(client, parser)
     private val licenceScraper = OverallPlayerScraper(client, parser)
 
-    /** Full historical backfill: groups → match details + players → licences (all seasons 1989–present) */
+    /** Full historical backfill: groups → match details + players → classes → licences (1989–present) */
     suspend fun run() {
         runGroupScraper()
         runMatchScraper()
+        runClassScraper()
         runLicenceScraper()
     }
 
@@ -35,6 +37,7 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
     ) {
         groupScraper.run(listOf(season), federations)
         matchScraper.run()
+        classScraper.run()
         licenceScraper.run()
     }
 
@@ -64,6 +67,7 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
         }
         groupScraper.run(generateSeasons(fromYear, clampedToYear))
         matchScraper.run()
+        classScraper.run()
         licenceScraper.run()
     }
 
@@ -72,6 +76,9 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
 
     /** Scrapes individual game results and upserts players encountered in match details */
     suspend fun runMatchScraper() = matchScraper.run()
+
+    /** Fills classification per player from their (men's-ladder) profile page — see the scraper. */
+    suspend fun runClassScraper() = classScraper.run()
 
     /** Resolves real STT licence numbers via the overall player registry */
     suspend fun runLicenceScraper() = licenceScraper.run()

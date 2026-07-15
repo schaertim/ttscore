@@ -39,6 +39,7 @@ Everything below stays free forever.
 **Player profile**
 - **Overview tab:** current ELO, classification, club, **full ELO graph** (recent seasons — ELO is not available historically) with class thresholds, recent + full game history with ELO deltas, next match, league context
 - **Stats tab:** all current-season analytics — win/loss + win rate, radar, monthly form, set-score distribution, opponent breakdown, win-rate splits
+- **Career tab:** season-by-season career breakdown, milestones, clubs, rivalry detection across seasons
 
 **Personalisation & discovery**
 - Search, favorites/bookmarks, recently-viewed, personal dashboard, "set as my player"
@@ -52,17 +53,15 @@ Everything below stays free forever.
 
 **Built / partially built today**
 - **Head-to-head (H2H)** — the full "Compare with me" drawer and all H2H records across seasons. *Fully Pro.*
-
-**Net-new (to build as Pro features)**
-- **Career tab** — the career-arc stats tab (currently a "coming soon" placeholder). Season-by-season career breakdown, milestones, rivalry detection across seasons. *Fully Pro.*
+- **Match previews** — opponent scouting ahead of a scheduled match (team and player level). *Fully Pro.*
 
 **Limits lifted by Pro**
 - **Notifications for followed entities** — beyond your own player (teams, divisions, other players)
 - **Unlimited follows** — beyond own player + 3
 
 **Later (decide when built)**
-- Opponent scouting / pre-match previews, CSV/data export, deep leaderboard/record
-  filtering, ad-free. Not committed yet — revisit per feature during development.
+- CSV/data export, deep leaderboard/record filtering, ad-free. Not committed yet —
+  revisit per feature during development.
 
 ---
 
@@ -73,14 +72,14 @@ Everything below stays free forever.
 | Follows | Own player + 3 other entities (home player is exempt from the cap) | Unlimited |
 | Push notifications | Own player only | Any followed entity |
 | H2H drawer / records | Locked (teaser) | Full |
-| Career tab | Locked (teaser) | Full |
+| Match previews | Locked (teaser) | Full |
 
 ---
 
 ## UX principle
 
-Free profiles never feel empty: Overview + Stats tabs are rich and free. The Pro
-surfaces (H2H drawer, Career tab) are **visible but teaser-paywalled** — show a
+Free profiles never feel empty: Overview + Stats + Career tabs are rich and free. The
+Pro surfaces (H2H drawer, match previews) are **visible but teaser-paywalled** — show a
 blurred/preview state with an in-context "Unlock with Pro" prompt at the moment of
 intent, rather than hiding them. Same for the follow/notification caps: let the user
 hit the limit, then upsell in place.
@@ -89,7 +88,7 @@ hit the limit, then upsell in place.
 
 **No trial** (no card-required trial, no reverse trial). Instead: a **low monthly
 buy-in** lowers the risk of trying Pro, backed by **permanent teaser paywalls** that
-upsell at the moment of intent (H2H drawer, Career tab, follow cap, notify bell).
+upsell at the moment of intent (H2H drawer, match previews, follow cap, notify bell).
 
 ## Pricing (decided)
 
@@ -108,7 +107,7 @@ Stripe (TWINT + cards, no monthly fee); webhook → `pro_until` on `user_profile
   only receive their own-player notification**; team/division/other-player notifications
   require Pro.
 - **Follows:** enforce the 3-other-entity cap server-side on `POST /follows` for non-Pro.
-- **Frontend gates:** teaser-paywall the H2H drawer and the Career tab; cap/upsell in the
+- **Frontend gates:** teaser-paywall the H2H drawer and match previews; cap/upsell in the
   follow + notify buttons.
 - **Docs:** `PROJECT_DESCRIPTION.md` and `ROADMAP.md` still say "no paywall ever" — soften
   that language honestly once this ships.

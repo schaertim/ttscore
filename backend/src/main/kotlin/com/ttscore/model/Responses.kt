@@ -110,6 +110,7 @@ data class CareerResponse(
 data class TeamSummaryResponse(
     val id: String,
     val name: String,
+    val groupId: String,
     val groupName: String,
     val position: Int,
     val record: String,
@@ -204,8 +205,6 @@ data class GameResponse(
     val homeSets: Int?,
     val awaySets: Int?,
     val result: GameResult,
-    val homePlayer1EloDelta: Double? = null,
-    val awayPlayer1EloDelta: Double? = null,
     val sets: List<SetResponse>,
 )
 
@@ -234,6 +233,8 @@ data class PlayerResponse(
     val fullName: String,
     val licenceNr: String?,
     val currentClubName: String? = null,
+    /** STT age/eligibility category ("Aktive", "O50", "U17", …) — from the club members page. */
+    val category: String? = null,
     val classification: String? = null,
     /** Class derived from the up-to-date ELO (may differ from the official [classification]). */
     val liveClassification: String? = null,

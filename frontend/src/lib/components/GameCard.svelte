@@ -3,6 +3,7 @@
 	import { cn, formatName } from '$lib/utils';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { _ } from 'svelte-i18n';
 
 	interface Props {
@@ -124,7 +125,10 @@
 			{/if}
 		</div>
 		<!-- divider -->
-		<div class="w-px shrink-0 self-stretch bg-border"></div>
+		<Separator
+			orientation="vertical"
+			class="self-stretch bg-muted-foreground/50 data-[orientation=vertical]:h-auto m-1"
+		/>
 		<!-- right: score, vertically centered -->
 		<div class="flex w-11 shrink-0 flex-col items-center justify-center">
 			<p class="font-mono text-3xl font-black tracking-tighter text-muted-foreground tabular-nums">

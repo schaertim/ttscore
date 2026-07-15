@@ -4,14 +4,18 @@
 	import { dayMonth } from '$lib/date';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import { Separator } from '$lib/components/ui/separator/index.js';
+	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { locale } from 'svelte-i18n';
 
 	interface Props {
 		/** A game seen from one player's perspective (opponent, own sets first, ELO delta). */
 		game: PlayerGame;
+		/** Shows a skeleton in place of a missing ELO delta while the on-demand sync backfills it. */
+		syncing?: boolean;
 	}
 
-	let { game }: Props = $props();
+	let { game, syncing = false }: Props = $props();
 
 	function formatDelta(delta: number | null): string {
 		if (delta == null) return '';
@@ -81,7 +85,10 @@
 				{/if}
 			</div>
 			<!-- divider -->
-			<div class="w-px shrink-0 self-stretch bg-border"></div>
+			<Separator
+				orientation="vertical"
+				class="self-stretch bg-muted-foreground/50 data-[orientation=vertical]:h-auto m-1"
+			/>
 			<!-- right: score + ELO centered as group -->
 			<div class="flex w-11 shrink-0 flex-col items-center justify-center gap-1">
 				<p
@@ -100,6 +107,8 @@
 					>
 						{formatDelta(game.eloDelta)} ELO
 					</span>
+				{:else if syncing}
+					<Skeleton class="h-3 w-8 rounded" />
 				{/if}
 			</div>
 		</div>

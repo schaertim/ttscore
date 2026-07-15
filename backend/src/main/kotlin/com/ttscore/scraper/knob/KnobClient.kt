@@ -55,6 +55,13 @@ class KnobClient {
         return fetchWithRetry(url)
     }
 
+    /**
+     * The player's "Follow-your-player" profile page (all seasons/divisions they played, each with
+     * the class on the men's ladder). The source of truth for classification — the per-match bracket
+     * is on a women's ladder for women's-only divisions, but this column never is.
+     */
+    suspend fun fetchPlayerProfile(knobId: Int): String = fetchWithRetry("$baseUrl?gid=$knobId")
+
     private suspend fun fetchWithRetry(
         url: String,
         maxAttempts: Int = 3,

@@ -4,11 +4,11 @@ import com.ttscore.database.dbQuery
 import com.ttscore.model.GameResult
 import com.ttscore.scraper.clicktt.model.ClickTTGame
 import com.ttscore.scraper.clicktt.model.ParsedTournamentGame
+import com.ttscore.scraper.knob.mapConcurrent
 import com.ttscore.service.ClassificationService
 import com.ttscore.service.GameService
 import com.ttscore.service.LiveEloService
 import com.ttscore.service.PlayerService
-import kotlin.math.roundToInt
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.time.Instant
@@ -17,6 +17,11 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.roundToInt
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 object ClickTTSyncService {
     private val logger = LoggerFactory.getLogger(ClickTTSyncService::class.java)
@@ -27,6 +32,11 @@ object ClickTTSyncService {
 
     private val syncCooldowns = ConcurrentHashMap<UUID, Instant>()
     private val COOLDOWN = Duration.ofMinutes(5)
+
+    // How many player portraits to sync in parallel during the full backfill. Each sync fans out to
+    // ~3 concurrent click-tt fetches, so 8 players ≈ up to ~24 in-flight requests — in line with the
+    // match scraper's SCRAPE_CONCURRENCY and comfortably within the 10-connection DB pool.
+    private const val PORTRAIT_BACKFILL_CONCURRENCY = 8
 
     /** True when [playerId] was synced within the cooldown window — a fresh sync would be a no-op. */
     fun isWithinCooldown(playerId: UUID): Boolean {
@@ -39,36 +49,33 @@ object ClickTTSyncService {
         val players = PlayerService.getAllPlayersWithClickTtId()
         logger.info("Portrait backfill starting — ${players.size} players with click-tt ID")
 
-        var successCount = 0
-        var noEloCount = 0
-        var failCount = 0
-        var tourneyInserts = 0
-        var deltaUpdates = 0
-
-        for ((index, pair) in players.withIndex()) {
-            val (playerId, personId) = pair
-            try {
-                val result = syncPlayerDetailed(playerId, seasonId)
-                successCount++
-                tourneyInserts += result.tournamentGamesInserted
-                deltaUpdates += result.leagueDeltasUpdated
-                if (result.elo == null) noEloCount++
-                if (index % 50 == 0) {
-                    logger.info(
-                        "Portrait backfill progress: $index / ${players.size} — " +
-                            "$successCount ok, $noEloCount no-elo, $failCount failed, " +
-                            "$tourneyInserts tournament inserts, $deltaUpdates elo-delta updates",
-                    )
-                }
-            } catch (e: Exception) {
-                failCount++
-                logger.warn("Portrait backfill failed for player $playerId (personId=$personId): ${e.message}")
+        // Players are independent, so sync them with bounded concurrency instead of one-at-a-time.
+        // Concurrency is deliberately lower than the knob SCRAPE_CONCURRENCY: each player sync itself
+        // fans out to ~3 concurrent click-tt fetches, so this caps peak requests to click-tt at a
+        // polite level, and stays within the DB pool (concurrent DB writes are safe now that Exposed
+        // runs on a pooled DataSource).
+        val processed = AtomicInteger(0)
+        val results =
+            players.mapConcurrent(PORTRAIT_BACKFILL_CONCURRENCY) { (playerId, personId) ->
+                val result =
+                    try {
+                        syncPlayerDetailed(playerId, seasonId)
+                    } catch (e: Exception) {
+                        logger.warn("Portrait backfill failed for player $playerId (personId=$personId): ${e.message}")
+                        null
+                    }
+                val done = processed.incrementAndGet()
+                if (done % 50 == 0) logger.info("Portrait backfill progress: $done / ${players.size}")
+                result
             }
-        }
 
         logger.info(
-            "Portrait backfill complete — $successCount ok, $noEloCount no-elo, $failCount failed, " +
-                "$tourneyInserts tournament inserts, $deltaUpdates elo-delta updates",
+            "Portrait backfill complete — " +
+                "${results.count { it != null }} ok, " +
+                "${results.count { it != null && it.elo == null }} no-elo, " +
+                "${results.count { it == null }} failed, " +
+                "${results.sumOf { it?.tournamentGamesInserted ?: 0 }} tournament inserts, " +
+                "${results.sumOf { it?.leagueDeltasUpdated ?: 0 }} elo-delta updates",
         )
     }
 
@@ -103,36 +110,34 @@ object ClickTTSyncService {
         }
 
         logger.debug("Syncing personId=$personId")
+
         val portraitHtml = client.fetchPlayerPortrait(personId)
 
-        // 1. Insert tournament & cup games from the dedicated season pages. These are the source of
-        //    truth for non-league games (full result + set scores + opponent person-id). ELO deltas
-        //    are filled later from the Elo-Protokoll, so we run this BEFORE the delta update below.
-        val tourneyInserts = insertTournamentAndCupGames(playerId, portraitHtml)
-
-        // 2. ELO snapshot + delta/competition decoration from the Elo-Protokoll. This page is the
-        //    only one with ELO deltas, and it is used exclusively to UPDATE existing league and
-        //    tournament rows — it never inserts, which is what prevents duplicate game rows.
+        // The secondary pages are all derived from the portrait and independent of each other, so
+        // fetch them concurrently rather than one-after-another:
+        //  - the tournament/cup season pages (source of truth for non-league games), and
+        //  - the Elo-Protokoll page (the only page carrying ELO deltas).
+        val gameUrls = parser.extractPlayerGameUrls(portraitHtml)
         val eloUrl =
             parser.extractEloProtokollUrl(portraitHtml)
                 ?.cleanWosid()
                 ?.takeIf { it.isNotBlank() && it != "#" }
-
         if (eloUrl == null) logger.debug("  personId=$personId — no Elo-Protokoll tab found")
 
-        val eloHtml =
-            if (eloUrl != null) {
-                try {
-                    client.fetchUrl(eloUrl)
-                } catch (e: Exception) {
-                    logger.warn(
-                        "  personId=$personId — Elo-Protokoll fetch failed, ELO snapshot still saved: ${e.message}",
-                    )
-                    null
-                }
-            } else {
-                null
+        val (gamePages, eloHtml) =
+            coroutineScope {
+                // Pair each page with its original URL so the cup/tournament classification (which
+                // keys on the mode param) survives; cleanWosid only strips the session id.
+                val gamePagesDeferred =
+                    gameUrls.map { url -> async { url to fetchOrNull(url.cleanWosid(), "tournament/cup page") } }
+                val eloDeferred = async { eloUrl?.let { fetchOrNull(it, "Elo-Protokoll") } }
+                gamePagesDeferred.awaitAll() to eloDeferred.await()
             }
+
+        // Insert tournament & cup games from the fetched pages. These are the source of truth for
+        // non-league games (full result + set scores + opponent person-id). ELO deltas are filled
+        // later from the Elo-Protokoll, so this must run BEFORE the delta update below.
+        val tourneyInserts = insertTournamentGamesFromPages(playerId, gamePages)
 
         val portrait = parser.parsePlayerPortrait(portraitHtml, eloHtml, personId)
         logger.debug("  personId=$personId — elo=${portrait.currentElo}, games=${portrait.games.size}")
@@ -251,24 +256,36 @@ object ClickTTSyncService {
             }
         }
 
+    /** Fetches [url], returning null (and logging) on failure so one bad page doesn't abort a sync. */
+    private suspend fun fetchOrNull(
+        url: String,
+        label: String,
+    ): String? =
+        try {
+            client.fetchUrl(url)
+        } catch (e: Exception) {
+            logger.warn("  $label fetch failed for $url: ${e.message}")
+            null
+        }
+
     /**
-     * Fetches the player's TOURNAMENT and Cup season pages and inserts each singles game (with its
-     * sets) unless it already exists. Returns the number of newly inserted games.
+     * Parses each already-fetched TOURNAMENT/Cup page (paired with its source URL, which selects the
+     * cup vs. tournament parser) and inserts each singles game with its sets unless it already
+     * exists. Returns the number of newly inserted games.
      */
-    private suspend fun insertTournamentAndCupGames(
+    private suspend fun insertTournamentGamesFromPages(
         playerId: UUID,
-        portraitHtml: String,
+        pages: List<Pair<String, String?>>,
     ): Int {
-        val urls = parser.extractPlayerGameUrls(portraitHtml)
         var inserts = 0
-        for (url in urls) {
+        for ((url, html) in pages) {
+            if (html == null) continue
             try {
-                val html = client.fetchUrl(url.cleanWosid())
                 val isCup = url.contains("Cup", ignoreCase = true) && url.contains("mode=CHAMPIONSHIP")
                 val games = if (isCup) parser.parseCupPage(html) else parser.parseTournamentPage(html)
                 inserts += insertTournamentGames(playerId, games)
             } catch (e: Exception) {
-                logger.warn("Tournament/cup page fetch/parse failed for player $playerId: ${e.message}")
+                logger.warn("Tournament/cup page parse/insert failed for player $playerId ($url): ${e.message}")
             }
         }
         return inserts
@@ -320,22 +337,27 @@ object ClickTTSyncService {
         playerId: UUID,
         games: List<ClickTTGame>,
     ): Int {
-        var updates = 0
-        for (game in games) {
-            val eloDelta = game.eloDelta ?: continue
-
-            val playedAt =
-                LocalDate.parse(game.date, dateFormatter)
-                    .atStartOfDay(swissZone)
-                    .toOffsetDateTime()
-
-            // Pass the raw Protokoll opponent name + result; the matcher resolves the row locally
-            // (the row's opponent is already correct via person-id), avoiding the duplicate-name trap.
-            if (GameService.updateGameEloDelta(playerId, game.opponent, playedAt, eloDelta, game.competition)) {
-                updates++
+        // `games` is in Elo-Protokoll page order (index 0 = topmost row); that index is stored as
+        // the game's stable ordering key so same-day games no longer reshuffle across reloads. The
+        // raw Protokoll opponent name + result is passed through; the matcher resolves the row
+        // locally (the row's opponent is already correct via person-id), avoiding the duplicate-name
+        // trap. Applied as one batch so the whole protocol is a single transaction, not one per game.
+        val updates =
+            games.withIndex().mapNotNull { (protocolOrder, game) ->
+                val eloDelta = game.eloDelta ?: return@mapNotNull null
+                val playedAt =
+                    LocalDate.parse(game.date, dateFormatter)
+                        .atStartOfDay(swissZone)
+                        .toOffsetDateTime()
+                GameService.EloDeltaUpdate(
+                    opponentName = game.opponent,
+                    dayStart = playedAt,
+                    eloDelta = eloDelta,
+                    eloOrder = protocolOrder,
+                    competition = game.competition,
+                )
             }
-        }
-        return updates
+        return GameService.applyEloDeltas(playerId, updates)
     }
 
     /**

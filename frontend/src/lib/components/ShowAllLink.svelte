@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { ArrowRightIcon } from 'phosphor-svelte';
+
 	interface Props {
 		href: string;
 		label: string;
@@ -9,7 +11,8 @@
 
 <a
 	{href}
-	class="block pt-1 text-center text-xs font-semibold tracking-widest text-muted-foreground uppercase hover:text-foreground"
+	class="flex items-center justify-center gap-1 pt-1 text-center text-xs font-semibold tracking-widest text-muted-foreground uppercase hover:text-foreground"
 >
-	{label} →
+	{label}
+	<ArrowRightIcon size={12} weight="bold" />
 </a>

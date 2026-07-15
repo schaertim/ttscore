@@ -23,7 +23,7 @@ object PlayerService {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
             val playerRow =
-                Players.select(Players.id, Players.fullName, Players.licenceNr)
+                Players.select(Players.id, Players.fullName, Players.licenceNr, Players.category)
                     .where { Players.id eq uuid }
                     .firstOrNull() ?: return@dbQuery null
 
@@ -45,6 +45,7 @@ object PlayerService {
 
             playerRow.toPlayerResponse(
                 currentClubName = currentClubName,
+                category = playerRow[Players.category],
                 classification = ClassificationService.currentClasses(listOf(uuid))[uuid],
                 currentElo = currentElo,
                 liveElo = LiveEloService.liveEloFor(uuid, currentElo),
@@ -95,6 +96,8 @@ object PlayerService {
                     Games.result,
                     Games.homePlayer1EloDelta,
                     Games.awayPlayer1EloDelta,
+                    Games.homePlayer1EloOrder,
+                    Games.awayPlayer1EloOrder,
                     Games.playedAt,
                     Games.competitionName,
                     Matches.id,
@@ -111,8 +114,24 @@ object PlayerService {
                     ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
                         (Games.gameType eq GameType.SINGLES)
                 }
-                .orderBy(Games.playedAt to SortOrder.DESC)
                 .toList()
+                // Newest day first, then the player's Elo-Protokoll order within a day (index 0 =
+                // topmost protocol row), then the stable game id — a total, reload-invariant order
+                // so same-day games (which share a played_at) never reshuffle. Sorted here rather
+                // than in SQL because the protocol key lives on a different column per side.
+                .sortedWith(
+                    compareBy(nullsLast(reverseOrder<OffsetDateTime>())) { row: ResultRow ->
+                        row[Games.playedAt]
+                    }
+                        .thenBy(nullsLast(naturalOrder<Int>())) { row: ResultRow ->
+                            if (row[Games.homePlayer1Id] == uuid) {
+                                row[Games.homePlayer1EloOrder]
+                            } else {
+                                row[Games.awayPlayer1EloOrder]
+                            }
+                        }
+                        .thenBy { row: ResultRow -> row[Games.id] },
+                )
                 .let { rows ->
                     val gameIds = rows.map { it[Games.id] }
                     val setsByGame =
@@ -489,8 +508,11 @@ object PlayerService {
                 if (won) currentStreak++ else break
             }
 
-            // Buckets relative to the player's current class: keep classes within ±2 separate,
-            // fold the far-stronger into "HIGHER" and the far-weaker into "LOWER".
+            // A fixed set of 7 buckets relative to the player's current class — same class, two
+            // ranks up/down individually, and everything 3+ ranks further folded into HIGHER /
+            // LOWER — always present even when the player has no games there yet (0/0, rendered
+            // as "-" by the client) so a sparse season doesn't produce a different, gap-ridden
+            // set of buckets depending on which classes happened to be faced.
             val opponentBuckets: List<OpponentBucketResponse> =
                 if (playerCurrentRank == null) {
                     tiers.entries
@@ -498,41 +520,28 @@ object PlayerService {
                         .map { OpponentBucketResponse(it.key, it.value.wins, it.value.games) }
                 } else {
                     var higherW = 0; var higherG = 0
-                    var higherNearRank = Int.MIN_VALUE; var higherNearCls = ""
-                    var higherFarRank = Int.MIN_VALUE; var higherFarCls = ""
                     var lowerW = 0; var lowerG = 0
-                    var lowerNearRank = Int.MAX_VALUE; var lowerNearCls = ""
-                    var lowerFarRank = Int.MAX_VALUE; var lowerFarCls = ""
-                    val mid = mutableListOf<Triple<Int, String, WinAcc>>()
                     for ((cls, acc) in tiers) {
                         val r = classRank(cls) ?: continue
                         when {
-                            r - playerCurrentRank >= 3 -> {
-                                higherW += acc.wins; higherG += acc.games
-                                // nearClass = lowest rank in HIGHER (closest to player boundary)
-                                if (r < higherNearRank || higherNearRank == Int.MIN_VALUE) { higherNearRank = r; higherNearCls = cls }
-                                // farClass = highest rank in HIGHER (strongest opponent)
-                                if (r > higherFarRank) { higherFarRank = r; higherFarCls = cls }
-                            }
-                            r - playerCurrentRank <= -3 -> {
-                                lowerW += acc.wins; lowerG += acc.games
-                                // nearClass = highest rank in LOWER (closest to player boundary)
-                                if (r > lowerNearRank || lowerNearRank == Int.MAX_VALUE) { lowerNearRank = r; lowerNearCls = cls }
-                                // farClass = lowest rank in LOWER (weakest opponent)
-                                if (r < lowerFarRank) { lowerFarRank = r; lowerFarCls = cls }
-                            }
-                            else -> mid.add(Triple(r, cls, acc))
+                            r - playerCurrentRank >= 3 -> { higherW += acc.wins; higherG += acc.games }
+                            r - playerCurrentRank <= -3 -> { lowerW += acc.wins; lowerG += acc.games }
                         }
                     }
+                    // The HIGHER/LOWER boundary class is defined by the player's own rank, not by
+                    // which opponents were actually faced — so it's only null when no class 3+
+                    // ranks away even exists (e.g. a top-class player has no "HIGHER" tier at all).
+                    val higherNear = ClassificationService.classLabelForRank(playerCurrentRank + 3)
+                    val lowerNear = ClassificationService.classLabelForRank(playerCurrentRank - 3)
+
                     buildList {
-                        if (higherG > 0) add(
-                            OpponentBucketResponse("HIGHER", higherW, higherG, higherNearCls.ifEmpty { null }, higherFarCls.ifEmpty { null })
-                        )
-                        mid.sortedByDescending { it.first }
-                            .forEach { add(OpponentBucketResponse(it.second, it.third.wins, it.third.games)) }
-                        if (lowerG > 0) add(
-                            OpponentBucketResponse("LOWER", lowerW, lowerG, lowerNearCls.ifEmpty { null }, lowerFarCls.ifEmpty { null })
-                        )
+                        if (higherNear != null) add(OpponentBucketResponse("HIGHER", higherW, higherG, higherNear))
+                        for (offset in 2 downTo -2) {
+                            val cls = ClassificationService.classLabelForRank(playerCurrentRank + offset) ?: continue
+                            val acc = tiers[cls] ?: WinAcc()
+                            add(OpponentBucketResponse(cls, acc.wins, acc.games))
+                        }
+                        if (lowerNear != null) add(OpponentBucketResponse("LOWER", lowerW, lowerG, lowerNear))
                     }
                 }
 
@@ -1411,7 +1420,7 @@ object PlayerService {
                     // Convert "Lastname, Firstname" → "Lastname Firstname" to match knob storage format
                     it[Players.fullName] = clickTtNameToDb(member.fullName)
                     it[Players.sex] = member.sex
-                    it[Players.serie] = member.serie
+                    it[Players.category] = member.serie
                     it[Players.nationality] = member.nationality
                 }
             }
@@ -1445,7 +1454,7 @@ object PlayerService {
                     it[Players.licenceNr] = member.licence
                     it[Players.fullName] = clickTtNameToDb(member.fullName)
                     it[Players.sex] = member.sex
-                    it[Players.serie] = member.serie
+                    it[Players.category] = member.serie
                     it[Players.nationality] = member.nationality
                 }
             }
@@ -1500,7 +1509,7 @@ object PlayerService {
                     it[Players.clickttId] = member.personId
                     it[Players.fullName] = dbName
                     it[Players.sex] = member.sex
-                    it[Players.serie] = member.serie
+                    it[Players.category] = member.serie
                     it[Players.nationality] = member.nationality
                 }
             }
@@ -1547,6 +1556,7 @@ object PlayerService {
 
     private fun ResultRow.toPlayerResponse(
         currentClubName: String? = null,
+        category: String? = null,
         classification: String? = null,
         currentElo: Int? = null,
         liveElo: Int? = null,
@@ -1556,6 +1566,7 @@ object PlayerService {
         fullName = this[Players.fullName],
         licenceNr = this[Players.licenceNr],
         currentClubName = currentClubName,
+        category = category,
         classification = classification,
         // Live class reflects the up-to-date ELO when we have it, else the official one.
         liveClassification = (liveElo ?: currentElo)?.let { ClassificationService.fromElo(it) },

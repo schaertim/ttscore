@@ -380,31 +380,26 @@ class KnobParser {
             val homeGid1 = extractParam(homeLinks[0].attr("href"), "gid")?.toIntOrNull()
             val awayGid1 = extractParam(awayLinks[0].attr("href"), "gid")?.toIntOrNull()
 
-            // Klass is encoded as "[ X ]" at the end of the link text.
-            // expandKlass converts raw numbers (e.g. "2") to Swiss TT format (e.g. "D2").
-            val homeKlass = expandKlass(extractKlass(homeRaw))
-            val awayKlass = expandKlass(extractKlass(awayRaw))
+            // The class in brackets (e.g. "[ 2 ]") is intentionally ignored — it's on a women's
+            // ladder for women's-only divisions. Classification is taken from the profile page
+            // instead (see KnobPlayerClassScraper); here we only strip the bracket off the name.
             val homeClean = stripKlass(homeRaw)
             val awayClean = stripKlass(awayRaw)
 
             val homeName1: String?
             val homeName2: String?
             val homeGid2: Int?
-            val homePlayer1Klass: String?
             val awayName1: String?
             val awayName2: String?
             val awayGid2: Int?
-            val awayPlayer1Klass: String?
 
             if (!isDoubles) {
                 homeName1 = homeClean.takeIf { it.isNotBlank() }?.let { nfc(it) }
                 homeName2 = null
                 homeGid2 = null
-                homePlayer1Klass = homeKlass
                 awayName1 = awayClean.takeIf { it.isNotBlank() }?.let { nfc(it) }
                 awayName2 = null
                 awayGid2 = null
-                awayPlayer1Klass = awayKlass
                 // Register in name map so the doubles row below can resolve player 2 by name
                 if (homeGid1 != null && homeName1 != null) nameToKnobId[homeName1] = homeGid1
                 if (awayGid1 != null && awayName1 != null) nameToKnobId[awayName1] = awayGid1
@@ -413,11 +408,9 @@ class KnobParser {
                 homeName1 = homeClean.substringBefore("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
                 homeName2 = homeClean.substringAfter("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
                 homeGid2 = homeName2?.let { nameToKnobId[it] }
-                homePlayer1Klass = null // doubles klass is an aggregate, not per-player
                 awayName1 = awayClean.substringBefore("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
                 awayName2 = awayClean.substringAfter("/").trim().takeIf { it.isNotBlank() }?.let { nfc(it) }
                 awayGid2 = awayName2?.let { nameToKnobId[it] }
-                awayPlayer1Klass = null
             }
 
             // A team fielding only two players produces "w.o." forfeit rows where one side is an
@@ -451,12 +444,10 @@ class KnobParser {
                     gameType = if (isDoubles) GameType.DOUBLES else GameType.SINGLES,
                     homePlayer1KnobId = homeGid1,
                     homePlayer1Name = homeName1,
-                    homePlayer1Klass = homePlayer1Klass,
                     homePlayer2KnobId = homeGid2,
                     homePlayer2Name = homeName2,
                     awayPlayer1KnobId = awayGid1,
                     awayPlayer1Name = awayName1,
-                    awayPlayer1Klass = awayPlayer1Klass,
                     awayPlayer2KnobId = awayGid2,
                     awayPlayer2Name = awayName2,
                     homeSets = homeSets,
@@ -524,13 +515,6 @@ class KnobParser {
      * knob.ch stores just the ladder position; the standard format used by click-tt and the DB
      * prefixes the position with the division letter:
      *   D = 1–5 | C = 6–10 | B = 11–15 | A = 16–22
-     * Values that are already formatted (e.g. "D2") or empty are returned unchanged.
-     */
-    /**
-     * Converts a raw knob.ch Klassierung number (1–22) to the Swiss TT letter-prefix format.
-     * knob.ch stores just the ladder position; the standard format used by click-tt and the DB
-     * prefixes the position with the division letter:
-     *   D = 1–5 | C = 6–10 | B = 11–15 | A = 16–22
      * Values that are already formatted (e.g. "D2"), empty, or null are returned unchanged.
      */
     private fun expandKlass(raw: String?): String? {
@@ -547,10 +531,42 @@ class KnobParser {
         return "$prefix$num"
     }
 
-    private fun extractKlass(text: String): String? =
-        Regex("""\[([^\]]+)\]$""").find(text.trim())?.groupValues?.get(1)?.trim()
-
     private fun stripKlass(text: String): String = text.trim().replace(Regex("""\s*\[[^\]]+\]$"""), "").trim()
+
+    /**
+     * Parses the "Follow-your-player" table on a player's profile page into a
+     * `(knob gruppe id, season) -> class` map. This class column is always on the men's ladder, so
+     * it's used to override the per-match bracket (which is on a women's ladder for women's-only
+     * divisions). The table is identified by its "Saison" header — deliberately NOT the ranking
+     * table further down, which lists *other* players (whose classes may be women's-ladder).
+     *
+     * Each row carries the class in a `[A-D]<n>` cell and the gruppe + season in its link's
+     * `gruppe=` / `ms=` params (present even on continuation rows where the season cell is blank).
+     */
+    fun parsePlayerProfileClasses(html: String): Map<Pair<Int, String>, String> {
+        val doc = Jsoup.parse(html)
+        val table =
+            doc.select("table").firstOrNull { table ->
+                table.select("tr td").any { it.text().trim().equals("Saison", ignoreCase = true) }
+            } ?: return emptyMap()
+
+        val classPattern = Regex("^[A-D]\\d{1,2}$")
+        val result = mutableMapOf<Pair<Int, String>, String>()
+        for (row in table.select("tr")) {
+            val klass =
+                row.select("td").firstOrNull { classPattern.matches(it.text().trim()) }?.text()?.trim()
+                    ?: continue
+            val link = row.select("a[href*=gruppe=][href*=ms=]").firstOrNull() ?: continue
+            val gruppe = extractParam(link.attr("href"), "gruppe")?.toIntOrNull() ?: continue
+            val season = extractParam(link.attr("href"), "ms")?.let { msToSeason(it) } ?: continue
+            result[gruppe to season] = klass
+        }
+        return result
+    }
+
+    /** knob's compact season param "20242025" → the canonical "2024/2025" form. */
+    private fun msToSeason(ms: String): String? =
+        if (ms.length == 8) "${ms.substring(0, 4)}/${ms.substring(4, 8)}" else null
 
     private fun extractParam(
         url: String,

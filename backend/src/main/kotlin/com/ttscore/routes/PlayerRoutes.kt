@@ -175,23 +175,19 @@ fun Route.playerRoutes() {
 
                 call.respond(HttpStatusCode.OK, preview)
             }
+        }
 
-            // Career tab is a Pro feature — same optional-auth / 403 pattern as H2H.
-            get("/{id}/career") {
-                if (!call.isPro()) {
-                    return@get call.respond(HttpStatusCode.Forbidden, ReasonResponse("pro_required"))
-                }
+        // Career tab (season-by-season arc, milestones, rivalries) is free.
+        get("/{id}/career") {
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
 
-                val id =
-                    call.parameters["id"]
-                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+            val career =
+                PlayerService.getCareer(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
 
-                val career =
-                    PlayerService.getCareer(id)
-                        ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
-
-                call.respond(HttpStatusCode.OK, career)
-            }
+            call.respond(HttpStatusCode.OK, career)
         }
 
         get("/{id}/class-history") {

@@ -88,9 +88,7 @@
 		"biggest_jump": "Größter Sprung",
 		"no_jumps": "Noch keine Sprünge",
 		"clubs_leagues": "Vereine & Ligen",
-		"rivalries": "Duelle",
-		"paywall_title": "Der Karriereverlauf ist eine Pro-Funktion",
-		"paywall_desc": "Verfolge eine ganze Karriere zurück bis 1989 — Klassierungsverlauf, Karrierebilanz, Meilensteine, Vereine und Duelle."
+		"rivalries": "Duelle"
 	},
 	"stats": {
 		"no_data": "Noch keine Spiele in dieser Saison.",
@@ -131,7 +129,7 @@
 		"relegated": "Abgestiegen",
 		"vs": "vs.",
 		"upcoming": "Bevorstehend",
-		"title": "Feed",
+		"title": "Dein Feed",
 		"empty_title": "Noch nichts in deinem Feed",
 		"empty_desc": "Folge Spielern, Teams oder Ligen, um ihre Aktivitäten hier zu sehen.",
 		"manage_favorites": "Favoriten verwalten"
@@ -198,7 +196,7 @@
 		"pro_renews": "Verlängert sich am {date}",
 		"manage_billing": "Abo verwalten",
 		"pro_upgrade": "Auf Pro upgraden",
-		"pro_upgrade_desc": "Head-to-Head, Karrierestatistiken & unbegrenzte Favoriten"
+		"pro_upgrade_desc": "Head-to-Head, Spielvorschauen & unbegrenzte Favoriten"
 	},
 	"auth": {
 		"welcome_back": "Willkommen zurück",
@@ -243,13 +241,13 @@
 		"dismiss": "Ausblenden"
 	},
 	"pro": {
-		"unlock": "Mit Pro freischalten",
+		"unlock": "Pro",
 		"h2h_title": "Direktvergleich ist eine Pro-Funktion",
 		"h2h_desc": "Sieh vollständige Direktvergleiche, Satzbilanzen und den gemeinsamen ELO-Verlauf gegen jeden Gegner.",
 		"follow_limit_title": "Folgen-Limit erreicht",
-		"follow_limit_desc": "Gratis-Konten können neben dem eigenen Spieler bis zu 3 Einträgen folgen. Mit Pro folgst du unbegrenzt.",
-		"notify_title": "Benachrichtigungen sind eine Pro-Funktion",
-		"notify_desc": "Gratis-Konten erhalten nur Benachrichtigungen für den eigenen Spieler. Mit Pro wirst du über jedes Abo benachrichtigt.",
+		"follow_limit_desc": "Gratis-Konten folgen bis zu 3 Einträgen. Mit Pro unbegrenzt.",
+		"notify_title": "Benachrichtigungen sind Pro",
+		"notify_desc": "Gratis-Konten werden nur für den eigenen Spieler benachrichtigt.",
 		"page_title": "TTScore Pro",
 		"page_subtitle": "Tiefere Statistiken, unbegrenzt folgen — und du hältst TTScore am Laufen.",
 		"plan_monthly": "Monatlich",
@@ -267,8 +265,6 @@
 		"feature_h2h_desc": "Vollständige Bilanzen, Satzresultate und gemeinsamer ELO-Verlauf gegen jeden Gegner.",
 		"feature_preview_title": "Spielvorschauen",
 		"feature_preview_desc": "Teamvergleich, Aufstellungen, Form und Schlüsselduelle vor jeder angesetzten Begegnung.",
-		"feature_career_title": "Karriereverlauf",
-		"feature_career_desc": "Klassierungen, Clubs, Meilensteine und Rivalitäten — Saison für Saison.",
 		"feature_follow_notify_title": "Unbegrenzt folgen & Benachrichtigungen",
 		"feature_follow_notify_desc": "Folge jedem Spieler, Team und jeder Liga — und erfahre sofort, wenn neue Resultate eintreffen."
 	},

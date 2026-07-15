@@ -109,7 +109,7 @@
 					{@const isNational = fed.name === 'STT'}
 					<Accordion.Item
 						value={fed.id}
-						class="overflow-hidden rounded-xl border border-border/50 bg-card not-last:border-b-0"
+						class="overflow-hidden rounded-xl border border-border bg-card"
 					>
 						<Accordion.Trigger
 							class="w-full items-center rounded-none px-4 py-4 transition-colors hover:bg-accent hover:no-underline [&_[data-slot=accordion-trigger-icon]]:hidden"
