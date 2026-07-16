@@ -278,6 +278,46 @@ class ClickTTParser {
         return ClickTTClubPage(clubName = parseClubName(doc), members = members)
     }
 
+    /**
+     * Parses a regional club-search page (clubSearch?searchPattern=CH.0N) and returns the
+     * click-tt club IDs it lists. Each club is a link of the form `clubInfoDisplay?club=NNNNN`.
+     * The federation's own pseudo-club link is included too but is harmless — it simply won't
+     * match any of our clubs during the backfill.
+     */
+    fun parseClubSearchPage(html: String): List<Int> =
+        Jsoup.parse(html)
+            .select("a[href*='clubInfoDisplay']")
+            .mapNotNull { extractParam(it.attr("href"), "club")?.toIntOrNull() }
+            .distinct()
+
+    /**
+     * Reads the ranking date pre-selected on the Elo-Filter form (`<option selected>`), which is
+     * the current monthly ranking. Returns null if the form shape changed.
+     */
+    fun parseEloFilterRankingDate(html: String): String? =
+        Jsoup.parse(html)
+            .selectFirst("select[name=rankingDate] option[selected]")
+            ?.attr("value")?.trim()?.takeIf { it.isNotBlank() }
+
+    /**
+     * Returns the relative detail href (`eloFilter?…&ranking=NNN`) for the single result row of a
+     * licence search, or null when the search returned no player (empty results table).
+     */
+    fun parseEloFilterResultHref(html: String): String? =
+        Jsoup.parse(html)
+            .selectFirst("table.result-set tbody tr td a[href*='ranking=']")
+            ?.attr("href")?.trim()?.takeIf { it.isNotBlank() }
+
+    /**
+     * Extracts the click-tt person ID from an Elo-Filter detail page — it links to the player's
+     * portrait (`playerPortrait?…&person=NNN`), the only place the person ID is exposed.
+     */
+    fun parseEloFilterPersonId(html: String): Int? =
+        Jsoup.parse(html)
+            .selectFirst("a[href*='playerPortrait'][href*='person=']")
+            ?.let { extractParam(it.attr("href"), "person") }
+            ?.toIntOrNull()
+
     private fun parseClubName(doc: Document): String? =
         // The h1 contains "ClubName\nLizenzierte Spieler des Vereins" — strip the subtitle regardless
         // of whether a <br> is present between them.

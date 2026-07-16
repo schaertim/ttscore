@@ -47,9 +47,16 @@
 		<div class="flex items-stretch gap-3 px-4">
 			<!-- left: meta + opponent + sets -->
 			<div class="flex min-w-0 flex-1 flex-col gap-2">
-				<p class="truncate text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-					{dayMonth(game.playedAt, $locale) ?? '—'} · {game.competitionName ?? '—'}
-				</p>
+				<div
+					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
+				>
+					<span class="shrink-0">{dayMonth(game.playedAt, $locale) ?? '—'}</span>
+					<Separator
+						orientation="vertical"
+						class="bg-muted-foreground/40 data-[orientation=vertical]:h-2.5"
+					/>
+					<span class="truncate">{game.competitionName ?? '—'}</span>
+				</div>
 				<div class="flex min-w-0 items-center gap-2">
 					{#if game.opponentId}
 						<a

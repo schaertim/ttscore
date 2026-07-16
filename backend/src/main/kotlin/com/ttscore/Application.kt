@@ -3,6 +3,7 @@ package com.ttscore
 import com.ttscore.database.configureDatabase
 import com.ttscore.jobs.BackfillLedger
 import com.ttscore.jobs.ClickTtIdBackfillJob
+import com.ttscore.jobs.ClickTtReverseLookupJob
 import com.ttscore.jobs.MatchPollJob
 import com.ttscore.jobs.SeasonSyncJob
 import com.ttscore.plugins.configureAuthentication
@@ -36,6 +37,7 @@ fun Application.module() {
     val currentSeason = environment.config.property("scraper.currentSeason").getString()
 
     if (environment.config.property("jobs.enabled").getString().toBoolean()) {
+       runBackfill(currentSeason)
        scheduleJobs(currentSeason)
     }
 }
@@ -55,20 +57,19 @@ private fun Application.runBackfill(currentSeason: String) {
     val logger = LoggerFactory.getLogger("Backfill")
     launch {
         try {
-            // Ledger guards intentionally removed for the three historical steps below: these
-            // now run locally (against a fresh DB) to produce a dump that seeds staging/prod, so
-            // we want to re-run them freely while iterating without a ledger row blocking it.
-            // The dump is the artifact — staging/prod import it rather than scraping themselves.
-            // Restore BackfillLedger.runOnce(...) around these before this code ever runs
-            // against staging/prod again.
-/*
-            logger.info("Backfill — knob history (1989→present)")
-            BackfillScraper.create().run()
-            logger.info("Backfill — click-tt player/club id linking")
-            ClickTtIdBackfillJob.create().run()
-            logger.info("Backfill — click-tt season 2025/2026")
-            ClickTTSeasonScraper.create().run("2025/2026")
-*/
+            BackfillLedger.runOnce("knob-history-backfill") {
+                logger.info("Backfill — knob history (1989→present)")
+                BackfillScraper.create().run()
+            }
+            BackfillLedger.runOnce("clicktt-id-backfill") {
+                logger.info("Backfill — click-tt player/club id linking")
+                ClickTtIdBackfillJob.create().run()
+            }
+            BackfillLedger.runOnce("clicktt-season-backfill:$currentSeason") {
+                logger.info("Backfill — click-tt season $currentSeason")
+                ClickTTSeasonScraper.create().run(currentSeason)
+            }
+
             // Seed the current season once, immediately, so data is available without waiting
             // for the 03:00 run. Keyed by season, so bumping scraper.currentSeason next year
             // triggers exactly one immediate seed on the first boot after the change.
@@ -119,16 +120,23 @@ private fun Application.scheduleJobs(currentSeason: String) {
         }
     }
 
-    // ClickTtIdBackfillJob — weekly: refresh the season-independent player/club registry so
-    // new registrations get linked without a manual run. Idempotent (update + insertIgnore).
+    // ClickTtIdBackfillJob (roster-driven) then ClickTtReverseLookupJob (Elo-Filter, for players no
+    // longer on any club roster) — weekly, in sequence so the reverse pass only handles whatever the
+    // roster pass leaves unlinked. Both idempotent; independent try/catch so one can't skip the other.
     launch {
         val idBackfill = ClickTtIdBackfillJob.create()
+        val reverseLookup = ClickTtReverseLookupJob.create()
         while (true) {
             delay(7 * 24 * 60 * 60 * 1000L)
             try {
                 idBackfill.run()
             } catch (e: Exception) {
                 logger.error("ClickTtIdBackfillJob failed: ${e.message}", e)
+            }
+            try {
+                reverseLookup.run()
+            } catch (e: Exception) {
+                logger.error("ClickTtReverseLookupJob failed: ${e.message}", e)
             }
         }
     }

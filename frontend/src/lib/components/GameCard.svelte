@@ -81,12 +81,16 @@
 	<div class="flex items-stretch gap-3 px-4">
 		<!-- left: game label + home player + away player + sets -->
 		<div class="flex min-w-0 flex-1 flex-col gap-2">
-			<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-				{$_('match.game_label', { values: { number: game.orderInMatch } })} · {game.gameType ===
-				'SINGLES'
-					? $_('match.singles')
-					: $_('match.doubles')}
-			</p>
+			<div
+				class="flex items-center gap-1.5 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
+			>
+				<span>{$_('match.game_label', { values: { number: game.orderInMatch } })}</span>
+				<Separator
+					orientation="vertical"
+					class="bg-muted-foreground/40 data-[orientation=vertical]:h-2.5"
+				/>
+				<span>{game.gameType === 'SINGLES' ? $_('match.singles') : $_('match.doubles')}</span>
+			</div>
 
 			{@render gameSide(
 				{

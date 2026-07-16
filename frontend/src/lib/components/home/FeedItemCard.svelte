@@ -2,6 +2,7 @@
 	import type { FeedItem } from './feed-types';
 	import { cn, classificationColors } from '$lib/utils';
 	import { relativeTime } from '$lib/date';
+	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { _, locale } from 'svelte-i18n';
 	import {
 		UserIcon,
@@ -86,7 +87,7 @@
 			case 'group_match':
 				return `${i.homeTeam} ${i.score} ${i.awayTeam}`;
 			case 'upcoming_match':
-				return `${$_('feed.upcoming')} · ${i.homeTeam} ${$_('feed.vs')} ${i.awayTeam}`;
+				return `${i.homeTeam} ${$_('feed.vs')} ${i.awayTeam}`;
 		}
 	}
 
@@ -104,6 +105,7 @@
 	const badge = $derived(getBadge(item));
 	const description = $derived(getDescription(item));
 	const timestamp = $derived(displayTime(item));
+	const isUpcoming = $derived(item.kind === 'upcoming_match');
 </script>
 
 <a
@@ -122,7 +124,16 @@
 				<p class="shrink-0 text-xs text-muted-foreground">{timestamp}</p>
 			{/if}
 		</div>
-		<p class="truncate text-xs text-muted-foreground">{description}</p>
+		<p class="flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground">
+			{#if isUpcoming}
+				<span class="shrink-0">{$_('feed.upcoming')}</span>
+				<Separator
+					orientation="vertical"
+					class="bg-muted-foreground/40 data-[orientation=vertical]:h-2.5"
+				/>
+			{/if}
+			<span class="truncate">{description}</span>
+		</p>
 	</div>
 
 	<!-- Right: event type badge -->

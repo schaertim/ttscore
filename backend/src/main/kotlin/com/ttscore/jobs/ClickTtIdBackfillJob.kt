@@ -22,25 +22,27 @@ class ClickTtIdBackfillJob(
         var totalPlayers = 0
         var totalClubs = 0
 
-        // Wide range to cover all Swiss clubs — most IDs are misses.
-        val clubIdRange = 33000..35000
+        // Discover the real club IDs from STT's own regional club-search pages rather than
+        // brute-forcing a numeric range. click-tt assigns club IDs in per-region bands that don't
+        // fit a single contiguous range (e.g. Bern/Mittelland is in the 50000s, Nordwestschweiz in
+        // the 60000s), so a range scan silently missed entire federations.
+        val clubIds = fetchAllClubIds()
+        logger.info("ClickTtIdBackfillJob: ${clubIds.size} clubs listed across ${REGION_CODES.size} regions")
 
-        logger.info("ClickTtIdBackfillJob: scanning ${clubIdRange.count()} club IDs")
-
-        // Stage 1 — probe every id concurrently on the MALE page alone; invalid club ids won't
-        // have "Lizenzierte Spieler". Cheapest possible filter before the (rarer) FEMALE fetch.
+        // Stage 1 — fetch each listed club's MALE roster concurrently. The "Lizenzierte Spieler"
+        // guard drops the rare dead/redirecting id. Returns the html so Stage 2 doesn't refetch it.
         val hits =
-            clubIdRange.toList().mapConcurrent(SCRAPE_CONCURRENCY) { clickttClubId ->
+            clubIds.mapConcurrent(SCRAPE_CONCURRENCY) { clickttClubId ->
                 try {
                     val maleHtml = client.fetchClubMembersPage(clickttClubId, "MALE")
                     if (maleHtml.contains("Lizenzierte Spieler")) clickttClubId to maleHtml else null
                 } catch (e: Exception) {
-                    logger.error("  Error probing club ID $clickttClubId", e)
+                    logger.error("  Error fetching roster for club ID $clickttClubId", e)
                     null
                 }
             }.filterNotNull()
 
-        logger.info("ClickTtIdBackfillJob: ${hits.size} real clubs found — fetching rosters")
+        logger.info("ClickTtIdBackfillJob: ${hits.size} club rosters fetched")
 
         // Stage 2 — real clubs only: fetch the FEMALE page concurrently too, parse both.
         val clubs =
@@ -116,6 +118,17 @@ class ClickTtIdBackfillJob(
         logger.info("ClickTtIdBackfillJob complete — $totalPlayers players and $totalClubs clubs linked")
     }
 
+    /** Collects every click-tt club ID from the eight regional STT club-search listings. */
+    private suspend fun fetchAllClubIds(): List<Int> =
+        REGION_CODES.flatMap { region ->
+            try {
+                parser.parseClubSearchPage(client.fetchClubSearchPage(region))
+            } catch (e: Exception) {
+                logger.error("  Error fetching club search page for region $region", e)
+                emptyList()
+            }
+        }.distinct()
+
     private data class ClubHit(
         val clickttClubId: Int,
         val malePage: ClickTTClubPage,
@@ -123,6 +136,9 @@ class ClickTtIdBackfillJob(
     )
 
     companion object {
+        // STT's eight regional sub-federations, as used by clubSearch?searchPattern=…
+        private val REGION_CODES = (1..8).map { "CH.%02d".format(it) }
+
         fun create(): ClickTtIdBackfillJob {
             val client = ClickTTClient()
             val parser = ClickTTParser()

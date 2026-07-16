@@ -1408,6 +1408,19 @@ object PlayerService {
     }
 
     /**
+     * Every click-tt person ID already linked to a player row. Used to keep a bulk relink from
+     * reassigning an id that another row already holds — a unique-constraint violation would
+     * otherwise abort the whole batch update.
+     */
+    suspend fun getAssignedClickTtIds(): Set<Int> =
+        dbQuery {
+            Players.select(Players.clickttId)
+                .where { Players.clickttId.isNotNull() }
+                .mapNotNull { it[Players.clickttId] }
+                .toSet()
+        }
+
+    /**
      * Phase A of the backfill: for each club member whose licence already exists in the DB,
      * writes the click-tt person ID, canonical name, and registration metadata.
      */

@@ -4,6 +4,7 @@
 	import { api } from '$lib/api';
 	import SeasonSelect from '$lib/components/SeasonSelect.svelte';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
+	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import PageTitle from '$lib/components/PageTitle.svelte';
 	import {
@@ -138,19 +139,30 @@
 										<div class="min-w-0 flex-1">
 											<p class="truncate text-sm font-semibold">{group.name}</p>
 											{#if group.teamCount > 0 || group.totalRounds > 0}
-												<p
-													class="mt-1 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
+												<div
+													class="mt-1 flex items-center gap-1.5 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
 												>
-													{#if group.teamCount > 0}{$_('leagues.teams', {
-															values: { count: group.teamCount }
-														})}{/if}
-													{#if group.teamCount > 0 && group.totalRounds > 0}
-														&nbsp;·&nbsp;
+													{#if group.teamCount > 0}
+														<span
+															>{$_('leagues.teams', {
+																values: { count: group.teamCount }
+															})}</span
+														>
 													{/if}
-													{#if group.totalRounds > 0}{$_('leagues.round', {
-															values: { played: group.roundsPlayed, total: group.totalRounds }
-														})}{/if}
-												</p>
+													{#if group.teamCount > 0 && group.totalRounds > 0}
+														<Separator
+															orientation="vertical"
+															class="bg-muted-foreground/40 data-[orientation=vertical]:h-2.5"
+														/>
+													{/if}
+													{#if group.totalRounds > 0}
+														<span
+															>{$_('leagues.round', {
+																values: { played: group.roundsPlayed, total: group.totalRounds }
+															})}</span
+														>
+													{/if}
+												</div>
 											{/if}
 										</div>
 										<CaretRightIcon

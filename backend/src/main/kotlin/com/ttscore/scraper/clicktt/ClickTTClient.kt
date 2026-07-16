@@ -58,6 +58,35 @@ class ClickTTClient {
     }
 
     /**
+     * Fetches a regional club-search listing page. [searchPattern] is one of STT's eight
+     * sub-federation region codes ("CH.01".."CH.08"); the page lists every club in that region
+     * with its click-tt club ID — the authoritative source for club discovery.
+     */
+    suspend fun fetchClubSearchPage(searchPattern: String): String =
+        fetchWithRetry("$baseUrl/clubSearch?federation=STT&searchPattern=$searchPattern")
+
+    /**
+     * Fetches the empty Elo-Filter search form. Its pre-selected ranking date is the current
+     * monthly ranking — the date the licence search must be pinned to.
+     */
+    suspend fun fetchEloFilterForm(): String =
+        fetchWithRetry("$baseUrl/eloFilter?federation=STT")
+
+    /**
+     * Runs an Elo-Filter search by licence number. Unlike the club roster pages this covers the
+     * full ranking history, so it also finds players whose licence has since lapsed. Returns the
+     * results page (one row, or an empty table when the licence is unknown to click-tt).
+     */
+    suspend fun fetchEloFilterByLicence(
+        licenceNr: String,
+        rankingDate: String,
+    ): String =
+        fetchWithRetry(
+            "$baseUrl/eloFilter?federation=STT&licenceNr=$licenceNr" +
+                "&rankingDate=$rankingDate&sex=WONoSelectionString&eloFilter=Suchen",
+        )
+
+    /**
      * Fetches the league overview page listing all groups for a championship.
      * championship format: "{FEDERATION} {YY}/{YY}", e.g. "MTTV 25/26"
      */
