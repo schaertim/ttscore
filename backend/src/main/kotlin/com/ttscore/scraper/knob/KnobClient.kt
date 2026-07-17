@@ -4,7 +4,10 @@ import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.submitForm
 import io.ktor.client.statement.*
+import io.ktor.http.Parameters
+import io.ktor.http.parameters
 import kotlinx.coroutines.delay
 import org.slf4j.LoggerFactory
 
@@ -61,6 +64,42 @@ class KnobClient {
      * is on a women's ladder for women's-only divisions, but this column never is.
      */
     suspend fun fetchPlayerProfile(knobId: Int): String = fetchWithRetry("$baseUrl?gid=$knobId")
+
+    /**
+     * knob's player search, keyed by licence number. This is the ONLY page that maps a licence to
+     * its player id(s) (`gid`): the licence registry has no gid, and match/profile pages have no
+     * licence. A person may span several gids over time — the search returns all of them, which is
+     * how we both attach a licence to the right knob player and dedupe multi-gid rows. Needs no
+     * session/cookie: a bare POST works.
+     */
+    suspend fun searchByLicence(licence: String): String =
+        submitWithRetry(
+            "$baseUrl?search",
+            parameters {
+                append("f_searchname", "")
+                append("f_searchvorname", "")
+                append("f_searchliz", licence)
+                append("btn_doSearch", "Suchen")
+            },
+        )
+
+    private suspend fun submitWithRetry(
+        url: String,
+        form: Parameters,
+        maxAttempts: Int = 3,
+    ): String {
+        var lastException: Exception? = null
+        repeat(maxAttempts) { attempt ->
+            try {
+                return client.submitForm(url = url, formParameters = form).bodyAsText(Charsets.ISO_8859_1)
+            } catch (e: Exception) {
+                lastException = e
+                logger.warn("Search attempt ${attempt + 1} failed for $url: ${e.message}")
+                delay(500L * (attempt + 1))
+            }
+        }
+        throw lastException!!
+    }
 
     private suspend fun fetchWithRetry(
         url: String,

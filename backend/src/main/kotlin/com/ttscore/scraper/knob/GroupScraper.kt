@@ -252,10 +252,12 @@ class GroupScraper(
             // to derive the club name. e.g. "Burgdorf 1" → "Burgdorf", "Young Stars ZH" → "Young Stars ZH"
             val cleanClubName = team.name.replace(Regex("""\s+(\d+|[IVX]+|[a-zA-Z])$"""), "").trim()
 
-            // knob_id was removed from the club table in V2 — look up by name only
-            Clubs.insertIgnore {
-                it[Clubs.name] = cleanClubName
-            }
+            // Resolve the club by name. knob's `clubid` looks like a stable key but is only unique
+            // *within a federation* — the same number is a different club in another region (e.g.
+            // clubid 112 = Düdingen in MTTV and Le Locle elsewhere), and STT's national leagues mix
+            // regions, so keying on it globally merged unrelated clubs. Names don't merge distinct
+            // clubs; the click-tt backfill later overwrites them with click-tt's spelling.
+            Clubs.insertIgnore { it[Clubs.name] = cleanClubName }
             val clubId =
                 Clubs.select(Clubs.id)
                     .where { Clubs.name eq cleanClubName }

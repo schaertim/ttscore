@@ -9,6 +9,7 @@ import com.ttscore.util.toUuidOrNull
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -1531,24 +1532,149 @@ object PlayerService {
     }
 
     /**
-     * Finds the club that the majority of the given licensed players belong to.
+     * Finds the club that the most of the given licensed players belong to.
      * Used to match a click-tt club ID to an existing club row scraped from knob.
+     *
+     * Counts *distinct players* per club, not player_season rows: a player_season spans a
+     * player's entire career, so counting rows lets a handful of transferees with long
+     * histories elsewhere (or a defunct predecessor club) outvote the roster's real home club.
+     * One vote per person keeps the winner the club these people actually belong to.
      */
     suspend fun findClubIdByLicences(licences: List<String>): UUID? {
         if (licences.isEmpty()) return null
         return dbQuery {
-            val clubCount = Clubs.id.count()
+            val playerCount = Players.id.countDistinct()
             Players
                 .innerJoin(PlayerSeasons, { Players.id }, { PlayerSeasons.playerId })
                 .innerJoin(Teams, { PlayerSeasons.teamId }, { Teams.id })
                 .innerJoin(Clubs, { Teams.clubId }, { Clubs.id })
-                .select(Clubs.id, clubCount)
+                .select(Clubs.id, playerCount)
                 .where { Players.licenceNr inList licences }
                 .groupBy(Clubs.id)
-                .orderBy(clubCount to SortOrder.DESC)
+                .orderBy(playerCount to SortOrder.DESC)
                 .limit(1)
                 .firstOrNull()
                 ?.get(Clubs.id)
+        }
+    }
+
+    data class ReconcileOutcome(val merged: Int, val stamped: Boolean)
+
+    /** Every distinct licence number currently stored on a player row. */
+    suspend fun distinctLicences(): List<String> =
+        dbQuery {
+            Players.select(Players.licenceNr)
+                .where { Players.licenceNr.isNotNull() }
+                .mapNotNull { it[Players.licenceNr] }
+                .distinct()
+        }
+
+    /**
+     * Reconciles all player rows for one person, identified by [licence] → [gids] (from knob's
+     * licence search). Collapses every row that is this person — any row carrying one of the gids,
+     * or carrying the licence — into a single canonical row, repointing the gameplay / classification
+     * / elo / game / user-claim foreign keys, then stamps the knob id + licence onto it. Idempotent:
+     * on already-clean data it finds one row and changes nothing.
+     */
+    suspend fun reconcileLicence(
+        licence: String,
+        gids: List<Int>,
+    ): ReconcileOutcome =
+        dbQuery {
+            if (gids.isEmpty()) return@dbQuery ReconcileOutcome(0, false)
+
+            val rows =
+                Players.select(
+                    Players.id, Players.knobId, Players.licenceNr, Players.clickttId,
+                    Players.fullName, Players.sex, Players.category, Players.nationality,
+                ).where { (Players.knobId inList gids) or (Players.licenceNr eq licence) }
+                    .toList()
+            if (rows.isEmpty()) return@dbQuery ReconcileOutcome(0, false)
+
+            // Keep the knob row (it holds the match history) as canonical — lowest gid for a stable
+            // choice across re-runs. If none has a knob id (a click-tt-only row whose gid we never
+            // scraped), that row itself is canonical and gets the gid stamped below.
+            val canonical =
+                rows.filter { it[Players.knobId] != null }.minByOrNull { it[Players.knobId]!! }
+                    ?: rows.first()
+            val canonicalId = canonical[Players.id]
+            val dups = rows.filter { it[Players.id] != canonicalId }
+
+            for (d in dups) mergePlayerInto(canonicalId, d)
+
+            // Ensure the survivor carries the identity. A still-null knob id here means none of the
+            // gids exist in our DB (else that row would have been canonical), so gids.min() is free.
+            val after =
+                Players.select(Players.knobId, Players.licenceNr)
+                    .where { Players.id eq canonicalId }.first()
+            val needKnob = after[Players.knobId] == null
+            val needLic = after[Players.licenceNr] == null
+            if (needKnob || needLic) {
+                Players.update({ Players.id eq canonicalId }) {
+                    if (needKnob) it[Players.knobId] = gids.min()
+                    if (needLic) it[Players.licenceNr] = licence
+                }
+            }
+            ReconcileOutcome(merged = dups.size, stamped = needKnob && dups.isEmpty())
+        }
+
+    /** Folds the duplicate player row into the canonical one, then deletes it. Caller supplies the
+     *  dup's already-selected identity columns. Must run inside a transaction. */
+    private fun mergePlayerInto(
+        canonicalId: UUID,
+        dup: ResultRow,
+    ) {
+        val dupId = dup[Players.id]
+
+        // Repoint every foreign key that references the duplicate.
+        PlayerSeasons.update({ PlayerSeasons.playerId eq dupId }) { it[PlayerSeasons.playerId] = canonicalId }
+        PlayerElos.update({ PlayerElos.playerId eq dupId }) { it[PlayerElos.playerId] = canonicalId }
+        // player_classification is UNIQUE(player_id, season_id): drop dup rows for seasons the
+        // canonical already covers, then move the rest.
+        val canonSeasons =
+            PlayerClassifications.select(PlayerClassifications.seasonId)
+                .where { PlayerClassifications.playerId eq canonicalId }
+                .map { it[PlayerClassifications.seasonId] }
+        if (canonSeasons.isNotEmpty()) {
+            PlayerClassifications.deleteWhere {
+                (PlayerClassifications.playerId eq dupId) and (PlayerClassifications.seasonId inList canonSeasons)
+            }
+        }
+        PlayerClassifications.update({ PlayerClassifications.playerId eq dupId }) {
+            it[PlayerClassifications.playerId] = canonicalId
+        }
+        Games.update({ Games.homePlayer1Id eq dupId }) { it[Games.homePlayer1Id] = canonicalId }
+        Games.update({ Games.homePlayer2Id eq dupId }) { it[Games.homePlayer2Id] = canonicalId }
+        Games.update({ Games.awayPlayer1Id eq dupId }) { it[Games.awayPlayer1Id] = canonicalId }
+        Games.update({ Games.awayPlayer2Id eq dupId }) { it[Games.awayPlayer2Id] = canonicalId }
+        UserProfiles.update({ UserProfiles.homePlayerId eq dupId }) { it[UserProfiles.homePlayerId] = canonicalId }
+
+        // Delete the dup first so its unique ids (knob/licence/clicktt) free up, then let the
+        // canonical adopt whatever identity/metadata it was missing.
+        val dupKnob = dup[Players.knobId]
+        val dupLic = dup[Players.licenceNr]
+        val dupCtt = dup[Players.clickttId]
+        val dupName = dup[Players.fullName]
+        val dupSex = dup[Players.sex]
+        val dupCat = dup[Players.category]
+        val dupNat = dup[Players.nationality]
+        Players.deleteWhere { Players.id eq dupId }
+
+        val canon =
+            Players.select(
+                Players.knobId, Players.licenceNr, Players.clickttId,
+                Players.fullName, Players.sex, Players.category, Players.nationality,
+            ).where { Players.id eq canonicalId }.first()
+        Players.update({ Players.id eq canonicalId }) {
+            if (canon[Players.knobId] == null && dupKnob != null) it[Players.knobId] = dupKnob
+            if (canon[Players.licenceNr] == null && dupLic != null) it[Players.licenceNr] = dupLic
+            if (canon[Players.clickttId] == null && dupCtt != null) it[Players.clickttId] = dupCtt
+            // click-tt metadata is richer than knob's — take it where the canonical lacks it.
+            if (canon[Players.sex] == null && dupSex != null) it[Players.sex] = dupSex
+            if (canon[Players.category] == null && dupCat != null) it[Players.category] = dupCat
+            if (canon[Players.nationality] == null && dupNat != null) it[Players.nationality] = dupNat
+            val cn = canon[Players.fullName]
+            if ((cn.isBlank() || cn == "Unknown") && dupName.isNotBlank()) it[Players.fullName] = dupName
         }
     }
 

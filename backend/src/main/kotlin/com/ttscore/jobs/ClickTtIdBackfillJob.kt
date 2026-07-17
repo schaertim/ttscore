@@ -96,6 +96,9 @@ class ClickTtIdBackfillJob(
 
                 val ourClubId = PlayerService.findClubIdByLicences(licences)
                 if (ourClubId != null && clubName != null) {
+                    // Link the click-tt id and adopt click-tt's spelling as the canonical club
+                    // name. click-tt is the naming authority; the knob scraper only dedupes rows
+                    // (by knob_id) and leaves names alone, so it won't clobber this on re-scrape.
                     dbQuery {
                         Clubs.update({ Clubs.id eq ourClubId }) {
                             it[Clubs.clickttId] = clickttClubId

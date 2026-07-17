@@ -506,6 +506,16 @@ class KnobParser {
             }
     }
 
+    /**
+     * Distinct player ids (`gid`) from a licence-search result. One licence resolves to one person,
+     * but knob may have assigned that person several gids over the years — all appear here.
+     */
+    fun parseSearchGids(html: String): List<Int> =
+        Jsoup.parse(html)
+            .select("a[href*=gid=]")
+            .mapNotNull { extractParam(it.attr("href"), "gid")?.toIntOrNull() }
+            .distinct()
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
