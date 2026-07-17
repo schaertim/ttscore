@@ -131,6 +131,9 @@ export type Player = {
 	currentElo: number | null;
 	liveElo: number | null;
 	isSyncing: boolean;
+	/** False for knob-only players (no click-tt link): they never sync and have no ELO, so the
+	 *  client hides ELO-specific UI like the ELO history graph. */
+	clickttLinked: boolean;
 };
 
 export type EloEntry = {

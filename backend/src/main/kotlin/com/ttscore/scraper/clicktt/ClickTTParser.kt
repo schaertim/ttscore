@@ -237,60 +237,6 @@ class ClickTTParser {
     }
 
     /**
-     * Parses a club members page for one gender tab.
-     *
-     * Table columns: [Klassierung | Name | Lizenz-Nr. | Serie | NationalitÃ¤t]
-     *
-     * Names are returned in raw click-tt format ("Lastname, Firstname") so the
-     * storage layer can apply [clickTtNameToDb] uniformly.
-     */
-    fun parseClubPage(
-        html: String,
-        gender: String = "MALE",
-    ): ClickTTClubPage {
-        val doc = Jsoup.parse(html)
-        val members = mutableListOf<ClickTTClubMember>()
-
-        for (row in doc.select("table.result-set tbody tr")) {
-            val cells = row.select("td")
-            if (cells.size < 3) continue
-
-            val link = cells[1].select("a[href*='person=']").firstOrNull() ?: continue
-            val personId = link.attr("href").let { extractParam(it, "person") }?.toIntOrNull() ?: continue
-            // Raw "Lastname, Firstname" — no normalisation here; storage layer converts format
-            val fullName = link.text().trim().takeIf { it.isNotBlank() } ?: continue
-            val licence = cells[2].text().trim().takeIf { it.isNotBlank() } ?: continue
-            val serie = cells.getOrNull(3)?.text()?.trim()?.takeIf { it.isNotBlank() }
-            val nationality = cells.getOrNull(4)?.text()?.trim()?.takeIf { it.isNotBlank() }
-
-            members.add(
-                ClickTTClubMember(
-                    licence = licence,
-                    personId = personId,
-                    fullName = fullName,
-                    sex = gender,
-                    serie = serie,
-                    nationality = nationality,
-                ),
-            )
-        }
-
-        return ClickTTClubPage(clubName = parseClubName(doc), members = members)
-    }
-
-    /**
-     * Parses a regional club-search page (clubSearch?searchPattern=CH.0N) and returns the
-     * click-tt club IDs it lists. Each club is a link of the form `clubInfoDisplay?club=NNNNN`.
-     * The federation's own pseudo-club link is included too but is harmless — it simply won't
-     * match any of our clubs during the backfill.
-     */
-    fun parseClubSearchPage(html: String): List<Int> =
-        Jsoup.parse(html)
-            .select("a[href*='clubInfoDisplay']")
-            .mapNotNull { extractParam(it.attr("href"), "club")?.toIntOrNull() }
-            .distinct()
-
-    /**
      * Reads the ranking date pre-selected on the Elo-Filter form (`<option selected>`), which is
      * the current monthly ranking. Returns null if the form shape changed.
      */
@@ -300,13 +246,31 @@ class ClickTTParser {
             ?.attr("value")?.trim()?.takeIf { it.isNotBlank() }
 
     /**
-     * Returns the relative detail href (`eloFilter?…&ranking=NNN`) for the single result row of a
-     * licence search, or null when the search returned no player (empty results table).
+     * Parses every row of an Elo-Filter results page (`table.result-set`). A licence search yields
+     * at most one row; a name search may yield several namesakes. Only rows with a `ranking=` detail
+     * link are kept (skips header/empty rows).
+     *
+     * Columns: `Player | License-No. | Club | Elo-Wert | Platzierung | Elo-Klassierung |
+     * Elo-Klassierung Herren | Agecategory`. Name+href come from the Player cell's anchor; the club
+     * cell may be blank; the age-category is the last cell.
      */
-    fun parseEloFilterResultHref(html: String): String? =
+    fun parseEloFilterResultRows(html: String): List<EloFilterResultRow> =
         Jsoup.parse(html)
-            .selectFirst("table.result-set tbody tr td a[href*='ranking=']")
-            ?.attr("href")?.trim()?.takeIf { it.isNotBlank() }
+            .select("table.result-set tbody tr")
+            .mapNotNull { row ->
+                val cells = row.select("td")
+                if (cells.size < 3) return@mapNotNull null
+                val link = cells[0].selectFirst("a[href*='ranking=']") ?: return@mapNotNull null
+                val href = link.attr("href").trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                val name = link.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                EloFilterResultRow(
+                    name = name,
+                    licence = cells.getOrNull(1)?.text()?.trim()?.takeIf { it.isNotBlank() },
+                    club = cells.getOrNull(2)?.text()?.trim()?.takeIf { it.isNotBlank() },
+                    category = cells.lastOrNull()?.text()?.trim()?.takeIf { it.isNotBlank() },
+                    detailHref = href,
+                )
+            }
 
     /**
      * Extracts the click-tt person ID from an Elo-Filter detail page — it links to the player's
@@ -318,13 +282,15 @@ class ClickTTParser {
             ?.let { extractParam(it.attr("href"), "person") }
             ?.toIntOrNull()
 
-    private fun parseClubName(doc: Document): String? =
-        // The h1 contains "ClubName\nLizenzierte Spieler des Vereins" — strip the subtitle regardless
-        // of whether a <br> is present between them.
-        doc.selectFirst("div.content-section h1, h1.page-title, h1")
-            ?.text()?.trim()
-            ?.substringBefore("Lizenzierte Spieler")?.trim()
-            ?.takeIf { it.isNotBlank() }
+    /**
+     * Extracts the click-tt club ID from an Elo-Filter detail page — the `clubInfoDisplay?club=MMMMM`
+     * link next to the portrait link. Null when the detail page has no club (lapsed/edge-case player).
+     */
+    fun parseEloFilterClubId(html: String): Int? =
+        Jsoup.parse(html)
+            .selectFirst("a[href*='clubInfoDisplay'][href*='club=']")
+            ?.let { extractParam(it.attr("href"), "club") }
+            ?.toIntOrNull()
 
     private fun parseCurrentElo(doc: Document): Int? {
         // eloFilter page: info table has <td><b>Elo-Wert</b></td><td class="right">1016</td>

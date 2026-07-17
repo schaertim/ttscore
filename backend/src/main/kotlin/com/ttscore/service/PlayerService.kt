@@ -2,9 +2,9 @@
 
 import com.ttscore.database.*
 import com.ttscore.model.*
-import com.ttscore.scraper.clicktt.model.ClickTTClubMember
 import com.ttscore.util.accentFold
 import com.ttscore.util.clickTtNameToDb
+import com.ttscore.util.clubNamesSimilar
 import com.ttscore.util.toUuidOrNull
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.JoinType
@@ -24,7 +24,7 @@ object PlayerService {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
             val playerRow =
-                Players.select(Players.id, Players.fullName, Players.licenceNr, Players.category)
+                Players.select(Players.id, Players.fullName, Players.licenceNr, Players.category, Players.clickttId)
                     .where { Players.id eq uuid }
                     .firstOrNull() ?: return@dbQuery null
 
@@ -50,6 +50,7 @@ object PlayerService {
                 classification = ClassificationService.currentClasses(listOf(uuid))[uuid],
                 currentElo = currentElo,
                 liveElo = LiveEloService.liveEloFor(uuid, currentElo),
+                clickttLinked = playerRow[Players.clickttId] != null,
             )
         }
     }
@@ -1388,25 +1389,75 @@ object PlayerService {
                 .firstOrNull()
         }
 
-    suspend fun getPlayersMissingClickTtId(): List<Pair<UUID, String>> =
+    data class UnlinkedPlayer(
+        val id: UUID,
+        val fullName: String,
+        val licence: String?,
+    )
+
+    /** Unlinked players (no clicktt_id) that carry a licence — Pass 1 of the click-tt linker. */
+    suspend fun getUnlinkedPlayersWithLicence(): List<UnlinkedPlayer> =
         dbQuery {
-            Players.select(Players.id, Players.licenceNr)
-                .where {
-                    Players.clickttId.isNull() and Players.licenceNr.isNotNull()
-                }
-                .map { it[Players.id] to it[Players.licenceNr]!! }
+            Players.select(Players.id, Players.fullName, Players.licenceNr)
+                .where { Players.clickttId.isNull() and Players.licenceNr.isNotNull() }
+                .map { UnlinkedPlayer(it[Players.id], it[Players.fullName], it[Players.licenceNr]) }
         }
 
-    suspend fun updateClickTtIdsBatch(mappings: Map<String, Int>) {
-        if (mappings.isEmpty()) return
+    /** Unlinked players (no clicktt_id) with no licence — Pass 2, resolved via name search. */
+    suspend fun getUnlinkedPlayersWithoutLicence(): List<UnlinkedPlayer> =
         dbQuery {
-            for ((licence, personId) in mappings) {
-                Players.update({ Players.licenceNr eq licence }) {
-                    it[Players.clickttId] = personId
-                }
-            }
+            Players.select(Players.id, Players.fullName, Players.licenceNr)
+                .where { Players.clickttId.isNull() and Players.licenceNr.isNull() }
+                .map { UnlinkedPlayer(it[Players.id], it[Players.fullName], null) }
         }
-    }
+
+    /** Outcome of the optional licence write in [updateClickTtLink], for the caller to log. */
+    enum class LicenceWriteResult { WRITTEN, UNCHANGED, CONFLICT }
+
+    /**
+     * Links a resolved click-tt identity onto one player row. Always adopts click-tt's spelling as
+     * the canonical name (converted to knob's "Lastname Firstname" storage format) — click-tt is the
+     * naming authority, so this scrubs knob's data-entry misspellings. Writes the age category when
+     * present. sex/nationality are left untouched (this flow never sees them).
+     *
+     * [licence] is written only when non-null AND not already held by another player row (the column
+     * is uniquely indexed) — used to backfill a missing licence or correct a wrong one after a
+     * name-search resolution. Returns which of those happened for the caller to log; a [CONFLICT]
+     * still links the click-tt id + name, only the licence is left as-is.
+     */
+    suspend fun updateClickTtLink(
+        playerId: UUID,
+        personId: Int,
+        clickTtName: String,
+        category: String?,
+        licence: String?,
+    ): LicenceWriteResult =
+        dbQuery {
+            val licenceResult =
+                if (licence == null) {
+                    LicenceWriteResult.UNCHANGED
+                } else {
+                    val current =
+                        Players.select(Players.licenceNr)
+                            .where { Players.id eq playerId }
+                            .firstOrNull()?.get(Players.licenceNr)
+                    when {
+                        current == licence -> LicenceWriteResult.UNCHANGED
+                        Players.select(Players.id)
+                            .where { (Players.licenceNr eq licence) and (Players.id neq playerId) }
+                            .any() -> LicenceWriteResult.CONFLICT
+                        else -> LicenceWriteResult.WRITTEN
+                    }
+                }
+
+            Players.update({ Players.id eq playerId }) {
+                it[Players.clickttId] = personId
+                it[Players.fullName] = clickTtNameToDb(clickTtName)
+                if (category != null) it[Players.category] = category
+                if (licenceResult == LicenceWriteResult.WRITTEN) it[Players.licenceNr] = licence
+            }
+            licenceResult
+        }
 
     /**
      * Every click-tt person ID already linked to a player row. Used to keep a bulk relink from
@@ -1421,142 +1472,76 @@ object PlayerService {
                 .toSet()
         }
 
-    /**
-     * Phase A of the backfill: for each club member whose licence already exists in the DB,
-     * writes the click-tt person ID, canonical name, and registration metadata.
-     */
-    suspend fun updateClickTtDataBatch(members: List<ClickTTClubMember>) {
-        if (members.isEmpty()) return
-        dbQuery {
-            for (member in members) {
-                Players.update({ Players.licenceNr eq member.licence }) {
-                    it[Players.clickttId] = member.personId
-                    // Convert "Lastname, Firstname" → "Lastname Firstname" to match knob storage format
-                    it[Players.fullName] = clickTtNameToDb(member.fullName)
-                    it[Players.sex] = member.sex
-                    it[Players.category] = member.serie
-                    it[Players.nationality] = member.nationality
-                }
-            }
-        }
-    }
+    /** Outcome of [linkResolvedClub], for the caller to log. */
+    enum class ClubLinkResult { LINKED, ALREADY_LINKED, NO_NAME_MATCH, AMBIGUOUS, CONFLICT }
 
     /**
-     * Returns the subset of the given licence numbers that already exist in the DB.
-     * Used to identify which club members couldn't be matched by licence so name+club
-     * fallback matching can be attempted for the remainder.
+     * Knob club names (via player_season → team → club) for each of [playerIds], deduped. Loaded in
+     * one query so the concurrent resolve stage can disambiguate Pass-2 namesakes without a per-player
+     * round-trip. Players with no season simply have no entry.
      */
-    suspend fun findLicencesInDb(licences: Collection<String>): Set<String> =
-        dbQuery {
-            Players.select(Players.licenceNr)
-                .where { Players.licenceNr inList licences.toList() }
-                .mapNotNull { it[Players.licenceNr] }
-                .toSet()
-        }
-
-    /**
-     * Phase C of the backfill: inserts player rows for members that couldn't be matched by
-     * licence or name+club. Uses INSERT IGNORE so members already linked by Phase B
-     * (whose clicktt_id now lives on an existing row) are silently skipped.
-     */
-    suspend fun insertUnmatchedClickTtMembers(members: List<ClickTTClubMember>) {
-        if (members.isEmpty()) return
-        dbQuery {
-            for (member in members) {
-                Players.insertIgnore {
-                    it[Players.clickttId] = member.personId
-                    it[Players.licenceNr] = member.licence
-                    it[Players.fullName] = clickTtNameToDb(member.fullName)
-                    it[Players.sex] = member.sex
-                    it[Players.category] = member.serie
-                    it[Players.nationality] = member.nationality
-                }
-            }
-        }
-    }
-
-    /**
-     * Phase B of the backfill: for club members that couldn't be matched by licence,
-     * attempts a name + club fallback — accent-folds both sides and checks that the player
-     * has a player_season record at a club whose name fuzzy-matches [clickTtClubName].
-     * On a unique match the player gains the licence, click-tt ID, canonical name, and metadata.
-     */
-    suspend fun matchAndLinkByNameAndClub(
-        members: List<ClickTTClubMember>,
-        clickTtClubName: String,
-    ) = dbQuery {
-        val foldedClub = accentFold(clickTtClubName)
-
-        // Find DB clubs whose folded name overlaps with the click-tt club name
-        val matchingClubIds =
-            Clubs.select(Clubs.id, Clubs.name)
-                .toList()
-                .filter { row ->
-                    val fc = accentFold(row[Clubs.name])
-                    fc.contains(foldedClub) || foldedClub.contains(fc)
-                }
-                .map { it[Clubs.id] }
-
-        if (matchingClubIds.isEmpty()) return@dbQuery
-
-        // Load players at those clubs that still have no licence and no click-tt ID
-        val playersAtClub =
-            (Players innerJoin PlayerSeasons innerJoin Teams innerJoin Clubs)
-                .select(Players.id, Players.fullName)
-                .where {
-                    (Clubs.id inList matchingClubIds) and
-                        Players.licenceNr.isNull() and
-                        Players.clickttId.isNull()
-                }
-                .distinctBy { it[Players.id] }
-
-        // Index by folded name for O(1) lookup
-        val byFolded = playersAtClub.groupBy { accentFold(it[Players.fullName]) }
-
-        for (member in members) {
-            val dbName = clickTtNameToDb(member.fullName)
-            val candidates = byFolded[accentFold(dbName)] ?: continue
-
-            if (candidates.size == 1) {
-                Players.update({ Players.id eq candidates[0][Players.id] }) {
-                    it[Players.licenceNr] = member.licence
-                    it[Players.clickttId] = member.personId
-                    it[Players.fullName] = dbName
-                    it[Players.sex] = member.sex
-                    it[Players.category] = member.serie
-                    it[Players.nationality] = member.nationality
-                }
-            }
-            // Multiple candidates with same folded name at same club → ambiguous, skip
-        }
-    }
-
-    /**
-     * Finds the club that the most of the given licensed players belong to.
-     * Used to match a click-tt club ID to an existing club row scraped from knob.
-     *
-     * Counts *distinct players* per club, not player_season rows: a player_season spans a
-     * player's entire career, so counting rows lets a handful of transferees with long
-     * histories elsewhere (or a defunct predecessor club) outvote the roster's real home club.
-     * One vote per person keeps the winner the club these people actually belong to.
-     */
-    suspend fun findClubIdByLicences(licences: List<String>): UUID? {
-        if (licences.isEmpty()) return null
+    suspend fun getKnobClubNamesFor(playerIds: Collection<UUID>): Map<UUID, List<String>> {
+        if (playerIds.isEmpty()) return emptyMap()
         return dbQuery {
-            val playerCount = Players.id.countDistinct()
-            Players
-                .innerJoin(PlayerSeasons, { Players.id }, { PlayerSeasons.playerId })
-                .innerJoin(Teams, { PlayerSeasons.teamId }, { Teams.id })
-                .innerJoin(Clubs, { Teams.clubId }, { Clubs.id })
-                .select(Clubs.id, playerCount)
-                .where { Players.licenceNr inList licences }
-                .groupBy(Clubs.id)
-                .orderBy(playerCount to SortOrder.DESC)
-                .limit(1)
-                .firstOrNull()
-                ?.get(Clubs.id)
+            (Players innerJoin PlayerSeasons innerJoin Teams innerJoin Clubs)
+                .select(Players.id, Clubs.name)
+                .where { Players.id inList playerIds.toList() }
+                .map { it[Players.id] to it[Clubs.name] }
+                .groupBy({ it.first }, { it.second })
+                .mapValues { (_, names) -> names.distinct() }
         }
     }
+
+    /**
+     * Links a resolved click-tt club onto the knob club the player belongs to. Picks the player's
+     * knob club whose name [clubNamesSimilar] the click-tt club name, then adopts click-tt's name +
+     * id as canonical (click-tt is the naming authority, like the old roster path). Returns a
+     * [ClubLinkResult] for the caller to log:
+     *  - NO_NAME_MATCH / AMBIGUOUS — 0 or >1 of the player's clubs match by name; skip.
+     *  - ALREADY_LINKED — the chosen club already carries this click-tt id (idempotent no-op).
+     *  - CONFLICT — the chosen club already has a *different* click-tt id, or this click-tt id is
+     *    already held by another knob club; left untouched (a genuine data disagreement to inspect).
+     *  - LINKED — id + canonical name written.
+     */
+    suspend fun linkResolvedClub(
+        playerId: UUID,
+        clickTtClubId: Int,
+        clickTtClubName: String,
+    ): ClubLinkResult =
+        dbQuery {
+            val playerClubs =
+                (Players innerJoin PlayerSeasons innerJoin Teams innerJoin Clubs)
+                    .select(Clubs.id, Clubs.name, Clubs.clickttId)
+                    .where { Players.id eq playerId }
+                    .distinctBy { it[Clubs.id] }
+
+            val matches = playerClubs.filter { clubNamesSimilar(it[Clubs.name], clickTtClubName) }
+            val chosen =
+                when (matches.size) {
+                    0 -> return@dbQuery ClubLinkResult.NO_NAME_MATCH
+                    1 -> matches.single()
+                    else -> return@dbQuery ClubLinkResult.AMBIGUOUS
+                }
+
+            val chosenId = chosen[Clubs.id]
+            val existing = chosen[Clubs.clickttId]
+            if (existing == clickTtClubId) return@dbQuery ClubLinkResult.ALREADY_LINKED
+            if (existing != null) return@dbQuery ClubLinkResult.CONFLICT
+
+            // clicktt_id is globally unique on our side — if another knob club already claims it,
+            // that's a disagreement to surface, not an id to silently steal.
+            val heldElsewhere =
+                Clubs.select(Clubs.id)
+                    .where { (Clubs.clickttId eq clickTtClubId) and (Clubs.id neq chosenId) }
+                    .any()
+            if (heldElsewhere) return@dbQuery ClubLinkResult.CONFLICT
+
+            Clubs.update({ Clubs.id eq chosenId }) {
+                it[Clubs.clickttId] = clickTtClubId
+                it[Clubs.name] = clickTtClubName
+            }
+            ClubLinkResult.LINKED
+        }
 
     data class ReconcileOutcome(val merged: Int, val stamped: Boolean)
 
@@ -1665,16 +1650,30 @@ object PlayerService {
                 Players.knobId, Players.licenceNr, Players.clickttId,
                 Players.fullName, Players.sex, Players.category, Players.nationality,
             ).where { Players.id eq canonicalId }.first()
-        Players.update({ Players.id eq canonicalId }) {
-            if (canon[Players.knobId] == null && dupKnob != null) it[Players.knobId] = dupKnob
-            if (canon[Players.licenceNr] == null && dupLic != null) it[Players.licenceNr] = dupLic
-            if (canon[Players.clickttId] == null && dupCtt != null) it[Players.clickttId] = dupCtt
-            // click-tt metadata is richer than knob's — take it where the canonical lacks it.
-            if (canon[Players.sex] == null && dupSex != null) it[Players.sex] = dupSex
-            if (canon[Players.category] == null && dupCat != null) it[Players.category] = dupCat
-            if (canon[Players.nationality] == null && dupNat != null) it[Players.nationality] = dupNat
-            val cn = canon[Players.fullName]
-            if ((cn.isBlank() || cn == "Unknown") && dupName.isNotBlank()) it[Players.fullName] = dupName
+
+        // Which identity/metadata columns the canonical lacks and the dup can supply.
+        val takeKnob = canon[Players.knobId] == null && dupKnob != null
+        val takeLic = canon[Players.licenceNr] == null && dupLic != null
+        val takeCtt = canon[Players.clickttId] == null && dupCtt != null
+        val takeSex = canon[Players.sex] == null && dupSex != null
+        val takeCat = canon[Players.category] == null && dupCat != null
+        val takeNat = canon[Players.nationality] == null && dupNat != null
+        val cn = canon[Players.fullName]
+        val takeName = (cn.isBlank() || cn == "Unknown") && dupName.isNotBlank()
+
+        // When the canonical already has everything the dup could contribute, there's nothing to
+        // set — skip the update, else Exposed throws "no fields to update" and rolls back the merge.
+        if (takeKnob || takeLic || takeCtt || takeSex || takeCat || takeNat || takeName) {
+            Players.update({ Players.id eq canonicalId }) {
+                if (takeKnob) it[Players.knobId] = dupKnob
+                if (takeLic) it[Players.licenceNr] = dupLic
+                if (takeCtt) it[Players.clickttId] = dupCtt
+                // click-tt metadata is richer than knob's — take it where the canonical lacks it.
+                if (takeSex) it[Players.sex] = dupSex
+                if (takeCat) it[Players.category] = dupCat
+                if (takeNat) it[Players.nationality] = dupNat
+                if (takeName) it[Players.fullName] = dupName
+            }
         }
     }
 
@@ -1700,6 +1699,7 @@ object PlayerService {
         currentElo: Int? = null,
         liveElo: Int? = null,
         isSyncing: Boolean = false,
+        clickttLinked: Boolean = false,
     ) = PlayerResponse(
         id = this[Players.id].toString(),
         fullName = this[Players.fullName],
@@ -1712,5 +1712,6 @@ object PlayerService {
         currentElo = currentElo,
         liveElo = liveElo,
         isSyncing = isSyncing,
+        clickttLinked = clickttLinked,
     )
 }

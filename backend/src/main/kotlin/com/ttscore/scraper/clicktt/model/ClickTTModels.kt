@@ -16,22 +16,24 @@ data class ClickTTPlayerPortrait(
     val games: List<ClickTTGame>,
 )
 
-data class ClickTTClubMember(
-    val licence: String,
-    val personId: Int,
+/**
+ * One row of a click-tt Elo-Filter search result (`table.result-set`). A licence search returns at
+ * most one row; a name search can return several namesakes.
+ */
+data class EloFilterResultRow(
     /** Raw click-tt format: "Lastname, Firstname" */
-    val fullName: String,
-    /** "MALE" or "FEMALE" */
-    val sex: String,
-    /** STT age-category: "Aktive", "O40", "U19", … */
-    val serie: String?,
-    /** ISO 3-letter country code: "SUI", "GER", … */
-    val nationality: String?,
-)
-
-data class ClickTTClubPage(
-    val clubName: String?,
-    val members: List<ClickTTClubMember>,
+    val name: String,
+    /** License-No. column — may be blank/absent. */
+    val licence: String?,
+    /** Club column — plain text, may be blank for lapsed/edge-case players. */
+    val club: String?,
+    /** Agecategory column ("Active", "O40", …) → our `category`. */
+    val category: String?,
+    /**
+     * Relative detail href (`eloFilter?…&ranking=NNN`). Its `ranking=` id is a different id space
+     * from the click-tt person id — the href must be followed to reach the person/club ids.
+     */
+    val detailHref: String,
 )
 
 data class ParsedTournamentGame(

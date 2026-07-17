@@ -5,7 +5,7 @@ import com.ttscore.database.Groups
 import com.ttscore.database.PlayerSeasons
 import com.ttscore.database.Teams
 import com.ttscore.database.dbQuery
-import com.ttscore.util.accentFold
+import com.ttscore.util.clubNamesSimilar
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.innerJoin
@@ -62,7 +62,7 @@ class ClubDedupeJob {
             for (j in i + 1 until clubs.size) {
                 val a = clubs[i]
                 val b = clubs[j]
-                if (!namesSimilar(a.name, b.name)) continue
+                if (!clubNamesSimilar(a.name, b.name)) continue
                 if (a.seasons.any { it in b.seasons }) continue // coexist → different clubs
 
                 val shared = a.players.count { it in b.players }
@@ -141,15 +141,6 @@ class ClubDedupeJob {
         Teams.update({ Teams.clubId eq dupId }) { it[Teams.clubId] = canonicalId }
         Clubs.deleteWhere { Clubs.id eq dupId }
     }
-
-    /** Significant name tokens: accent-folded words of length ≥ 4 (drops region codes like "zh"). */
-    private fun sigTokens(name: String): Set<String> =
-        accentFold(name).split(Regex("[^a-z0-9]+")).filter { it.length >= 4 }.toSet()
-
-    private fun namesSimilar(
-        a: String,
-        b: String,
-    ): Boolean = sigTokens(a).any { it in sigTokens(b) }
 
     companion object {
         private const val MIN_OVERLAP = 0.5

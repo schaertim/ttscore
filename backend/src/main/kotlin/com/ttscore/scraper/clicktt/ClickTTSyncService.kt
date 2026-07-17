@@ -85,6 +85,12 @@ object ClickTTSyncService {
         seasonId: UUID,
         ignoreCooldown: Boolean = false,
     ) {
+        // Knob-only players (no click-tt id) have nothing to sync from — never attempt it, so a
+        // stray direct call to the endpoint doesn't burn a click-tt round trip or a cooldown slot.
+        if (PlayerService.getClickTtIdById(playerId) == null) {
+            logger.debug("Skipping sync for player $playerId — no click-tt id")
+            return
+        }
         if (!ignoreCooldown && isWithinCooldown(playerId)) {
             logger.debug("Skipping sync for player $playerId — within cooldown window")
             return

@@ -243,6 +243,12 @@ data class PlayerResponse(
     /** Up-to-date ELO including provisional deltas of matches not yet officially rated. */
     val liveElo: Int? = null,
     val isSyncing: Boolean = false,
+    /**
+     * Whether this player is linked to a click-tt identity. False for knob-only players (typically
+     * ones who stopped playing before click-tt existed): they can never sync and have no ELO, so the
+     * client hides ELO-specific UI (e.g. the ELO history graph) for them.
+     */
+    val clickttLinked: Boolean = false,
 )
 
 @Serializable

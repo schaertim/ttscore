@@ -3,7 +3,6 @@ package com.ttscore
 import com.ttscore.database.configureDatabase
 import com.ttscore.jobs.BackfillLedger
 import com.ttscore.jobs.ClickTtIdBackfillJob
-import com.ttscore.jobs.ClickTtReverseLookupJob
 import com.ttscore.jobs.ClubDedupeJob
 import com.ttscore.jobs.KnobPlayerReconcileJob
 import com.ttscore.jobs.MatchPollJob
@@ -39,8 +38,8 @@ fun Application.module() {
     val currentSeason = environment.config.property("scraper.currentSeason").getString()
 
     if (environment.config.property("jobs.enabled").getString().toBoolean()) {
-       runBackfill(currentSeason)
-       scheduleJobs(currentSeason)
+        runBackfill(currentSeason)
+        scheduleJobs(currentSeason)
     }
 }
 
@@ -64,7 +63,7 @@ private fun Application.runBackfill(currentSeason: String) {
                 BackfillScraper.create().run()
             }
             BackfillLedger.runOnce("clicktt-id-backfill") {
-                logger.info("Backfill — click-tt player/club id linking")
+                logger.info("Backfill — player-driven click-tt player/club id linking")
                 ClickTtIdBackfillJob.create().run()
             }
             BackfillLedger.runOnce("knob-player-reconcile") {
@@ -132,23 +131,16 @@ private fun Application.scheduleJobs(currentSeason: String) {
         }
     }
 
-    // ClickTtIdBackfillJob (roster-driven) then ClickTtReverseLookupJob (Elo-Filter, for players no
-    // longer on any club roster) — weekly, in sequence so the reverse pass only handles whatever the
-    // roster pass leaves unlinked. Both idempotent; independent try/catch so one can't skip the other.
+    // ClickTtIdBackfillJob (player-driven Elo-Filter linking) — weekly. Idempotent: only re-attempts
+    // players still missing a click-tt id, so the candidate set naturally shrinks as players link.
     launch {
         val idBackfill = ClickTtIdBackfillJob.create()
-        val reverseLookup = ClickTtReverseLookupJob.create()
         while (true) {
             delay(7 * 24 * 60 * 60 * 1000L)
             try {
                 idBackfill.run()
             } catch (e: Exception) {
                 logger.error("ClickTtIdBackfillJob failed: ${e.message}", e)
-            }
-            try {
-                reverseLookup.run()
-            } catch (e: Exception) {
-                logger.error("ClickTtReverseLookupJob failed: ${e.message}", e)
             }
         }
     }

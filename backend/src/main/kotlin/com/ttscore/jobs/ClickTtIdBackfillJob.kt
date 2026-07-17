@@ -1,147 +1,288 @@
-﻿package com.ttscore.jobs
+package com.ttscore.jobs
 
-import com.ttscore.database.Clubs
-import com.ttscore.database.dbQuery
 import com.ttscore.scraper.clicktt.ClickTTClient
 import com.ttscore.scraper.clicktt.ClickTTParser
-import com.ttscore.scraper.clicktt.model.ClickTTClubMember
-import com.ttscore.scraper.clicktt.model.ClickTTClubPage
+import com.ttscore.scraper.clicktt.model.EloFilterResultRow
 import com.ttscore.scraper.knob.SCRAPE_CONCURRENCY
 import com.ttscore.scraper.knob.mapConcurrent
 import com.ttscore.service.PlayerService
-import org.jetbrains.exposed.sql.update
+import com.ttscore.service.PlayerService.UnlinkedPlayer
+import com.ttscore.util.clubNamesSimilar
+import com.ttscore.util.knobNameSplitCandidates
+import com.ttscore.util.personNamesNearMatch
+import com.ttscore.util.personNamesSimilar
 import org.slf4j.LoggerFactory
+import java.util.UUID
 
+/**
+ * Player-driven click-tt linking. Drives off knob's own player list and resolves each unlinked
+ * player through click-tt's Elo-Filter search — which covers the full ranking history, not just
+ * current club rosters — so it also reaches players who have since lapsed or changed clubs (the
+ * structural blind spot of the old roster-crawl approach). Two passes:
+ *
+ *  - Pass 1 (players with a licence): search by licence number; the returned name is verified
+ *    against knob's stored name before any linking (a licence can resolve to different people across
+ *    the two systems). On a verified match the result row is followed to the detail page for the
+ *    real person id + click-tt club id.
+ *  - Pass 2 (players with no licence): search by name; a single verified candidate is resolved
+ *    directly, several namesakes are disambiguated by matching each candidate's club against the
+ *    player's knob club(s).
+ *
+ * Name verification has three tiers: an exact (accent/punctuation-insensitive) token match is
+ * trusted on its own; a close-but-not-exact match (a 1-2 letter misspelling on either side — knob
+ * and click-tt both have data-entry typos) additionally requires the row's click-tt club to match
+ * one of the player's knob clubs before it's trusted — a near-match name alone isn't strong enough
+ * evidence, but near-match name + matching club is. When click-tt's own club column is blank
+ * (common for lapsed/edge-case players — there's nothing to cross-check), a tighter single-letter
+ * edit distance is trusted on its own instead, since requiring a club that doesn't exist would
+ * otherwise make every such typo permanently unresolvable.
+ *
+ * Resolving a player also resolves their current click-tt club (id on the detail page, name on the
+ * result row), which is used to link/verify the knob club (see [PlayerService.linkResolvedClub]).
+ *
+ * Idempotent: a linked player drops out of the candidate set, so re-runs only pay for whatever is
+ * still unlinked.
+ */
 class ClickTtIdBackfillJob(
     private val client: ClickTTClient,
     private val parser: ClickTTParser,
 ) {
     private val logger = LoggerFactory.getLogger(ClickTtIdBackfillJob::class.java)
 
+    private data class Resolved(
+        val playerId: UUID,
+        val personId: Int,
+        /** Raw click-tt name ("Lastname, Firstname"); adopted as the canonical player name. */
+        val clickTtName: String,
+        val category: String?,
+        /** Licence to write (backfill/correct), or null to leave the player's licence untouched. */
+        val licence: String?,
+        val clickTtClubId: Int?,
+        val clickTtClubName: String?,
+    )
+
     suspend fun run() {
-        var totalPlayers = 0
-        var totalClubs = 0
+        // Every search must be pinned to the current monthly ranking date, pre-selected on the empty
+        // form. Bail rather than guess if the page shape changed.
+        val rankingDate = parser.parseEloFilterRankingDate(client.fetchEloFilterForm())
+        if (rankingDate == null) {
+            logger.error("ClickTtIdBackfillJob: could not read ranking date from Elo-Filter form — aborting")
+            return
+        }
 
-        // Discover the real club IDs from STT's own regional club-search pages rather than
-        // brute-forcing a numeric range. click-tt assigns club IDs in per-region bands that don't
-        // fit a single contiguous range (e.g. Bern/Mittelland is in the 50000s, Nordwestschweiz in
-        // the 60000s), so a range scan silently missed entire federations.
-        val clubIds = fetchAllClubIds()
-        logger.info("ClickTtIdBackfillJob: ${clubIds.size} clubs listed across ${REGION_CODES.size} regions")
+        val withLicence = PlayerService.getUnlinkedPlayersWithLicence()
+        val withoutLicence = PlayerService.getUnlinkedPlayersWithoutLicence()
+        logger.info(
+            "ClickTtIdBackfillJob: ${withLicence.size} unlinked players with licence, " +
+                "${withoutLicence.size} without (ranking $rankingDate)",
+        )
 
-        // Stage 1 — fetch each listed club's MALE roster concurrently. The "Lizenzierte Spieler"
-        // guard drops the rare dead/redirecting id. Returns the html so Stage 2 doesn't refetch it.
-        val hits =
-            clubIds.mapConcurrent(SCRAPE_CONCURRENCY) { clickttClubId ->
+        // Pass-2 namesake disambiguation and near-match name confirmation (both passes) need each
+        // player's knob club names — load once up front so the concurrent resolve stage never does a
+        // per-player DB round-trip.
+        val allUnlinked = withLicence + withoutLicence
+        val clubNamesByPlayer = PlayerService.getKnobClubNamesFor(allUnlinked.map { it.id })
+
+        // Network + parse stage, bounded concurrency. Reads only; DB writes happen serialized after.
+        // Licensed players come first so they win a person-id tie against an unlicensed namesake row.
+        val resolved =
+            allUnlinked.mapConcurrent(SCRAPE_CONCURRENCY) { player ->
                 try {
-                    val maleHtml = client.fetchClubMembersPage(clickttClubId, "MALE")
-                    if (maleHtml.contains("Lizenzierte Spieler")) clickttClubId to maleHtml else null
+                    val knobClubNames = clubNamesByPlayer[player.id].orEmpty()
+                    if (player.licence != null) {
+                        resolveByLicence(player, rankingDate, knobClubNames)
+                    } else {
+                        resolveByName(player, rankingDate, knobClubNames)
+                    }
                 } catch (e: Exception) {
-                    logger.error("  Error fetching roster for club ID $clickttClubId", e)
+                    logger.warn("  Resolve failed for player ${player.id} ('${player.fullName}'): ${e.message}")
                     null
                 }
             }.filterNotNull()
 
-        logger.info("ClickTtIdBackfillJob: ${hits.size} club rosters fetched")
-
-        // Stage 2 — real clubs only: fetch the FEMALE page concurrently too, parse both.
-        val clubs =
-            hits.mapConcurrent(SCRAPE_CONCURRENCY) { (clickttClubId, maleHtml) ->
-                try {
-                    val femaleHtml = client.fetchClubMembersPage(clickttClubId, "FEMALE")
-                    val malePage = parser.parseClubPage(maleHtml, "MALE")
-                    val femalePage = parser.parseClubPage(femaleHtml, "FEMALE")
-                    ClubHit(clickttClubId, malePage, femalePage)
-                } catch (e: Exception) {
-                    logger.error("  Error fetching roster for club ID $clickttClubId", e)
-                    null
+        // Serialized DB writes. Drop a person id already held by another row (unique constraint) or
+        // already claimed earlier in this same batch, so one dirty datum can't abort the whole run.
+        val taken = PlayerService.getAssignedClickTtIds().toMutableSet()
+        var linked = 0
+        var licencesWritten = 0
+        var clubsLinked = 0
+        for (r in resolved) {
+            if (r.personId in taken) {
+                logger.warn("  Person id ${r.personId} already assigned — skipping player ${r.playerId}")
+                continue
+            }
+            taken += r.personId
+            when (PlayerService.updateClickTtLink(r.playerId, r.personId, r.clickTtName, r.category, r.licence)) {
+                PlayerService.LicenceWriteResult.WRITTEN -> {
+                    licencesWritten++
+                    logger.info("  Licence set to ${r.licence} for player ${r.playerId} ('${r.clickTtName}')")
                 }
-            }.filterNotNull()
-
-        // Stage 3 — DB writes, serialized (single non-pooled connection). Per-club try/catch
-        // mirrors the original loop: one failing club is logged and skipped, not fatal.
-        for ((clickttClubId, malePage, femalePage) in clubs) {
-            try {
-                val allMembers: List<ClickTTClubMember> = malePage.members + femalePage.members
-                val clubName = malePage.clubName ?: femalePage.clubName
-
-                if (allMembers.isEmpty()) continue
-
-                // Phase A — match by licence number (primary key)
-                PlayerService.updateClickTtDataBatch(allMembers)
-                totalPlayers += allMembers.size
-
-                val licences = allMembers.map { it.licence }
-
-                // Phase B + C — for members whose licence wasn't in our DB
-                val matchedLicences = PlayerService.findLicencesInDb(licences)
-                val unmatched = allMembers.filter { it.licence !in matchedLicences }
-
-                if (unmatched.isNotEmpty()) {
-                    // Phase B — name + club fallback: links unmatched members to existing knob rows
-                    if (clubName != null) {
-                        PlayerService.matchAndLinkByNameAndClub(unmatched, clubName)
-                    }
-
-                    // Phase C — insert any still-unmatched members as fresh rows.
-                    // INSERT IGNORE means members already linked by Phase B (their clicktt_id
-                    // now lives on an existing row) are silently skipped.
-                    PlayerService.insertUnmatchedClickTtMembers(unmatched)
-
-                    logger.debug(
-                        "  Club ID $clickttClubId — ${unmatched.size} unmatched by licence," +
-                            " ran name+club fallback + insert",
+                PlayerService.LicenceWriteResult.CONFLICT ->
+                    logger.warn(
+                        "  Licence ${r.licence} for player ${r.playerId} already held by another row — " +
+                            "linked click-tt id + name, licence left as-is",
                     )
-                }
+                PlayerService.LicenceWriteResult.UNCHANGED -> {}
+            }
+            linked++
 
-                val ourClubId = PlayerService.findClubIdByLicences(licences)
-                if (ourClubId != null && clubName != null) {
-                    // Link the click-tt id and adopt click-tt's spelling as the canonical club
-                    // name. click-tt is the naming authority; the knob scraper only dedupes rows
-                    // (by knob_id) and leaves names alone, so it won't clobber this on re-scrape.
-                    dbQuery {
-                        Clubs.update({ Clubs.id eq ourClubId }) {
-                            it[Clubs.clickttId] = clickttClubId
-                            it[Clubs.name] = clubName
-                        }
+            if (r.clickTtClubId != null && r.clickTtClubName != null) {
+                when (PlayerService.linkResolvedClub(r.playerId, r.clickTtClubId, r.clickTtClubName)) {
+                    PlayerService.ClubLinkResult.LINKED -> {
+                        clubsLinked++
+                        logger.info(
+                            "  Club ${r.clickTtClubId} ('${r.clickTtClubName}') linked via player ${r.playerId}",
+                        )
                     }
-                    totalClubs++
-                    logger.info(
-                        "  Club ID $clickttClubId → '$clubName' — " +
-                            "${allMembers.size} players (${malePage.members.size}M/${femalePage.members.size}F)",
-                    )
-                } else {
-                    logger.debug("  Club ID $clickttClubId ($clubName) — no matching club found in DB")
+                    PlayerService.ClubLinkResult.CONFLICT ->
+                        logger.warn(
+                            "  Club anomaly: click-tt club ${r.clickTtClubId} ('${r.clickTtClubName}') " +
+                                "disagrees with the knob club already recorded (player ${r.playerId}) — left untouched",
+                        )
+                    // ALREADY_LINKED / NO_NAME_MATCH / AMBIGUOUS — unremarkable, no action.
+                    else -> {}
                 }
-            } catch (e: Exception) {
-                logger.error("  Error processing club ID $clickttClubId", e)
             }
         }
 
-        logger.info("ClickTtIdBackfillJob complete — $totalPlayers players and $totalClubs clubs linked")
+        logger.info(
+            "ClickTtIdBackfillJob complete — $linked players linked " +
+                "($licencesWritten licences backfilled/corrected), $clubsLinked clubs linked",
+        )
     }
 
-    /** Collects every click-tt club ID from the eight regional STT club-search listings. */
-    private suspend fun fetchAllClubIds(): List<Int> =
-        REGION_CODES.flatMap { region ->
-            try {
-                parser.parseClubSearchPage(client.fetchClubSearchPage(region))
-            } catch (e: Exception) {
-                logger.error("  Error fetching club search page for region $region", e)
-                emptyList()
-            }
-        }.distinct()
+    /**
+     * Verifies [row]'s name against [player]'s knob name — see the class doc for the three tiers.
+     * Returns a short tag for logging, or null when none of them pass.
+     */
+    private fun verifyName(
+        row: EloFilterResultRow,
+        player: UnlinkedPlayer,
+        knobClubNames: List<String>,
+    ): String? {
+        if (personNamesSimilar(row.name, player.fullName)) return "exact"
+        if (row.club != null) {
+            val clubConfirmed = knobClubNames.any { clubNamesSimilar(it, row.club) }
+            if (clubConfirmed && personNamesNearMatch(row.name, player.fullName)) return "near+club"
+        } else if (personNamesNearMatch(row.name, player.fullName, maxTotalEditDistance = 1)) {
+            return "near+no-club"
+        }
+        return null
+    }
 
-    private data class ClubHit(
-        val clickttClubId: Int,
-        val malePage: ClickTTClubPage,
-        val femalePage: ClickTTClubPage,
-    )
+    /**
+     * Pass 1: resolve a licensed player via licence search (name-verified). If the licence returns
+     * nothing, or returns a *different* person (knob's stored licence is wrong — happens), fall back
+     * to a name search; a match found that way corrects/backfills the licence to click-tt's value.
+     */
+    private suspend fun resolveByLicence(
+        player: UnlinkedPlayer,
+        rankingDate: String,
+        knobClubNames: List<String>,
+    ): Resolved? {
+        val licence = player.licence!!
+        var rows = parser.parseEloFilterResultRows(client.fetchEloFilterByLicence(licence, rankingDate))
+        // F-prefix quirk: some licences only resolve when prefixed with 'F' (knob stores them bare).
+        // Try bare first, retry once with the prefix only on zero results.
+        if (rows.isEmpty()) {
+            rows = parser.parseEloFilterResultRows(client.fetchEloFilterByLicence("F$licence", rankingDate))
+        }
+        val row = rows.firstOrNull()
+
+        if (row != null) {
+            val verdict = verifyName(row, player, knobClubNames)
+            if (verdict != null) {
+                if (verdict != "exact") {
+                    logger.info(
+                        "  Name match ($verdict) for licence $licence: knob '${player.fullName}' vs " +
+                            "click-tt '${row.name}'",
+                    )
+                }
+                // Licence matched and the name verified — keep knob's licence (it's correct).
+                return resolveDetail(player.id, row, licenceToWrite = null)
+            }
+        }
+
+        // Licence missing or pointing at someone else — try to find the real person by name instead.
+        if (row != null) {
+            logger.info(
+                "  Licence $licence resolves to a different person on click-tt ('${row.name}' vs knob " +
+                    "'${player.fullName}') — trying name search",
+            )
+        } else {
+            logger.debug("  No click-tt result for licence $licence (player ${player.id}) — trying name search")
+        }
+        return resolveByName(player, rankingDate, knobClubNames)
+    }
+
+    /**
+     * Resolve a player by name. Tries each [knobNameSplitCandidates] surname/first-name split in turn
+     * — the common case (single-word surname) resolves on the first try, so this only costs extra
+     * requests for the compound-surname case. For each split, namesakes are disambiguated by matching
+     * each candidate's club against the player's knob club(s). A match backfills/corrects the licence
+     * to click-tt's value (the row's licence column) — the player either had none or a wrong one.
+     */
+    private suspend fun resolveByName(
+        player: UnlinkedPlayer,
+        rankingDate: String,
+        knobClubNames: List<String>,
+    ): Resolved? {
+        for ((lastname, firstname) in knobNameSplitCandidates(player.fullName)) {
+            val rows = parser.parseEloFilterResultRows(client.fetchEloFilterByName(lastname, firstname, rankingDate))
+            val verified = rows.mapNotNull { row -> row.takeIf { verifyName(it, player, knobClubNames) != null } }
+
+            val match =
+                when (verified.size) {
+                    0 -> continue // try the next surname/first-name split
+                    1 -> verified.single()
+                    else -> {
+                        // Namesakes: keep only candidates whose click-tt club matches a knob club of
+                        // this player. Link only when exactly one survives — never guess.
+                        val byClub =
+                            verified.filter { r ->
+                                val club = r.club ?: return@filter false
+                                knobClubNames.any { clubNamesSimilar(it, club) }
+                            }
+                        if (byClub.size != 1) {
+                            logger.warn(
+                                "  Ambiguous name '${player.fullName}' (player ${player.id}): ${verified.size} " +
+                                    "candidates, ${byClub.size} club-matched — not linking",
+                            )
+                            return null
+                        }
+                        byClub.single()
+                    }
+                }
+            return resolveDetail(player.id, match, licenceToWrite = match.licence)
+        }
+        logger.debug("  No click-tt result for name '${player.fullName}' (player ${player.id})")
+        return null
+    }
+
+    /** Follows a result row's detail link to extract the person id (+ click-tt club id). */
+    private suspend fun resolveDetail(
+        playerId: UUID,
+        row: EloFilterResultRow,
+        licenceToWrite: String?,
+    ): Resolved? {
+        val detailHtml = client.fetchUrl(row.detailHref)
+        val personId =
+            parser.parseEloFilterPersonId(detailHtml) ?: run {
+                logger.warn("  No person id on detail page for player $playerId (row '${row.name}')")
+                return null
+            }
+        return Resolved(
+            playerId = playerId,
+            personId = personId,
+            clickTtName = row.name,
+            category = row.category,
+            licence = licenceToWrite,
+            clickTtClubId = parser.parseEloFilterClubId(detailHtml),
+            clickTtClubName = row.club,
+        )
+    }
 
     companion object {
-        // STT's eight regional sub-federations, as used by clubSearch?searchPattern=…
-        private val REGION_CODES = (1..8).map { "CH.%02d".format(it) }
-
         fun create(): ClickTtIdBackfillJob {
             val client = ClickTTClient()
             val parser = ClickTTParser()
