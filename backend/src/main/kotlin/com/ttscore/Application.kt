@@ -4,7 +4,6 @@ import com.ttscore.database.configureDatabase
 import com.ttscore.jobs.BackfillLedger
 import com.ttscore.jobs.ClickTtIdBackfillJob
 import com.ttscore.jobs.ClubDedupeJob
-import com.ttscore.jobs.KnobPlayerReconcileJob
 import com.ttscore.jobs.MatchPollJob
 import com.ttscore.jobs.SeasonSyncJob
 import com.ttscore.plugins.configureAuthentication
@@ -65,10 +64,6 @@ private fun Application.runBackfill(currentSeason: String) {
             BackfillLedger.runOnce("clicktt-id-backfill") {
                 logger.info("Backfill — player-driven click-tt player/club id linking")
                 ClickTtIdBackfillJob.create().run()
-            }
-            BackfillLedger.runOnce("knob-player-reconcile") {
-                logger.info("Backfill — knob licence→gid player reconciliation")
-                KnobPlayerReconcileJob.create().run()
             }
             BackfillLedger.runOnce("clicktt-season-backfill:$currentSeason") {
                 logger.info("Backfill — click-tt season $currentSeason")

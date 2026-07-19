@@ -134,6 +134,9 @@ export type Player = {
 	/** False for knob-only players (no click-tt link): they never sync and have no ELO, so the
 	 *  client hides ELO-specific UI like the ELO history graph. */
 	clickttLinked: boolean;
+	/** How the click-tt link was established (see backend PlayerService.MatchMethod), or null for
+	 *  knob-only players. `*_NEAR` values are lower-confidence matches. */
+	matchMethod: string | null;
 };
 
 export type EloEntry = {

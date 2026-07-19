@@ -57,6 +57,7 @@ class ClickTtIdBackfillJob(
         val category: String?,
         /** Licence to write (backfill/correct), or null to leave the player's licence untouched. */
         val licence: String?,
+        val matchMethod: PlayerService.MatchMethod,
         val clickTtClubId: Int?,
         val clickTtClubName: String?,
     )
@@ -115,7 +116,11 @@ class ClickTtIdBackfillJob(
             // player's row or club) must never abort the whole multi-thousand-player backfill.
             try {
                 taken += r.personId
-                when (PlayerService.updateClickTtLink(r.playerId, r.personId, r.clickTtName, r.category, r.licence)) {
+                when (
+                    PlayerService.updateClickTtLink(
+                        r.playerId, r.personId, r.clickTtName, r.category, r.licence, r.matchMethod,
+                    )
+                ) {
                     PlayerService.LicenceWriteResult.WRITTEN -> {
                         licencesWritten++
                         logger.info("  Licence set to ${r.licence} for player ${r.playerId} ('${r.clickTtName}')")
@@ -183,6 +188,21 @@ class ClickTtIdBackfillJob(
         return null
     }
 
+    /** Maps a [verifyName] verdict to a [PlayerService.MatchMethod] in the given search context. */
+    private fun licenceMethod(verdict: String) =
+        when (verdict) {
+            "exact" -> PlayerService.MatchMethod.LICENCE
+            "near+club" -> PlayerService.MatchMethod.LICENCE_NEAR_CLUB
+            else -> PlayerService.MatchMethod.LICENCE_NEAR
+        }
+
+    private fun nameMethod(verdict: String) =
+        when (verdict) {
+            "exact" -> PlayerService.MatchMethod.NAME
+            "near+club" -> PlayerService.MatchMethod.NAME_NEAR_CLUB
+            else -> PlayerService.MatchMethod.NAME_NEAR
+        }
+
     /**
      * Pass 1: resolve a licensed player via licence search (name-verified). If the licence returns
      * nothing, or returns a *different* person (knob's stored licence is wrong — happens), fall back
@@ -212,7 +232,7 @@ class ClickTtIdBackfillJob(
                     )
                 }
                 // Licence matched and the name verified — keep knob's licence (it's correct).
-                return resolveDetail(player.id, row, licenceToWrite = null)
+                return resolveDetail(player.id, row, licenceToWrite = null, method = licenceMethod(verdict))
             }
         }
 
@@ -242,17 +262,23 @@ class ClickTtIdBackfillJob(
     ): Resolved? {
         for ((lastname, firstname) in knobNameSplitCandidates(player.fullName)) {
             val rows = parser.parseEloFilterResultRows(client.fetchEloFilterByName(lastname, firstname, rankingDate))
-            val verified = rows.mapNotNull { row -> row.takeIf { verifyName(it, player, knobClubNames) != null } }
+            // Keep each verified row with the verdict that verified it, for the match-method label.
+            val verified =
+                rows.mapNotNull { row -> verifyName(row, player, knobClubNames)?.let { row to it } }
 
-            val match =
+            val (match, method) =
                 when (verified.size) {
                     0 -> continue // try the next surname/first-name split
-                    1 -> verified.single()
+                    1 -> {
+                        val (row, verdict) = verified.single()
+                        row to nameMethod(verdict)
+                    }
                     else -> {
                         // Namesakes: keep only candidates whose click-tt club matches a knob club of
-                        // this player. Link only when exactly one survives — never guess.
+                        // this player. Link only when exactly one survives — never guess. A club match
+                        // is the confirming signal, so this is recorded as NAME_CLUB.
                         val byClub =
-                            verified.filter { r ->
+                            verified.filter { (r, _) ->
                                 val club = r.club ?: return@filter false
                                 knobClubNames.any { clubNamesSimilar(it, club) }
                             }
@@ -263,10 +289,10 @@ class ClickTtIdBackfillJob(
                             )
                             return null
                         }
-                        byClub.single()
+                        byClub.single().first to PlayerService.MatchMethod.NAME_CLUB
                     }
                 }
-            return resolveDetail(player.id, match, licenceToWrite = match.licence)
+            return resolveDetail(player.id, match, licenceToWrite = match.licence, method = method)
         }
         logger.debug("  No click-tt result for name '${player.fullName}' (player ${player.id})")
         return null
@@ -277,6 +303,7 @@ class ClickTtIdBackfillJob(
         playerId: UUID,
         row: EloFilterResultRow,
         licenceToWrite: String?,
+        method: PlayerService.MatchMethod,
     ): Resolved? {
         val detailHtml = client.fetchUrl(row.detailHref)
         val personId =
@@ -290,6 +317,7 @@ class ClickTtIdBackfillJob(
             clickTtName = row.name,
             category = row.category,
             licence = licenceToWrite,
+            matchMethod = method,
             clickTtClubId = parser.parseEloFilterClubId(detailHtml),
             clickTtClubName = row.club,
         )

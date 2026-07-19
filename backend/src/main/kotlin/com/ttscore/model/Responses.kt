@@ -249,6 +249,11 @@ data class PlayerResponse(
      * client hides ELO-specific UI (e.g. the ELO history graph) for them.
      */
     val clickttLinked: Boolean = false,
+    /**
+     * How the click-tt link was established (see PlayerService.MatchMethod), or null for knob-only
+     * players. Lets the client treat low-confidence matches (…_NEAR) differently.
+     */
+    val matchMethod: String? = null,
 )
 
 @Serializable

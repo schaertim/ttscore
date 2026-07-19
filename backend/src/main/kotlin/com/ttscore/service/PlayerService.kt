@@ -24,7 +24,10 @@ object PlayerService {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
             val playerRow =
-                Players.select(Players.id, Players.fullName, Players.licenceNr, Players.category, Players.clickttId)
+                Players.select(
+                    Players.id, Players.fullName, Players.licenceNr, Players.category,
+                    Players.clickttId, Players.matchMethod,
+                )
                     .where { Players.id eq uuid }
                     .firstOrNull() ?: return@dbQuery null
 
@@ -51,6 +54,7 @@ object PlayerService {
                 currentElo = currentElo,
                 liveElo = LiveEloService.liveEloFor(uuid, currentElo),
                 clickttLinked = playerRow[Players.clickttId] != null,
+                matchMethod = playerRow[Players.matchMethod],
             )
         }
     }
@@ -1415,10 +1419,25 @@ object PlayerService {
     enum class LicenceWriteResult { WRITTEN, UNCHANGED, CONFLICT }
 
     /**
+     * How a player's click-tt link was established, in roughly descending confidence. Stored on the
+     * player row so low-confidence links can be filtered/flagged rather than trusted blindly:
+     *  - [LICENCE] — matched by unique licence, name verified exactly. Highest confidence.
+     *  - [LICENCE_NEAR_CLUB] — licence match, 1-2 char name drift, confirmed by matching club.
+     *  - [LICENCE_NEAR] — licence match, 1 char name drift, no click-tt club to confirm against. Low.
+     *  - [NAME_CLUB] — resolved by name search, disambiguated/confirmed by matching club.
+     *  - [NAME] — name search, single exact-name match (name unique on click-tt).
+     *  - [NAME_NEAR_CLUB] — name search, near name confirmed by club.
+     *  - [NAME_NEAR] — name search, near name, no club confirmation. Low.
+     */
+    enum class MatchMethod {
+        LICENCE, LICENCE_NEAR_CLUB, LICENCE_NEAR, NAME_CLUB, NAME, NAME_NEAR_CLUB, NAME_NEAR
+    }
+
+    /**
      * Links a resolved click-tt identity onto one player row. Always adopts click-tt's spelling as
      * the canonical name (converted to knob's "Lastname Firstname" storage format) — click-tt is the
      * naming authority, so this scrubs knob's data-entry misspellings. Writes the age category when
-     * present. sex/nationality are left untouched (this flow never sees them).
+     * present and records the [matchMethod]. sex/nationality are left untouched (this flow never sees them).
      *
      * [licence] is written only when non-null AND not already held by another player row (the column
      * is uniquely indexed) — used to backfill a missing licence or correct a wrong one after a
@@ -1431,6 +1450,7 @@ object PlayerService {
         clickTtName: String,
         category: String?,
         licence: String?,
+        matchMethod: MatchMethod,
     ): LicenceWriteResult =
         dbQuery {
             val licenceResult =
@@ -1455,6 +1475,7 @@ object PlayerService {
             Players.update({ Players.id eq playerId }) {
                 it[Players.clickttId] = personId
                 it[Players.fullName] = clickTtNameToDb(clickTtName)
+                it[Players.matchMethod] = matchMethod.name
                 if (category != null) it[Players.category] = category
                 if (licenceResult == LicenceWriteResult.WRITTEN) it[Players.licenceNr] = licence
             }
@@ -1557,39 +1578,9 @@ object PlayerService {
             if (nameTaken) ClubLinkResult.LINKED_KEPT_NAME else ClubLinkResult.LINKED
         }
 
-    data class ReconcileOutcome(val merged: Int, val stamped: Boolean)
-
-    /** Every distinct licence number currently stored on a player row. */
-    suspend fun distinctLicences(): List<String> =
-        dbQuery {
-            Players.select(Players.licenceNr)
-                .where { Players.licenceNr.isNotNull() }
-                .mapNotNull { it[Players.licenceNr] }
-                .distinct()
-        }
-
-    /**
-     * Attaches [licence] to the knob player row identified by [gids] — knob's licence search maps a
-     * licence to its exact gid(s), so this is the authoritative disambiguation when name+club can't
-     * tell namesakes apart. Stamps the licence onto one gid-matching row that lacks one. No-op (false)
-     * when no such row exists (person never appeared in a scraped match) or the licence is already
-     * held anywhere (idempotent / avoids the unique-index clash). Any multi-gid duplicates are
-     * collapsed later by [reconcileLicence].
-     */
-    suspend fun attachLicenceToKnobRow(
-        licence: String,
-        gids: List<Int>,
-    ): Boolean =
-        dbQuery {
-            if (gids.isEmpty()) return@dbQuery false
-            if (Players.select(Players.id).where { Players.licenceNr eq licence }.any()) return@dbQuery false
-            val target =
-                Players.select(Players.id)
-                    .where { (Players.knobId inList gids) and Players.licenceNr.isNull() }
-                    .firstOrNull() ?: return@dbQuery false
-            Players.update({ Players.id eq target[Players.id] }) { it[Players.licenceNr] = licence }
-            true
-        }
+    /** Outcome of [reconcileLicence]: how many duplicate rows were merged, and whether the licence
+     *  ended up on a real knob player row (false when its gid isn't in our data). */
+    data class ReconcileOutcome(val merged: Int, val attached: Boolean)
 
     /**
      * Reconciles all player rows for one person, identified by [licence] → [gids] (from knob's
@@ -1603,7 +1594,7 @@ object PlayerService {
         gids: List<Int>,
     ): ReconcileOutcome =
         dbQuery {
-            if (gids.isEmpty()) return@dbQuery ReconcileOutcome(0, false)
+            if (gids.isEmpty()) return@dbQuery ReconcileOutcome(0, attached = false)
 
             val rows =
                 Players.select(
@@ -1611,7 +1602,7 @@ object PlayerService {
                     Players.fullName, Players.sex, Players.category, Players.nationality,
                 ).where { (Players.knobId inList gids) or (Players.licenceNr eq licence) }
                     .toList()
-            if (rows.isEmpty()) return@dbQuery ReconcileOutcome(0, false)
+            if (rows.isEmpty()) return@dbQuery ReconcileOutcome(0, attached = false)
 
             // Keep the knob row (it holds the match history) as canonical — lowest gid for a stable
             // choice across re-runs. If none has a knob id (a click-tt-only row whose gid we never
@@ -1637,7 +1628,7 @@ object PlayerService {
                     if (needLic) it[Players.licenceNr] = licence
                 }
             }
-            ReconcileOutcome(merged = dups.size, stamped = needKnob && dups.isEmpty())
+            ReconcileOutcome(merged = dups.size, attached = true)
         }
 
     /** Folds the duplicate player row into the canonical one, then deletes it. Caller supplies the
@@ -1649,6 +1640,24 @@ object PlayerService {
         val dupId = dup[Players.id]
 
         // Repoint every foreign key that references the duplicate.
+        // player_season is UNIQUE(player_id, team_id, season_id): if both rows independently recorded
+        // this person on the same team+season, drop the dup's colliding rows before repointing the
+        // rest — otherwise the blind UPDATE would violate the constraint.
+        val canonTeamSeasons =
+            PlayerSeasons.select(PlayerSeasons.teamId, PlayerSeasons.seasonId)
+                .where { PlayerSeasons.playerId eq canonicalId }
+                .map { it[PlayerSeasons.teamId] to it[PlayerSeasons.seasonId] }
+                .toSet()
+        if (canonTeamSeasons.isNotEmpty()) {
+            val collidingDupSeasons =
+                PlayerSeasons.select(PlayerSeasons.id, PlayerSeasons.teamId, PlayerSeasons.seasonId)
+                    .where { PlayerSeasons.playerId eq dupId }
+                    .filter { (it[PlayerSeasons.teamId] to it[PlayerSeasons.seasonId]) in canonTeamSeasons }
+                    .map { it[PlayerSeasons.id] }
+            if (collidingDupSeasons.isNotEmpty()) {
+                PlayerSeasons.deleteWhere { PlayerSeasons.id inList collidingDupSeasons }
+            }
+        }
         PlayerSeasons.update({ PlayerSeasons.playerId eq dupId }) { it[PlayerSeasons.playerId] = canonicalId }
         PlayerElos.update({ PlayerElos.playerId eq dupId }) { it[PlayerElos.playerId] = canonicalId }
         // player_classification is UNIQUE(player_id, season_id): drop dup rows for seasons the
@@ -1737,6 +1746,7 @@ object PlayerService {
         liveElo: Int? = null,
         isSyncing: Boolean = false,
         clickttLinked: Boolean = false,
+        matchMethod: String? = null,
     ) = PlayerResponse(
         id = this[Players.id].toString(),
         fullName = this[Players.fullName],
@@ -1750,5 +1760,6 @@ object PlayerService {
         liveElo = liveElo,
         isSyncing = isSyncing,
         clickttLinked = clickttLinked,
+        matchMethod = matchMethod,
     )
 }

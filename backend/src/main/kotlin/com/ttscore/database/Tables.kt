@@ -88,6 +88,9 @@ object Players : Table("player") {
 
     /** ISO 3-letter country code ("SUI", "GER", …) — from click-tt club page */
     val nationality = varchar("nationality", 3).nullable()
+
+    /** How the click-tt link was established (see PlayerService.MatchMethod); null = knob-only. */
+    val matchMethod = varchar("match_method", 20).nullable()
     override val primaryKey = PrimaryKey(id)
 }
 
