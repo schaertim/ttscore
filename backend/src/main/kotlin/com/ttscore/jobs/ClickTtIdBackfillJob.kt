@@ -111,37 +111,50 @@ class ClickTtIdBackfillJob(
                 logger.warn("  Person id ${r.personId} already assigned — skipping player ${r.playerId}")
                 continue
             }
-            taken += r.personId
-            when (PlayerService.updateClickTtLink(r.playerId, r.personId, r.clickTtName, r.category, r.licence)) {
-                PlayerService.LicenceWriteResult.WRITTEN -> {
-                    licencesWritten++
-                    logger.info("  Licence set to ${r.licence} for player ${r.playerId} ('${r.clickTtName}')")
-                }
-                PlayerService.LicenceWriteResult.CONFLICT ->
-                    logger.warn(
-                        "  Licence ${r.licence} for player ${r.playerId} already held by another row — " +
-                            "linked click-tt id + name, licence left as-is",
-                    )
-                PlayerService.LicenceWriteResult.UNCHANGED -> {}
-            }
-            linked++
-
-            if (r.clickTtClubId != null && r.clickTtClubName != null) {
-                when (PlayerService.linkResolvedClub(r.playerId, r.clickTtClubId, r.clickTtClubName)) {
-                    PlayerService.ClubLinkResult.LINKED -> {
-                        clubsLinked++
-                        logger.info(
-                            "  Club ${r.clickTtClubId} ('${r.clickTtClubName}') linked via player ${r.playerId}",
-                        )
+            // Per-player guard: a single failing write (e.g. an unforeseen constraint clash on this
+            // player's row or club) must never abort the whole multi-thousand-player backfill.
+            try {
+                taken += r.personId
+                when (PlayerService.updateClickTtLink(r.playerId, r.personId, r.clickTtName, r.category, r.licence)) {
+                    PlayerService.LicenceWriteResult.WRITTEN -> {
+                        licencesWritten++
+                        logger.info("  Licence set to ${r.licence} for player ${r.playerId} ('${r.clickTtName}')")
                     }
-                    PlayerService.ClubLinkResult.CONFLICT ->
+                    PlayerService.LicenceWriteResult.CONFLICT ->
                         logger.warn(
-                            "  Club anomaly: click-tt club ${r.clickTtClubId} ('${r.clickTtClubName}') " +
-                                "disagrees with the knob club already recorded (player ${r.playerId}) — left untouched",
+                            "  Licence ${r.licence} for player ${r.playerId} already held by another row — " +
+                                "linked click-tt id + name, licence left as-is",
                         )
-                    // ALREADY_LINKED / NO_NAME_MATCH / AMBIGUOUS — unremarkable, no action.
-                    else -> {}
+                    PlayerService.LicenceWriteResult.UNCHANGED -> {}
                 }
+                linked++
+
+                if (r.clickTtClubId != null && r.clickTtClubName != null) {
+                    when (PlayerService.linkResolvedClub(r.playerId, r.clickTtClubId, r.clickTtClubName)) {
+                        PlayerService.ClubLinkResult.LINKED -> {
+                            clubsLinked++
+                            logger.info(
+                                "  Club ${r.clickTtClubId} ('${r.clickTtClubName}') linked via player ${r.playerId}",
+                            )
+                        }
+                        PlayerService.ClubLinkResult.LINKED_KEPT_NAME -> {
+                            clubsLinked++
+                            logger.info(
+                                "  Club ${r.clickTtClubId} linked via player ${r.playerId} — kept knob name " +
+                                    "('${r.clickTtClubName}' already taken; ClubDedupeJob will merge)",
+                            )
+                        }
+                        PlayerService.ClubLinkResult.CONFLICT ->
+                            logger.warn(
+                                "  Club anomaly: click-tt club ${r.clickTtClubId} ('${r.clickTtClubName}') " +
+                                    "disagrees with the knob club already recorded (player ${r.playerId}) — left untouched",
+                            )
+                        // ALREADY_LINKED / NO_NAME_MATCH / AMBIGUOUS — unremarkable, no action.
+                        else -> {}
+                    }
+                }
+            } catch (e: Exception) {
+                logger.warn("  Write failed for player ${r.playerId} ('${r.clickTtName}'): ${e.message}")
             }
         }
 

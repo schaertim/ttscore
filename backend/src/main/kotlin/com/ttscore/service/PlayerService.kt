@@ -1434,7 +1434,9 @@ object PlayerService {
     ): LicenceWriteResult =
         dbQuery {
             val licenceResult =
-                if (licence == null) {
+                // click-tt uses an all-zeros licence ("00000000") as a placeholder for players with
+                // no real licence — never adopt it (it's not unique and would pollute licence_nr).
+                if (licence == null || licence.isBlank() || licence.all { it == '0' }) {
                     LicenceWriteResult.UNCHANGED
                 } else {
                     val current =
@@ -1473,7 +1475,7 @@ object PlayerService {
         }
 
     /** Outcome of [linkResolvedClub], for the caller to log. */
-    enum class ClubLinkResult { LINKED, ALREADY_LINKED, NO_NAME_MATCH, AMBIGUOUS, CONFLICT }
+    enum class ClubLinkResult { LINKED, LINKED_KEPT_NAME, ALREADY_LINKED, NO_NAME_MATCH, AMBIGUOUS, CONFLICT }
 
     /**
      * Knob club names (via player_season → team → club) for each of [playerIds], deduped. Loaded in
@@ -1502,6 +1504,8 @@ object PlayerService {
      *  - CONFLICT — the chosen club already has a *different* click-tt id, or this click-tt id is
      *    already held by another knob club; left untouched (a genuine data disagreement to inspect).
      *  - LINKED — id + canonical name written.
+     *  - LINKED_KEPT_NAME — id written, but the canonical name was left as knob's because another
+     *    club row already holds it (club.name is unique). ClubDedupeJob merges the duplicate later.
      */
     suspend fun linkResolvedClub(
         playerId: UUID,
@@ -1536,11 +1540,21 @@ object PlayerService {
                     .any()
             if (heldElsewhere) return@dbQuery ClubLinkResult.CONFLICT
 
+            // club.name is uniquely indexed. Many knob rows are name-drift duplicates of the same
+            // real club, so several can resolve to one click-tt name — adopting it on more than one
+            // would violate the unique constraint. Only adopt the name when no other club already
+            // holds it; otherwise keep knob's name and let ClubDedupeJob (which runs next) merge the
+            // duplicate. The id link is written either way.
+            val nameTaken =
+                Clubs.select(Clubs.id)
+                    .where { (Clubs.name eq clickTtClubName) and (Clubs.id neq chosenId) }
+                    .any()
+
             Clubs.update({ Clubs.id eq chosenId }) {
                 it[Clubs.clickttId] = clickTtClubId
-                it[Clubs.name] = clickTtClubName
+                if (!nameTaken) it[Clubs.name] = clickTtClubName
             }
-            ClubLinkResult.LINKED
+            if (nameTaken) ClubLinkResult.LINKED_KEPT_NAME else ClubLinkResult.LINKED
         }
 
     data class ReconcileOutcome(val merged: Int, val stamped: Boolean)
@@ -1552,6 +1566,29 @@ object PlayerService {
                 .where { Players.licenceNr.isNotNull() }
                 .mapNotNull { it[Players.licenceNr] }
                 .distinct()
+        }
+
+    /**
+     * Attaches [licence] to the knob player row identified by [gids] — knob's licence search maps a
+     * licence to its exact gid(s), so this is the authoritative disambiguation when name+club can't
+     * tell namesakes apart. Stamps the licence onto one gid-matching row that lacks one. No-op (false)
+     * when no such row exists (person never appeared in a scraped match) or the licence is already
+     * held anywhere (idempotent / avoids the unique-index clash). Any multi-gid duplicates are
+     * collapsed later by [reconcileLicence].
+     */
+    suspend fun attachLicenceToKnobRow(
+        licence: String,
+        gids: List<Int>,
+    ): Boolean =
+        dbQuery {
+            if (gids.isEmpty()) return@dbQuery false
+            if (Players.select(Players.id).where { Players.licenceNr eq licence }.any()) return@dbQuery false
+            val target =
+                Players.select(Players.id)
+                    .where { (Players.knobId inList gids) and Players.licenceNr.isNull() }
+                    .firstOrNull() ?: return@dbQuery false
+            Players.update({ Players.id eq target[Players.id] }) { it[Players.licenceNr] = licence }
+            true
         }
 
     /**

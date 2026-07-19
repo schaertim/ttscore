@@ -5,6 +5,7 @@ import com.ttscore.database.PlayerSeasons
 import com.ttscore.database.Players
 import com.ttscore.database.Seasons
 import com.ttscore.database.Teams
+import com.ttscore.service.PlayerService
 import com.ttscore.util.accentFold
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
@@ -67,35 +68,88 @@ class OverallPlayerScraper(
                 .mapValues { (_, entries) -> entries.flatMap { it.value } }
 
         var totalUpdated = 0
+        // Licences the name+club heuristic couldn't disambiguate (namesakes) — resolved
+        // authoritatively afterwards via knob's licence→gid search.
+        val ambiguous = mutableListOf<String>()
 
         for (seasonName in seasons) {
             try {
-                val updated = scrapeSeason(seasonName, existingPlayers, existingByFolded)
-                totalUpdated += updated
+                val result = scrapeSeason(seasonName, existingPlayers, existingByFolded)
+                totalUpdated += result.updated
+                ambiguous += result.ambiguousLicences
             } catch (e: Exception) {
                 logger.error("Failed season=$seasonName: ${e.message}")
             }
         }
 
+        totalUpdated += resolveAmbiguousByLicenceSearch(ambiguous)
+
         logger.info("OverallPlayerScraper complete — $totalUpdated licences linked")
+    }
+
+    private data class SeasonResult(
+        val updated: Int,
+        val ambiguousLicences: List<String>,
+    )
+
+    /**
+     * Authoritative fallback for the namesakes the name+club pass couldn't split: knob's licence
+     * search maps each licence to its exact gid(s), so we attach by id — ground truth — rather than
+     * guessing. Only the ambiguous residue (a small fraction) pays the per-licence network cost.
+     * Returns how many were newly attached.
+     */
+    private suspend fun resolveAmbiguousByLicenceSearch(licences: List<String>): Int {
+        if (licences.isEmpty()) return 0
+        // Some may already have been resolved by name+club in a different season — skip those.
+        val attached = PlayerService.distinctLicences().toSet()
+        val todo = licences.toSet().minus(attached).toList()
+        if (todo.isEmpty()) return 0
+
+        logger.info("OverallPlayerScraper: resolving ${todo.size} ambiguous licences via knob licence search")
+
+        // Stage 1 — search each licence concurrently (network only, no DB writes).
+        val gidMap =
+            todo.mapConcurrent(SCRAPE_CONCURRENCY) { licence ->
+                try {
+                    licence to parser.parseSearchGids(client.searchByLicence(licence))
+                } catch (e: Exception) {
+                    logger.warn("  licence search failed for $licence: ${e.message}")
+                    licence to emptyList()
+                }
+            }
+
+        // Stage 2 — attach serially (per-licence try/catch so one failure isn't fatal).
+        var attachedCount = 0
+        for ((licence, gids) in gidMap) {
+            try {
+                if (PlayerService.attachLicenceToKnobRow(licence, gids)) attachedCount++
+            } catch (e: Exception) {
+                logger.warn("  licence attach failed for $licence: ${e.message}")
+            }
+        }
+        logger.info(
+            "OverallPlayerScraper: licence search resolved $attachedCount / ${todo.size} ambiguous licences",
+        )
+        return attachedCount
     }
 
     private suspend fun scrapeSeason(
         seasonName: String,
         existingPlayers: Map<String, List<Pair<String?, UUID>>>,
         existingByFolded: Map<String, List<Pair<String?, UUID>>>,
-    ): Int {
+    ): SeasonResult {
         val html = client.fetchOverallPlayers(seasonName)
         val players = parser.parseOverallPlayers(html)
 
         if (players.isEmpty()) {
             logger.info("  $seasonName — no players found (licence registry predates online records)")
-            return 0
+            return SeasonResult(0, emptyList())
         }
 
         logger.info("  $seasonName — ${players.size} licensed players scraped")
 
         var updated = 0
+        val ambiguous = mutableListOf<String>()
 
         transaction {
             for (player in players) {
@@ -152,10 +206,10 @@ class OverallPlayerScraper(
                                 }
                             }
                         } else {
-                            logger.warn(
-                                "  Name collision for '${player.fullName}' (${candidates.size} candidates)," +
-                                    " club='${player.newClub}' — skipping licence ${player.licenceNr}",
-                            )
+                            // Name+club couldn't disambiguate the namesakes (none — or several — of
+                            // them is at that club in match data). Defer to the authoritative
+                            // licence→gid search run after all seasons.
+                            ambiguous += player.licenceNr
                         }
                     }
                 }
@@ -166,7 +220,7 @@ class OverallPlayerScraper(
             logger.info("    → $updated licences linked")
         }
 
-        return updated
+        return SeasonResult(updated = updated, ambiguousLicences = ambiguous)
     }
 
     private fun findPlayerAtClub(

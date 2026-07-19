@@ -11,15 +11,15 @@ import org.slf4j.LoggerFactory
  * Collapses duplicate player rows using knob's licence search — the only page that maps a licence
  * to its player id(s).
  *
- * Two duplication sources both trace back to knob having no shared player key across its pages:
- *   1. A licence never got linked to a knob row (namesakes made name-matching ambiguous), so the
- *      click-tt backfill inserted a fresh, orphaned click-tt-only row for that person.
- *   2. knob assigns one person several gids over the years, which land as separate player rows.
+ * The remaining duplication source is knob assigning one person several gids over the years, which
+ * land as separate player rows (each gid is its own row via the match scraper). (The player-driven
+ * click-tt backfill no longer inserts orphan click-tt-only rows — it only updates existing knob
+ * rows — so that former source is gone.)
  *
  * For every distinct licence we hold, this searches knob → gid(s) and hands the pair to
- * [PlayerService.reconcileLicence], which merges every row that is that person into one. Runs after
- * the click-tt id backfill (so orphans exist) but before click-tt season scraping (so those orphans
- * have no gameplay yet and merge cheaply).
+ * [PlayerService.reconcileLicence], which merges every row that is that person into one. Runs before
+ * click-tt season scraping so the merges happen while the rows still carry only knob gameplay (cheap
+ * to repoint).
  */
 class KnobPlayerReconcileJob(
     private val client: KnobClient,
