@@ -3,7 +3,6 @@
 import com.ttscore.database.*
 import com.ttscore.model.MatchStatus
 import com.ttscore.scraper.knob.model.ParsedMatchDetail
-import com.ttscore.service.ClassificationService
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -23,9 +22,15 @@ class MatchScraper(
             transaction {
                 val homeTeam = Teams.alias("home_team")
                 val awayTeam = Teams.alias("away_team")
+                // "Completed matches with no game rows yet" as a LEFT JOIN … IS NULL anti-join. A plain
+                // `id NOT IN (SELECT match_id FROM game)` is wrong: tournament/cup games carry
+                // match_id = NULL, and `x NOT IN (… NULL …)` is never true, so that form silently
+                // matched nothing once any tournament game existed. The anti-join also avoids a full
+                // distinct scan of the 1.3M-row game table (index probe on idx_game_match instead).
                 (Matches innerJoin Groups innerJoin Federations innerJoin Seasons)
                     .join(homeTeam, JoinType.LEFT, Matches.homeTeamId, homeTeam[Teams.id])
                     .join(awayTeam, JoinType.LEFT, Matches.awayTeamId, awayTeam[Teams.id])
+                    .join(Games, JoinType.LEFT, Matches.id, Games.matchId)
                     .select(
                         Matches.id,
                         Matches.knobMatchId,
@@ -44,7 +49,7 @@ class MatchScraper(
                         (Matches.status eq MatchStatus.COMPLETED) and
                             (Matches.knobMatchId.isNotNull()) and
                             (Groups.knobGruppe.isNotNull()) and
-                            (Matches.id notInSubQuery Games.select(Games.matchId).withDistinct())
+                            Games.matchId.isNull()
                     }
                     .map {
                         MatchToScrape(
@@ -109,41 +114,13 @@ class MatchScraper(
         transaction {
             for (game in detail.games) {
                 val homePlayer1Id =
-                    upsertPlayer(
-                        game.homePlayer1KnobId,
-                        game.homePlayer1Name,
-                        game.homePlayer1Klass,
-                        match.homeTeamId,
-                        match.seasonId,
-                        match.playedAt,
-                    )
+                    upsertPlayer(game.homePlayer1KnobId, game.homePlayer1Name, match.homeTeamId, match.seasonId)
                 val homePlayer2Id =
-                    upsertPlayer(
-                        game.homePlayer2KnobId,
-                        game.homePlayer2Name,
-                        null,
-                        match.homeTeamId,
-                        match.seasonId,
-                        match.playedAt,
-                    )
+                    upsertPlayer(game.homePlayer2KnobId, game.homePlayer2Name, match.homeTeamId, match.seasonId)
                 val awayPlayer1Id =
-                    upsertPlayer(
-                        game.awayPlayer1KnobId,
-                        game.awayPlayer1Name,
-                        game.awayPlayer1Klass,
-                        match.awayTeamId,
-                        match.seasonId,
-                        match.playedAt,
-                    )
+                    upsertPlayer(game.awayPlayer1KnobId, game.awayPlayer1Name, match.awayTeamId, match.seasonId)
                 val awayPlayer2Id =
-                    upsertPlayer(
-                        game.awayPlayer2KnobId,
-                        game.awayPlayer2Name,
-                        null,
-                        match.awayTeamId,
-                        match.seasonId,
-                        match.playedAt,
-                    )
+                    upsertPlayer(game.awayPlayer2KnobId, game.awayPlayer2Name, match.awayTeamId, match.seasonId)
 
                 Games.insertIgnore {
                     it[Games.matchId] = match.matchId
@@ -186,19 +163,21 @@ class MatchScraper(
      * Returns the player's UUID, inserting a new player and player_season record if the knobId
      * is not yet in the database. This ensures match detail scraping never produces null player
      * references — players who only appear as substitutes or guests are created on the fly.
+     *
+     * Classification is intentionally NOT recorded here: the per-match bracket is on a women's
+     * ladder for women's-only divisions, so class is filled afterwards from each player's profile
+     * page (always men's-ladder) by [KnobPlayerClassScraper].
      */
     private fun upsertPlayer(
         knobId: Int?,
         name: String?,
-        className: String?,
         teamId: UUID,
         seasonId: UUID,
-        playedAt: java.time.OffsetDateTime?,
     ): UUID? {
         if (knobId == null) {
             // Doubles player 2 with no gid on the page — best-effort name lookup. Resolve only when the
-            // name is unique; refuse to guess between namesakes rather than link a doubles game + class
-            // to an arbitrary player who happens to share the name.
+            // name is unique; refuse to guess between namesakes rather than link a doubles game to an
+            // arbitrary player who happens to share the name.
             name ?: return null
             return Players.select(Players.id)
                 .where { Players.fullName eq name }
@@ -211,7 +190,6 @@ class MatchScraper(
                         it[PlayerSeasons.teamId] = teamId
                         it[PlayerSeasons.seasonId] = seasonId
                     }
-                    ClassificationService.recordMatchClass(playerId, seasonId, playedAt, className)
                 }
         }
 
@@ -238,8 +216,6 @@ class MatchScraper(
             it[PlayerSeasons.teamId] = teamId
             it[PlayerSeasons.seasonId] = seasonId
         }
-
-        ClassificationService.recordMatchClass(playerId, seasonId, playedAt, className)
 
         return playerId
     }

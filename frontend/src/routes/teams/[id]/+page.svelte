@@ -54,11 +54,12 @@
 				<p class="text-sm text-muted-foreground">{data.team.groupName}</p>
 			</div>
 			{#if data.team.position > 0}
-				<span
-					class="shrink-0 font-mono text-6xl leading-none font-black text-muted-foreground/15 tabular-nums"
+				<a
+					href="/groups/{data.team.groupId}"
+					class="shrink-0 font-mono text-6xl leading-none font-black text-muted-foreground/15 tabular-nums transition-colors hover:text-muted-foreground/40"
 				>
 					#{data.team.position}
-				</span>
+				</a>
 			{/if}
 		</div>
 	</header>

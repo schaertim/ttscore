@@ -3,6 +3,7 @@
 	import { cn, formatName } from '$lib/utils';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { _ } from 'svelte-i18n';
 
 	interface Props {
@@ -80,12 +81,16 @@
 	<div class="flex items-stretch gap-3 px-4">
 		<!-- left: game label + home player + away player + sets -->
 		<div class="flex min-w-0 flex-1 flex-col gap-2">
-			<p class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-				{$_('match.game_label', { values: { number: game.orderInMatch } })} · {game.gameType ===
-				'SINGLES'
-					? $_('match.singles')
-					: $_('match.doubles')}
-			</p>
+			<div
+				class="flex items-center gap-1.5 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
+			>
+				<span>{$_('match.game_label', { values: { number: game.orderInMatch } })}</span>
+				<Separator
+					orientation="vertical"
+					class="bg-muted-foreground/40 data-[orientation=vertical]:h-2.5"
+				/>
+				<span>{game.gameType === 'SINGLES' ? $_('match.singles') : $_('match.doubles')}</span>
+			</div>
 
 			{@render gameSide(
 				{
@@ -124,7 +129,10 @@
 			{/if}
 		</div>
 		<!-- divider -->
-		<div class="w-px shrink-0 self-stretch bg-border"></div>
+		<Separator
+			orientation="vertical"
+			class="self-stretch bg-muted-foreground/50 data-[orientation=vertical]:h-auto m-1"
+		/>
 		<!-- right: score, vertically centered -->
 		<div class="flex w-11 shrink-0 flex-col items-center justify-center">
 			<p class="font-mono text-3xl font-black tracking-tighter text-muted-foreground tabular-nums">

@@ -4,14 +4,18 @@
 	import { dayMonth } from '$lib/date';
 	import ClassBadge from '$lib/components/ClassBadge.svelte';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import { Separator } from '$lib/components/ui/separator/index.js';
+	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import { locale } from 'svelte-i18n';
 
 	interface Props {
 		/** A game seen from one player's perspective (opponent, own sets first, ELO delta). */
 		game: PlayerGame;
+		/** Shows a skeleton in place of a missing ELO delta while the on-demand sync backfills it. */
+		syncing?: boolean;
 	}
 
-	let { game }: Props = $props();
+	let { game, syncing = false }: Props = $props();
 
 	function formatDelta(delta: number | null): string {
 		if (delta == null) return '';
@@ -43,9 +47,16 @@
 		<div class="flex items-stretch gap-3 px-4">
 			<!-- left: meta + opponent + sets -->
 			<div class="flex min-w-0 flex-1 flex-col gap-2">
-				<p class="truncate text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-					{dayMonth(game.playedAt, $locale) ?? '—'} · {game.competitionName ?? '—'}
-				</p>
+				<div
+					class="flex min-w-0 items-center gap-1.5 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
+				>
+					<span class="shrink-0">{dayMonth(game.playedAt, $locale) ?? '—'}</span>
+					<Separator
+						orientation="vertical"
+						class="bg-muted-foreground/40 data-[orientation=vertical]:h-2.5"
+					/>
+					<span class="truncate">{game.competitionName ?? '—'}</span>
+				</div>
 				<div class="flex min-w-0 items-center gap-2">
 					{#if game.opponentId}
 						<a
@@ -81,7 +92,10 @@
 				{/if}
 			</div>
 			<!-- divider -->
-			<div class="w-px shrink-0 self-stretch bg-border"></div>
+			<Separator
+				orientation="vertical"
+				class="self-stretch bg-muted-foreground/50 data-[orientation=vertical]:h-auto m-1"
+			/>
 			<!-- right: score + ELO centered as group -->
 			<div class="flex w-11 shrink-0 flex-col items-center justify-center gap-1">
 				<p
@@ -100,6 +114,8 @@
 					>
 						{formatDelta(game.eloDelta)} ELO
 					</span>
+				{:else if syncing}
+					<Skeleton class="h-3 w-8 rounded" />
 				{/if}
 			</div>
 		</div>

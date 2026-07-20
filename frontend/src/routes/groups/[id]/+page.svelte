@@ -10,6 +10,7 @@
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import StandingsTable from '$lib/components/group/StandingsTable.svelte';
 	import ScheduledMatchCard from '$lib/components/group/ScheduledMatchCard.svelte';
+	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { page } from '$app/state';
 	import { replaceState } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
@@ -96,16 +97,20 @@
 		</div>
 		<div class="min-w-0">
 			<PageTitle class="mb-1">{data.group.name}</PageTitle>
-			<p class="text-sm text-muted-foreground">
-				{data.group.season}
+			<div class="flex items-center gap-1.5 text-sm text-muted-foreground">
+				<span>{data.group.season}</span>
 				{#if data.group.totalRounds > 0}
-					· <span class="font-semibold"
+					<Separator
+						orientation="vertical"
+						class="bg-muted-foreground/40 data-[orientation=vertical]:h-3.5"
+					/>
+					<span class="font-semibold"
 						>{$_('leagues.round', {
 							values: { played: data.group.roundsPlayed, total: data.group.totalRounds }
 						})}</span
 					>
 				{/if}
-			</p>
+			</div>
 		</div>
 	</header>
 

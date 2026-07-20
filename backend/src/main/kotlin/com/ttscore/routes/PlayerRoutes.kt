@@ -41,9 +41,13 @@ fun Route.playerRoutes() {
             // Pure read. The scrape is triggered separately by the client via GET /{id}/sync so it can
             // await completion and refresh in place. `isSyncing` advertises whether a sync will actually
             // run — a syncable player that is still within the cooldown window reports false, so the
-            // client neither re-triggers nor shows a misleading "updating" indicator.
+            // client neither re-triggers nor shows a misleading "updating" indicator. A player without a
+            // linked click-tt ID can never sync regardless of licence, so that's checked too — otherwise
+            // the client shows an "updating" state forever for players the backfill hasn't linked yet.
             val shouldSync =
-                player.licenceNr != null && !ClickTTSyncService.isWithinCooldown(UUID.fromString(id))
+                player.licenceNr != null &&
+                    PlayerService.getClickTtIdById(UUID.fromString(id)) != null &&
+                    !ClickTTSyncService.isWithinCooldown(UUID.fromString(id))
             call.respond(HttpStatusCode.OK, player.copy(isSyncing = shouldSync))
         }
 
@@ -175,23 +179,19 @@ fun Route.playerRoutes() {
 
                 call.respond(HttpStatusCode.OK, preview)
             }
+        }
 
-            // Career tab is a Pro feature — same optional-auth / 403 pattern as H2H.
-            get("/{id}/career") {
-                if (!call.isPro()) {
-                    return@get call.respond(HttpStatusCode.Forbidden, ReasonResponse("pro_required"))
-                }
+        // Career tab (season-by-season arc, milestones, rivalries) is free.
+        get("/{id}/career") {
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
 
-                val id =
-                    call.parameters["id"]
-                        ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+            val career =
+                PlayerService.getCareer(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
 
-                val career =
-                    PlayerService.getCareer(id)
-                        ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
-
-                call.respond(HttpStatusCode.OK, career)
-            }
+            call.respond(HttpStatusCode.OK, career)
         }
 
         get("/{id}/class-history") {

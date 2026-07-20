@@ -166,6 +166,13 @@
 		/* Native-feel: contain overscroll so pull-to-refresh / swipe-back gestures
 		   don't leak into the browser. */
 		overscroll-behavior-y: contain;
+		/* Native-feel: hide the scrollbar in standalone PWA mode (no browser chrome
+		   to justify it) while keeping the page scrollable. */
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+	html::-webkit-scrollbar {
+		display: none;
 	}
 	body {
 		@apply bg-background text-foreground;

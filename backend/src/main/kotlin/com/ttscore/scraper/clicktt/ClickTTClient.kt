@@ -6,6 +6,7 @@ import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import io.ktor.http.*
 import kotlinx.coroutines.delay
 import org.slf4j.LoggerFactory
 
@@ -49,13 +50,41 @@ class ClickTTClient {
         return fetchWithRetry(fullUrl)
     }
 
-    suspend fun fetchClubMembersPage(
-        clubId: Int,
-        gender: String = "MALE",
-    ): String {
-        val url = "$baseUrl/clubLicenceMembersPage?gender=$gender&club=$clubId"
-        return fetchWithRetry(url)
-    }
+    /**
+     * Fetches the empty Elo-Filter search form. Its pre-selected ranking date is the current
+     * monthly ranking — the date every search must be pinned to.
+     */
+    suspend fun fetchEloFilterForm(): String =
+        fetchWithRetry("$baseUrl/eloFilter?federation=STT")
+
+    /**
+     * Runs an Elo-Filter search by licence number. Unlike the club roster pages this covers the
+     * full ranking history, so it also finds players whose licence has since lapsed. Returns the
+     * results page (one row, or an empty table when the licence is unknown to click-tt).
+     */
+    suspend fun fetchEloFilterByLicence(
+        licenceNr: String,
+        rankingDate: String,
+    ): String =
+        fetchWithRetry(
+            "$baseUrl/eloFilter?federation=STT&licenceNr=$licenceNr" +
+                "&rankingDate=$rankingDate&sex=WONoSelectionString&eloFilter=Suchen",
+        )
+
+    /**
+     * Runs an Elo-Filter search by name. [firstname] may be blank for a surname-only search, which
+     * returns every namesake with that surname. Covers full ranking history like the licence search.
+     */
+    suspend fun fetchEloFilterByName(
+        lastname: String,
+        firstname: String,
+        rankingDate: String,
+    ): String =
+        fetchWithRetry(
+            "$baseUrl/eloFilter?federation=STT" +
+                "&lastname=${lastname.encodeURLParameter()}&firstname=${firstname.encodeURLParameter()}" +
+                "&rankingDate=$rankingDate&sex=WONoSelectionString&eloFilter=Suchen",
+        )
 
     /**
      * Fetches the league overview page listing all groups for a championship.

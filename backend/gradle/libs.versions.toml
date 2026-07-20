@@ -1,6 +1,7 @@
 [versions]
 exposed = "0.61.0"
 h2 = "2.3.232"
+hikari = "5.1.0"
 kotlin = "2.3.0"
 ktlint-gradle = "12.2.0"
 ktor = "3.4.1"
@@ -12,6 +13,7 @@ ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
 postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres" }
+hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }

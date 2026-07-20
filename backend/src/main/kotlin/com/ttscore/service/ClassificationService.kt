@@ -91,9 +91,36 @@ object ClassificationService {
     /** The classification a given ELO corresponds to right now (the "live" class). */
     fun fromElo(elo: Int): String = ELO_THRESHOLDS.first { elo >= it.first }.second
 
+    // Ascending-rank ladder of every classification label (D1..A22, rank 1..22) — the mirror of
+    // ELO_THRESHOLDS, letting callers name a class by rank without any player having reached it
+    // (e.g. filling in an empty opponent-strength bucket that nobody has played yet).
+    private val CLASS_LADDER: List<String> = ELO_THRESHOLDS.map { it.second }.asReversed()
+
+    /** Class label for a ladder rank (1 → "D1" … 22 → "A22"), or null if out of range. */
+    fun classLabelForRank(rank: Int): String? = CLASS_LADDER.getOrNull(rank - 1)
+
     // -------------------------------------------------------------------------
     // Writes
     // -------------------------------------------------------------------------
+
+    /**
+     * Records [className] into a specific season-half (last write wins). Setting only the one half
+     * column means ON CONFLICT updates only that column, leaving the other half untouched.
+     * Must be called inside an existing transaction.
+     */
+    fun recordClass(
+        playerId: UUID,
+        seasonId: UUID,
+        half: Half,
+        className: String?,
+    ) {
+        if (className.isNullOrBlank()) return
+        PlayerClassifications.upsert(PlayerClassifications.playerId, PlayerClassifications.seasonId) {
+            it[PlayerClassifications.playerId] = playerId
+            it[PlayerClassifications.seasonId] = seasonId
+            it[column(half)] = className
+        }
+    }
 
     /**
      * Records the class printed on a match into the half its date falls in (last write wins).
@@ -105,15 +132,8 @@ object ClassificationService {
         playedAt: OffsetDateTime?,
         className: String?,
     ) {
-        if (className.isNullOrBlank() || playedAt == null) return
-        val half = halfOf(localDateOf(playedAt))
-        // Setting only the one half column means ON CONFLICT updates only that column,
-        // leaving the other half untouched.
-        PlayerClassifications.upsert(PlayerClassifications.playerId, PlayerClassifications.seasonId) {
-            it[PlayerClassifications.playerId] = playerId
-            it[PlayerClassifications.seasonId] = seasonId
-            it[column(half)] = className
-        }
+        if (playedAt == null) return
+        recordClass(playerId, seasonId, halfOf(localDateOf(playedAt)), className)
     }
 
     /**

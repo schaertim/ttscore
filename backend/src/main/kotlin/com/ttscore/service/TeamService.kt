@@ -43,6 +43,7 @@ object TeamService {
             TeamSummaryResponse(
                 id = teamRow[Teams.id].toString(),
                 name = teamRow[Teams.name],
+                groupId = teamRow[Teams.groupId].toString(),
                 groupName = groupName,
                 position = position,
                 record = record,

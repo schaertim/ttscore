@@ -2,13 +2,14 @@
 
 import com.ttscore.database.*
 import com.ttscore.model.*
-import com.ttscore.scraper.clicktt.model.ClickTTClubMember
 import com.ttscore.util.accentFold
 import com.ttscore.util.clickTtNameToDb
+import com.ttscore.util.clubNamesSimilar
 import com.ttscore.util.toUuidOrNull
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -23,7 +24,10 @@ object PlayerService {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
             val playerRow =
-                Players.select(Players.id, Players.fullName, Players.licenceNr)
+                Players.select(
+                    Players.id, Players.fullName, Players.licenceNr, Players.category,
+                    Players.clickttId, Players.matchMethod,
+                )
                     .where { Players.id eq uuid }
                     .firstOrNull() ?: return@dbQuery null
 
@@ -45,9 +49,12 @@ object PlayerService {
 
             playerRow.toPlayerResponse(
                 currentClubName = currentClubName,
+                category = playerRow[Players.category],
                 classification = ClassificationService.currentClasses(listOf(uuid))[uuid],
                 currentElo = currentElo,
                 liveElo = LiveEloService.liveEloFor(uuid, currentElo),
+                clickttLinked = playerRow[Players.clickttId] != null,
+                matchMethod = playerRow[Players.matchMethod],
             )
         }
     }
@@ -95,6 +102,8 @@ object PlayerService {
                     Games.result,
                     Games.homePlayer1EloDelta,
                     Games.awayPlayer1EloDelta,
+                    Games.homePlayer1EloOrder,
+                    Games.awayPlayer1EloOrder,
                     Games.playedAt,
                     Games.competitionName,
                     Matches.id,
@@ -111,8 +120,24 @@ object PlayerService {
                     ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
                         (Games.gameType eq GameType.SINGLES)
                 }
-                .orderBy(Games.playedAt to SortOrder.DESC)
                 .toList()
+                // Newest day first, then the player's Elo-Protokoll order within a day (index 0 =
+                // topmost protocol row), then the stable game id — a total, reload-invariant order
+                // so same-day games (which share a played_at) never reshuffle. Sorted here rather
+                // than in SQL because the protocol key lives on a different column per side.
+                .sortedWith(
+                    compareBy(nullsLast(reverseOrder<OffsetDateTime>())) { row: ResultRow ->
+                        row[Games.playedAt]
+                    }
+                        .thenBy(nullsLast(naturalOrder<Int>())) { row: ResultRow ->
+                            if (row[Games.homePlayer1Id] == uuid) {
+                                row[Games.homePlayer1EloOrder]
+                            } else {
+                                row[Games.awayPlayer1EloOrder]
+                            }
+                        }
+                        .thenBy { row: ResultRow -> row[Games.id] },
+                )
                 .let { rows ->
                     val gameIds = rows.map { it[Games.id] }
                     val setsByGame =
@@ -489,8 +514,11 @@ object PlayerService {
                 if (won) currentStreak++ else break
             }
 
-            // Buckets relative to the player's current class: keep classes within ±2 separate,
-            // fold the far-stronger into "HIGHER" and the far-weaker into "LOWER".
+            // A fixed set of 7 buckets relative to the player's current class — same class, two
+            // ranks up/down individually, and everything 3+ ranks further folded into HIGHER /
+            // LOWER — always present even when the player has no games there yet (0/0, rendered
+            // as "-" by the client) so a sparse season doesn't produce a different, gap-ridden
+            // set of buckets depending on which classes happened to be faced.
             val opponentBuckets: List<OpponentBucketResponse> =
                 if (playerCurrentRank == null) {
                     tiers.entries
@@ -498,41 +526,28 @@ object PlayerService {
                         .map { OpponentBucketResponse(it.key, it.value.wins, it.value.games) }
                 } else {
                     var higherW = 0; var higherG = 0
-                    var higherNearRank = Int.MIN_VALUE; var higherNearCls = ""
-                    var higherFarRank = Int.MIN_VALUE; var higherFarCls = ""
                     var lowerW = 0; var lowerG = 0
-                    var lowerNearRank = Int.MAX_VALUE; var lowerNearCls = ""
-                    var lowerFarRank = Int.MAX_VALUE; var lowerFarCls = ""
-                    val mid = mutableListOf<Triple<Int, String, WinAcc>>()
                     for ((cls, acc) in tiers) {
                         val r = classRank(cls) ?: continue
                         when {
-                            r - playerCurrentRank >= 3 -> {
-                                higherW += acc.wins; higherG += acc.games
-                                // nearClass = lowest rank in HIGHER (closest to player boundary)
-                                if (r < higherNearRank || higherNearRank == Int.MIN_VALUE) { higherNearRank = r; higherNearCls = cls }
-                                // farClass = highest rank in HIGHER (strongest opponent)
-                                if (r > higherFarRank) { higherFarRank = r; higherFarCls = cls }
-                            }
-                            r - playerCurrentRank <= -3 -> {
-                                lowerW += acc.wins; lowerG += acc.games
-                                // nearClass = highest rank in LOWER (closest to player boundary)
-                                if (r > lowerNearRank || lowerNearRank == Int.MAX_VALUE) { lowerNearRank = r; lowerNearCls = cls }
-                                // farClass = lowest rank in LOWER (weakest opponent)
-                                if (r < lowerFarRank) { lowerFarRank = r; lowerFarCls = cls }
-                            }
-                            else -> mid.add(Triple(r, cls, acc))
+                            r - playerCurrentRank >= 3 -> { higherW += acc.wins; higherG += acc.games }
+                            r - playerCurrentRank <= -3 -> { lowerW += acc.wins; lowerG += acc.games }
                         }
                     }
+                    // The HIGHER/LOWER boundary class is defined by the player's own rank, not by
+                    // which opponents were actually faced — so it's only null when no class 3+
+                    // ranks away even exists (e.g. a top-class player has no "HIGHER" tier at all).
+                    val higherNear = ClassificationService.classLabelForRank(playerCurrentRank + 3)
+                    val lowerNear = ClassificationService.classLabelForRank(playerCurrentRank - 3)
+
                     buildList {
-                        if (higherG > 0) add(
-                            OpponentBucketResponse("HIGHER", higherW, higherG, higherNearCls.ifEmpty { null }, higherFarCls.ifEmpty { null })
-                        )
-                        mid.sortedByDescending { it.first }
-                            .forEach { add(OpponentBucketResponse(it.second, it.third.wins, it.third.games)) }
-                        if (lowerG > 0) add(
-                            OpponentBucketResponse("LOWER", lowerW, lowerG, lowerNearCls.ifEmpty { null }, lowerFarCls.ifEmpty { null })
-                        )
+                        if (higherNear != null) add(OpponentBucketResponse("HIGHER", higherW, higherG, higherNear))
+                        for (offset in 2 downTo -2) {
+                            val cls = ClassificationService.classLabelForRank(playerCurrentRank + offset) ?: continue
+                            val acc = tiers[cls] ?: WinAcc()
+                            add(OpponentBucketResponse(cls, acc.wins, acc.games))
+                        }
+                        if (lowerNear != null) add(OpponentBucketResponse("LOWER", lowerW, lowerG, lowerNear))
                     }
                 }
 
@@ -1378,155 +1393,333 @@ object PlayerService {
                 .firstOrNull()
         }
 
-    suspend fun getPlayersMissingClickTtId(): List<Pair<UUID, String>> =
+    data class UnlinkedPlayer(
+        val id: UUID,
+        val fullName: String,
+        val licence: String?,
+    )
+
+    /** Unlinked players (no clicktt_id) that carry a licence — Pass 1 of the click-tt linker. */
+    suspend fun getUnlinkedPlayersWithLicence(): List<UnlinkedPlayer> =
         dbQuery {
-            Players.select(Players.id, Players.licenceNr)
-                .where {
-                    Players.clickttId.isNull() and Players.licenceNr.isNotNull()
-                }
-                .map { it[Players.id] to it[Players.licenceNr]!! }
+            Players.select(Players.id, Players.fullName, Players.licenceNr)
+                .where { Players.clickttId.isNull() and Players.licenceNr.isNotNull() }
+                .map { UnlinkedPlayer(it[Players.id], it[Players.fullName], it[Players.licenceNr]) }
         }
 
-    suspend fun updateClickTtIdsBatch(mappings: Map<String, Int>) {
-        if (mappings.isEmpty()) return
+    /** Unlinked players (no clicktt_id) with no licence — Pass 2, resolved via name search. */
+    suspend fun getUnlinkedPlayersWithoutLicence(): List<UnlinkedPlayer> =
         dbQuery {
-            for ((licence, personId) in mappings) {
-                Players.update({ Players.licenceNr eq licence }) {
-                    it[Players.clickttId] = personId
-                }
-            }
+            Players.select(Players.id, Players.fullName, Players.licenceNr)
+                .where { Players.clickttId.isNull() and Players.licenceNr.isNull() }
+                .map { UnlinkedPlayer(it[Players.id], it[Players.fullName], null) }
         }
+
+    /** Outcome of the optional licence write in [updateClickTtLink], for the caller to log. */
+    enum class LicenceWriteResult { WRITTEN, UNCHANGED, CONFLICT }
+
+    /**
+     * How a player's click-tt link was established, in roughly descending confidence. Stored on the
+     * player row so low-confidence links can be filtered/flagged rather than trusted blindly:
+     *  - [LICENCE] — matched by unique licence, name verified exactly. Highest confidence.
+     *  - [LICENCE_NEAR_CLUB] — licence match, 1-2 char name drift, confirmed by matching club.
+     *  - [LICENCE_NEAR] — licence match, 1 char name drift, no click-tt club to confirm against. Low.
+     *  - [NAME_CLUB] — resolved by name search, disambiguated/confirmed by matching club.
+     *  - [NAME] — name search, single exact-name match (name unique on click-tt).
+     *  - [NAME_NEAR_CLUB] — name search, near name confirmed by club.
+     *  - [NAME_NEAR] — name search, near name, no club confirmation. Low.
+     */
+    enum class MatchMethod {
+        LICENCE, LICENCE_NEAR_CLUB, LICENCE_NEAR, NAME_CLUB, NAME, NAME_NEAR_CLUB, NAME_NEAR
     }
 
     /**
-     * Phase A of the backfill: for each club member whose licence already exists in the DB,
-     * writes the click-tt person ID, canonical name, and registration metadata.
+     * Links a resolved click-tt identity onto one player row. Always adopts click-tt's spelling as
+     * the canonical name (converted to knob's "Lastname Firstname" storage format) — click-tt is the
+     * naming authority, so this scrubs knob's data-entry misspellings. Writes the age category when
+     * present and records the [matchMethod]. sex/nationality are left untouched (this flow never sees them).
+     *
+     * [licence] is written only when non-null AND not already held by another player row (the column
+     * is uniquely indexed) — used to backfill a missing licence or correct a wrong one after a
+     * name-search resolution. Returns which of those happened for the caller to log; a [CONFLICT]
+     * still links the click-tt id + name, only the licence is left as-is.
      */
-    suspend fun updateClickTtDataBatch(members: List<ClickTTClubMember>) {
-        if (members.isEmpty()) return
+    suspend fun updateClickTtLink(
+        playerId: UUID,
+        personId: Int,
+        clickTtName: String,
+        category: String?,
+        licence: String?,
+        matchMethod: MatchMethod,
+    ): LicenceWriteResult =
         dbQuery {
-            for (member in members) {
-                Players.update({ Players.licenceNr eq member.licence }) {
-                    it[Players.clickttId] = member.personId
-                    // Convert "Lastname, Firstname" → "Lastname Firstname" to match knob storage format
-                    it[Players.fullName] = clickTtNameToDb(member.fullName)
-                    it[Players.sex] = member.sex
-                    it[Players.serie] = member.serie
-                    it[Players.nationality] = member.nationality
+            val licenceResult =
+                // click-tt uses an all-zeros licence ("00000000") as a placeholder for players with
+                // no real licence — never adopt it (it's not unique and would pollute licence_nr).
+                if (licence == null || licence.isBlank() || licence.all { it == '0' }) {
+                    LicenceWriteResult.UNCHANGED
+                } else {
+                    val current =
+                        Players.select(Players.licenceNr)
+                            .where { Players.id eq playerId }
+                            .firstOrNull()?.get(Players.licenceNr)
+                    when {
+                        current == licence -> LicenceWriteResult.UNCHANGED
+                        Players.select(Players.id)
+                            .where { (Players.licenceNr eq licence) and (Players.id neq playerId) }
+                            .any() -> LicenceWriteResult.CONFLICT
+                        else -> LicenceWriteResult.WRITTEN
+                    }
                 }
+
+            Players.update({ Players.id eq playerId }) {
+                it[Players.clickttId] = personId
+                it[Players.fullName] = clickTtNameToDb(clickTtName)
+                it[Players.matchMethod] = matchMethod.name
+                if (category != null) it[Players.category] = category
+                if (licenceResult == LicenceWriteResult.WRITTEN) it[Players.licenceNr] = licence
             }
+            licenceResult
         }
-    }
 
     /**
-     * Returns the subset of the given licence numbers that already exist in the DB.
-     * Used to identify which club members couldn't be matched by licence so name+club
-     * fallback matching can be attempted for the remainder.
+     * Every click-tt person ID already linked to a player row. Used to keep a bulk relink from
+     * reassigning an id that another row already holds — a unique-constraint violation would
+     * otherwise abort the whole batch update.
      */
-    suspend fun findLicencesInDb(licences: Collection<String>): Set<String> =
+    suspend fun getAssignedClickTtIds(): Set<Int> =
         dbQuery {
-            Players.select(Players.licenceNr)
-                .where { Players.licenceNr inList licences.toList() }
-                .mapNotNull { it[Players.licenceNr] }
+            Players.select(Players.clickttId)
+                .where { Players.clickttId.isNotNull() }
+                .mapNotNull { it[Players.clickttId] }
                 .toSet()
         }
 
-    /**
-     * Phase C of the backfill: inserts player rows for members that couldn't be matched by
-     * licence or name+club. Uses INSERT IGNORE so members already linked by Phase B
-     * (whose clicktt_id now lives on an existing row) are silently skipped.
-     */
-    suspend fun insertUnmatchedClickTtMembers(members: List<ClickTTClubMember>) {
-        if (members.isEmpty()) return
-        dbQuery {
-            for (member in members) {
-                Players.insertIgnore {
-                    it[Players.clickttId] = member.personId
-                    it[Players.licenceNr] = member.licence
-                    it[Players.fullName] = clickTtNameToDb(member.fullName)
-                    it[Players.sex] = member.sex
-                    it[Players.serie] = member.serie
-                    it[Players.nationality] = member.nationality
-                }
-            }
-        }
-    }
+    /** Outcome of [linkResolvedClub], for the caller to log. */
+    enum class ClubLinkResult { LINKED, LINKED_KEPT_NAME, ALREADY_LINKED, NO_NAME_MATCH, AMBIGUOUS, CONFLICT }
 
     /**
-     * Phase B of the backfill: for club members that couldn't be matched by licence,
-     * attempts a name + club fallback — accent-folds both sides and checks that the player
-     * has a player_season record at a club whose name fuzzy-matches [clickTtClubName].
-     * On a unique match the player gains the licence, click-tt ID, canonical name, and metadata.
+     * Knob club names (via player_season → team → club) for each of [playerIds], deduped. Loaded in
+     * one query so the concurrent resolve stage can disambiguate Pass-2 namesakes without a per-player
+     * round-trip. Players with no season simply have no entry.
      */
-    suspend fun matchAndLinkByNameAndClub(
-        members: List<ClickTTClubMember>,
-        clickTtClubName: String,
-    ) = dbQuery {
-        val foldedClub = accentFold(clickTtClubName)
-
-        // Find DB clubs whose folded name overlaps with the click-tt club name
-        val matchingClubIds =
-            Clubs.select(Clubs.id, Clubs.name)
-                .toList()
-                .filter { row ->
-                    val fc = accentFold(row[Clubs.name])
-                    fc.contains(foldedClub) || foldedClub.contains(fc)
-                }
-                .map { it[Clubs.id] }
-
-        if (matchingClubIds.isEmpty()) return@dbQuery
-
-        // Load players at those clubs that still have no licence and no click-tt ID
-        val playersAtClub =
-            (Players innerJoin PlayerSeasons innerJoin Teams innerJoin Clubs)
-                .select(Players.id, Players.fullName)
-                .where {
-                    (Clubs.id inList matchingClubIds) and
-                        Players.licenceNr.isNull() and
-                        Players.clickttId.isNull()
-                }
-                .distinctBy { it[Players.id] }
-
-        // Index by folded name for O(1) lookup
-        val byFolded = playersAtClub.groupBy { accentFold(it[Players.fullName]) }
-
-        for (member in members) {
-            val dbName = clickTtNameToDb(member.fullName)
-            val candidates = byFolded[accentFold(dbName)] ?: continue
-
-            if (candidates.size == 1) {
-                Players.update({ Players.id eq candidates[0][Players.id] }) {
-                    it[Players.licenceNr] = member.licence
-                    it[Players.clickttId] = member.personId
-                    it[Players.fullName] = dbName
-                    it[Players.sex] = member.sex
-                    it[Players.serie] = member.serie
-                    it[Players.nationality] = member.nationality
-                }
-            }
-            // Multiple candidates with same folded name at same club → ambiguous, skip
-        }
-    }
-
-    /**
-     * Finds the club that the majority of the given licensed players belong to.
-     * Used to match a click-tt club ID to an existing club row scraped from knob.
-     */
-    suspend fun findClubIdByLicences(licences: List<String>): UUID? {
-        if (licences.isEmpty()) return null
+    suspend fun getKnobClubNamesFor(playerIds: Collection<UUID>): Map<UUID, List<String>> {
+        if (playerIds.isEmpty()) return emptyMap()
         return dbQuery {
-            val clubCount = Clubs.id.count()
-            Players
-                .innerJoin(PlayerSeasons, { Players.id }, { PlayerSeasons.playerId })
-                .innerJoin(Teams, { PlayerSeasons.teamId }, { Teams.id })
-                .innerJoin(Clubs, { Teams.clubId }, { Clubs.id })
-                .select(Clubs.id, clubCount)
-                .where { Players.licenceNr inList licences }
-                .groupBy(Clubs.id)
-                .orderBy(clubCount to SortOrder.DESC)
-                .limit(1)
-                .firstOrNull()
-                ?.get(Clubs.id)
+            (Players innerJoin PlayerSeasons innerJoin Teams innerJoin Clubs)
+                .select(Players.id, Clubs.name)
+                .where { Players.id inList playerIds.toList() }
+                .map { it[Players.id] to it[Clubs.name] }
+                .groupBy({ it.first }, { it.second })
+                .mapValues { (_, names) -> names.distinct() }
+        }
+    }
+
+    /**
+     * Links a resolved click-tt club onto the knob club the player belongs to. Picks the player's
+     * knob club whose name [clubNamesSimilar] the click-tt club name, then adopts click-tt's name +
+     * id as canonical (click-tt is the naming authority, like the old roster path). Returns a
+     * [ClubLinkResult] for the caller to log:
+     *  - NO_NAME_MATCH / AMBIGUOUS — 0 or >1 of the player's clubs match by name; skip.
+     *  - ALREADY_LINKED — the chosen club already carries this click-tt id (idempotent no-op).
+     *  - CONFLICT — the chosen club already has a *different* click-tt id, or this click-tt id is
+     *    already held by another knob club; left untouched (a genuine data disagreement to inspect).
+     *  - LINKED — id + canonical name written.
+     *  - LINKED_KEPT_NAME — id written, but the canonical name was left as knob's because another
+     *    club row already holds it (club.name is unique). ClubDedupeJob merges the duplicate later.
+     */
+    suspend fun linkResolvedClub(
+        playerId: UUID,
+        clickTtClubId: Int,
+        clickTtClubName: String,
+    ): ClubLinkResult =
+        dbQuery {
+            val playerClubs =
+                (Players innerJoin PlayerSeasons innerJoin Teams innerJoin Clubs)
+                    .select(Clubs.id, Clubs.name, Clubs.clickttId)
+                    .where { Players.id eq playerId }
+                    .distinctBy { it[Clubs.id] }
+
+            val matches = playerClubs.filter { clubNamesSimilar(it[Clubs.name], clickTtClubName) }
+            val chosen =
+                when (matches.size) {
+                    0 -> return@dbQuery ClubLinkResult.NO_NAME_MATCH
+                    1 -> matches.single()
+                    else -> return@dbQuery ClubLinkResult.AMBIGUOUS
+                }
+
+            val chosenId = chosen[Clubs.id]
+            val existing = chosen[Clubs.clickttId]
+            if (existing == clickTtClubId) return@dbQuery ClubLinkResult.ALREADY_LINKED
+            if (existing != null) return@dbQuery ClubLinkResult.CONFLICT
+
+            // clicktt_id is globally unique on our side — if another knob club already claims it,
+            // that's a disagreement to surface, not an id to silently steal.
+            val heldElsewhere =
+                Clubs.select(Clubs.id)
+                    .where { (Clubs.clickttId eq clickTtClubId) and (Clubs.id neq chosenId) }
+                    .any()
+            if (heldElsewhere) return@dbQuery ClubLinkResult.CONFLICT
+
+            // club.name is uniquely indexed. Many knob rows are name-drift duplicates of the same
+            // real club, so several can resolve to one click-tt name — adopting it on more than one
+            // would violate the unique constraint. Only adopt the name when no other club already
+            // holds it; otherwise keep knob's name and let ClubDedupeJob (which runs next) merge the
+            // duplicate. The id link is written either way.
+            val nameTaken =
+                Clubs.select(Clubs.id)
+                    .where { (Clubs.name eq clickTtClubName) and (Clubs.id neq chosenId) }
+                    .any()
+
+            Clubs.update({ Clubs.id eq chosenId }) {
+                it[Clubs.clickttId] = clickTtClubId
+                if (!nameTaken) it[Clubs.name] = clickTtClubName
+            }
+            if (nameTaken) ClubLinkResult.LINKED_KEPT_NAME else ClubLinkResult.LINKED
+        }
+
+    /** Outcome of [reconcileLicence]: how many duplicate rows were merged, and whether the licence
+     *  ended up on a real knob player row (false when its gid isn't in our data). */
+    data class ReconcileOutcome(val merged: Int, val attached: Boolean)
+
+    /**
+     * Reconciles all player rows for one person, identified by [licence] → [gids] (from knob's
+     * licence search). Collapses every row that is this person — any row carrying one of the gids,
+     * or carrying the licence — into a single canonical row, repointing the gameplay / classification
+     * / elo / game / user-claim foreign keys, then stamps the knob id + licence onto it. Idempotent:
+     * on already-clean data it finds one row and changes nothing.
+     */
+    suspend fun reconcileLicence(
+        licence: String,
+        gids: List<Int>,
+    ): ReconcileOutcome =
+        dbQuery {
+            if (gids.isEmpty()) return@dbQuery ReconcileOutcome(0, attached = false)
+
+            val rows =
+                Players.select(
+                    Players.id, Players.knobId, Players.licenceNr, Players.clickttId,
+                    Players.fullName, Players.sex, Players.category, Players.nationality,
+                ).where { (Players.knobId inList gids) or (Players.licenceNr eq licence) }
+                    .toList()
+            if (rows.isEmpty()) return@dbQuery ReconcileOutcome(0, attached = false)
+
+            // Keep the knob row (it holds the match history) as canonical — lowest gid for a stable
+            // choice across re-runs. If none has a knob id (a click-tt-only row whose gid we never
+            // scraped), that row itself is canonical and gets the gid stamped below.
+            val canonical =
+                rows.filter { it[Players.knobId] != null }.minByOrNull { it[Players.knobId]!! }
+                    ?: rows.first()
+            val canonicalId = canonical[Players.id]
+            val dups = rows.filter { it[Players.id] != canonicalId }
+
+            for (d in dups) mergePlayerInto(canonicalId, d)
+
+            // Ensure the survivor carries the identity. A still-null knob id here means none of the
+            // gids exist in our DB (else that row would have been canonical), so gids.min() is free.
+            val after =
+                Players.select(Players.knobId, Players.licenceNr)
+                    .where { Players.id eq canonicalId }.first()
+            val needKnob = after[Players.knobId] == null
+            val needLic = after[Players.licenceNr] == null
+            if (needKnob || needLic) {
+                Players.update({ Players.id eq canonicalId }) {
+                    if (needKnob) it[Players.knobId] = gids.min()
+                    if (needLic) it[Players.licenceNr] = licence
+                }
+            }
+            ReconcileOutcome(merged = dups.size, attached = true)
+        }
+
+    /** Folds the duplicate player row into the canonical one, then deletes it. Caller supplies the
+     *  dup's already-selected identity columns. Must run inside a transaction. */
+    private fun mergePlayerInto(
+        canonicalId: UUID,
+        dup: ResultRow,
+    ) {
+        val dupId = dup[Players.id]
+
+        // Repoint every foreign key that references the duplicate.
+        // player_season is UNIQUE(player_id, team_id, season_id): if both rows independently recorded
+        // this person on the same team+season, drop the dup's colliding rows before repointing the
+        // rest — otherwise the blind UPDATE would violate the constraint.
+        val canonTeamSeasons =
+            PlayerSeasons.select(PlayerSeasons.teamId, PlayerSeasons.seasonId)
+                .where { PlayerSeasons.playerId eq canonicalId }
+                .map { it[PlayerSeasons.teamId] to it[PlayerSeasons.seasonId] }
+                .toSet()
+        if (canonTeamSeasons.isNotEmpty()) {
+            val collidingDupSeasons =
+                PlayerSeasons.select(PlayerSeasons.id, PlayerSeasons.teamId, PlayerSeasons.seasonId)
+                    .where { PlayerSeasons.playerId eq dupId }
+                    .filter { (it[PlayerSeasons.teamId] to it[PlayerSeasons.seasonId]) in canonTeamSeasons }
+                    .map { it[PlayerSeasons.id] }
+            if (collidingDupSeasons.isNotEmpty()) {
+                PlayerSeasons.deleteWhere { PlayerSeasons.id inList collidingDupSeasons }
+            }
+        }
+        PlayerSeasons.update({ PlayerSeasons.playerId eq dupId }) { it[PlayerSeasons.playerId] = canonicalId }
+        PlayerElos.update({ PlayerElos.playerId eq dupId }) { it[PlayerElos.playerId] = canonicalId }
+        // player_classification is UNIQUE(player_id, season_id): drop dup rows for seasons the
+        // canonical already covers, then move the rest.
+        val canonSeasons =
+            PlayerClassifications.select(PlayerClassifications.seasonId)
+                .where { PlayerClassifications.playerId eq canonicalId }
+                .map { it[PlayerClassifications.seasonId] }
+        if (canonSeasons.isNotEmpty()) {
+            PlayerClassifications.deleteWhere {
+                (PlayerClassifications.playerId eq dupId) and (PlayerClassifications.seasonId inList canonSeasons)
+            }
+        }
+        PlayerClassifications.update({ PlayerClassifications.playerId eq dupId }) {
+            it[PlayerClassifications.playerId] = canonicalId
+        }
+        Games.update({ Games.homePlayer1Id eq dupId }) { it[Games.homePlayer1Id] = canonicalId }
+        Games.update({ Games.homePlayer2Id eq dupId }) { it[Games.homePlayer2Id] = canonicalId }
+        Games.update({ Games.awayPlayer1Id eq dupId }) { it[Games.awayPlayer1Id] = canonicalId }
+        Games.update({ Games.awayPlayer2Id eq dupId }) { it[Games.awayPlayer2Id] = canonicalId }
+        UserProfiles.update({ UserProfiles.homePlayerId eq dupId }) { it[UserProfiles.homePlayerId] = canonicalId }
+
+        // Delete the dup first so its unique ids (knob/licence/clicktt) free up, then let the
+        // canonical adopt whatever identity/metadata it was missing.
+        val dupKnob = dup[Players.knobId]
+        val dupLic = dup[Players.licenceNr]
+        val dupCtt = dup[Players.clickttId]
+        val dupName = dup[Players.fullName]
+        val dupSex = dup[Players.sex]
+        val dupCat = dup[Players.category]
+        val dupNat = dup[Players.nationality]
+        Players.deleteWhere { Players.id eq dupId }
+
+        val canon =
+            Players.select(
+                Players.knobId, Players.licenceNr, Players.clickttId,
+                Players.fullName, Players.sex, Players.category, Players.nationality,
+            ).where { Players.id eq canonicalId }.first()
+
+        // Which identity/metadata columns the canonical lacks and the dup can supply.
+        val takeKnob = canon[Players.knobId] == null && dupKnob != null
+        val takeLic = canon[Players.licenceNr] == null && dupLic != null
+        val takeCtt = canon[Players.clickttId] == null && dupCtt != null
+        val takeSex = canon[Players.sex] == null && dupSex != null
+        val takeCat = canon[Players.category] == null && dupCat != null
+        val takeNat = canon[Players.nationality] == null && dupNat != null
+        val cn = canon[Players.fullName]
+        val takeName = (cn.isBlank() || cn == "Unknown") && dupName.isNotBlank()
+
+        // When the canonical already has everything the dup could contribute, there's nothing to
+        // set — skip the update, else Exposed throws "no fields to update" and rolls back the merge.
+        if (takeKnob || takeLic || takeCtt || takeSex || takeCat || takeNat || takeName) {
+            Players.update({ Players.id eq canonicalId }) {
+                if (takeKnob) it[Players.knobId] = dupKnob
+                if (takeLic) it[Players.licenceNr] = dupLic
+                if (takeCtt) it[Players.clickttId] = dupCtt
+                // click-tt metadata is richer than knob's — take it where the canonical lacks it.
+                if (takeSex) it[Players.sex] = dupSex
+                if (takeCat) it[Players.category] = dupCat
+                if (takeNat) it[Players.nationality] = dupNat
+                if (takeName) it[Players.fullName] = dupName
+            }
         }
     }
 
@@ -1547,20 +1740,26 @@ object PlayerService {
 
     private fun ResultRow.toPlayerResponse(
         currentClubName: String? = null,
+        category: String? = null,
         classification: String? = null,
         currentElo: Int? = null,
         liveElo: Int? = null,
         isSyncing: Boolean = false,
+        clickttLinked: Boolean = false,
+        matchMethod: String? = null,
     ) = PlayerResponse(
         id = this[Players.id].toString(),
         fullName = this[Players.fullName],
         licenceNr = this[Players.licenceNr],
         currentClubName = currentClubName,
+        category = category,
         classification = classification,
         // Live class reflects the up-to-date ELO when we have it, else the official one.
         liveClassification = (liveElo ?: currentElo)?.let { ClassificationService.fromElo(it) },
         currentElo = currentElo,
         liveElo = liveElo,
         isSyncing = isSyncing,
+        clickttLinked = clickttLinked,
+        matchMethod = matchMethod,
     )
 }

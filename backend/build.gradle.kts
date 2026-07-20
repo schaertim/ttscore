@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.postgresql)
+    implementation(libs.hikari)
     implementation(libs.h2)
     implementation(libs.exposed.core)
     implementation(libs.exposed.jdbc)

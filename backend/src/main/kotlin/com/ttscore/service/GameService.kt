@@ -14,6 +14,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.insertIgnore
@@ -24,8 +25,10 @@ import java.util.*
 
 object GameService {
     /**
-     * Fills a player's ELO delta (and refreshes the competition name) on an existing game — league
-     * OR tournament/cup — for the given Swiss day.
+     * Fills a player's ELO delta on an existing game — league OR tournament/cup — for the given
+     * Swiss day. Also fills the competition name, but only for tournament/cup games: league games
+     * already have a consistent label from the match scraper, and the Protokoll's own label is a
+     * different (if equivalent) abbreviation of the same competition.
      *
      * Matching is done *locally*: we load the player's not-yet-rated singles games on the day and map
      * this Elo-Protokoll line to one of them. The opponent on each row was linked by click-tt
@@ -39,88 +42,119 @@ object GameService {
      * it never inserts: if no row can be matched it does nothing rather than guess. That is what
      * keeps the sync from ever producing duplicate game rows or mis-assigning a delta.
      *
-     * Returns true if a row was updated.
+     * Returns the number of rows updated.
+     *
+     * The whole Elo-Protokoll is applied in a single transaction rather than one per entry: entries
+     * are processed in order and each re-reads the day's still-unrated candidates, so an earlier
+     * assignment removes that game from later ones (a transaction reads its own writes) — identical
+     * semantics to per-entry calls, without paying a connection round-trip per game.
      */
-    suspend fun updateGameEloDelta(
+    suspend fun applyEloDeltas(
         playerId: UUID,
-        opponentName: String,
-        dayStart: OffsetDateTime,
-        eloDelta: Double,
-        competition: String? = null,
-    ): Boolean =
+        updates: List<EloDeltaUpdate>,
+    ): Int =
         dbQuery {
-            val dayEnd = dayStart.plusDays(1)
-            // The delta's sign is authoritative for win/loss (no draws in TT singles); the Protokoll
-            // win-icon is unreliable. Used only to break ties between same-named same-day opponents.
-            val won = eloDelta > 0
-
-            val candidates =
-                Games
-                    .select(Games.id, Games.homePlayer1Id, Games.awayPlayer1Id, Games.result)
-                    .where {
-                        (Games.gameType eq GameType.SINGLES) and
-                            (Games.playedAt greaterEq dayStart) and
-                            (Games.playedAt less dayEnd) and
-                            (
-                                ((Games.homePlayer1Id eq playerId) and Games.homePlayer1EloDelta.isNull()) or
-                                    ((Games.awayPlayer1Id eq playerId) and Games.awayPlayer1EloDelta.isNull())
-                            )
-                    }
-                    .map { row ->
-                        val isHome = row[Games.homePlayer1Id] == playerId
-                        CandidateGame(
-                            gameId = row[Games.id],
-                            playerIsHome = isHome,
-                            opponentId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id],
-                            won = row[Games.result] == (if (isHome) GameResult.HOME else GameResult.AWAY),
-                        )
-                    }
-            if (candidates.isEmpty()) return@dbQuery false
-
-            // Stored names of the candidates' (already correctly linked) opponents, for local matching.
-            val opponentIds = candidates.mapNotNull { it.opponentId }.toSet()
-            val nameById =
-                if (opponentIds.isEmpty()) {
-                    emptyMap()
-                } else {
-                    Players
-                        .select(Players.id, Players.fullName)
-                        .where { Players.id inList opponentIds }
-                        .associate { it[Players.id] to accentFold(it[Players.fullName]) }
-                }
-
-            // Protokoll opponent looks like "Hess, Matthias (C10)" — drop the class, normalise to the
-            // DB's "Lastname Firstname" form, then accent-fold for a robust comparison.
-            val target = accentFold(clickTtNameToDb(opponentName.substringBefore("(").trim()))
-            val byName = candidates.filter { it.opponentId?.let { id -> nameById[id] } == target }
-
-            val chosen =
-                when {
-                    byName.size == 1 -> byName.single()
-                    // Two identically-named same-day opponents (vanishingly rare): break the tie on result.
-                    byName.size > 1 -> byName.singleOrNull { it.won == won }
-                    // No name match (opponent unresolved on the row, or stored under a name variant):
-                    // fall back only when there is a single unrated game that day — never guess between many.
-                    else -> candidates.singleOrNull()
-                } ?: return@dbQuery false
-
-            val updated =
-                Games.update({ Games.id eq chosen.gameId }) {
-                    if (chosen.playerIsHome) {
-                        it[Games.homePlayer1EloDelta] = eloDelta
-                    } else {
-                        it[Games.awayPlayer1EloDelta] = eloDelta
-                    }
-                    if (competition != null) it[Games.competitionName] = competition
-                }
-            updated > 0
+            updates.count { applyEloDeltaInTx(playerId, it) }
         }
+
+    /** One Elo-Protokoll line: the delta (and metadata) to stamp onto a matching game for [dayStart]. */
+    data class EloDeltaUpdate(
+        val opponentName: String,
+        val dayStart: OffsetDateTime,
+        val eloDelta: Double,
+        /** Position in the player's Elo-Protokoll — stored as a stable same-day ordering key. */
+        val eloOrder: Int,
+        val competition: String?,
+    )
+
+    private fun Transaction.applyEloDeltaInTx(
+        playerId: UUID,
+        u: EloDeltaUpdate,
+    ): Boolean {
+        val dayStart = u.dayStart
+        val dayEnd = dayStart.plusDays(1)
+        // The delta's sign is authoritative for win/loss (no draws in TT singles); the Protokoll
+        // win-icon is unreliable. Used only to break ties between same-named same-day opponents.
+        val won = u.eloDelta > 0
+
+        val candidates =
+            Games
+                .select(Games.id, Games.homePlayer1Id, Games.awayPlayer1Id, Games.result, Games.matchId)
+                .where {
+                    (Games.gameType eq GameType.SINGLES) and
+                        (Games.playedAt greaterEq dayStart) and
+                        (Games.playedAt less dayEnd) and
+                        (
+                            ((Games.homePlayer1Id eq playerId) and Games.homePlayer1EloDelta.isNull()) or
+                                ((Games.awayPlayer1Id eq playerId) and Games.awayPlayer1EloDelta.isNull())
+                        )
+                }
+                .map { row ->
+                    val isHome = row[Games.homePlayer1Id] == playerId
+                    CandidateGame(
+                        gameId = row[Games.id],
+                        playerIsHome = isHome,
+                        opponentId = if (isHome) row[Games.awayPlayer1Id] else row[Games.homePlayer1Id],
+                        won = row[Games.result] == (if (isHome) GameResult.HOME else GameResult.AWAY),
+                        isLeagueGame = row[Games.matchId] != null,
+                    )
+                }
+        if (candidates.isEmpty()) return false
+
+        // Stored names of the candidates' (already correctly linked) opponents, for local matching.
+        val opponentIds = candidates.mapNotNull { it.opponentId }.toSet()
+        val nameById =
+            if (opponentIds.isEmpty()) {
+                emptyMap()
+            } else {
+                Players
+                    .select(Players.id, Players.fullName)
+                    .where { Players.id inList opponentIds }
+                    .associate { it[Players.id] to accentFold(it[Players.fullName]) }
+            }
+
+        // Protokoll opponent looks like "Hess, Matthias (C10)" — drop the class, normalise to the
+        // DB's "Lastname Firstname" form, then accent-fold for a robust comparison.
+        val target = accentFold(clickTtNameToDb(u.opponentName.substringBefore("(").trim()))
+        val byName = candidates.filter { it.opponentId?.let { id -> nameById[id] } == target }
+
+        val chosen =
+            when {
+                byName.size == 1 -> byName.single()
+                // Two identically-named same-day opponents (vanishingly rare): break the tie on result.
+                byName.size > 1 -> byName.singleOrNull { it.won == won }
+                // No name match (opponent unresolved on the row, or stored under a name variant):
+                // fall back only when there is a single unrated game that day — never guess between many.
+                else -> candidates.singleOrNull()
+            } ?: return false
+
+        val updated =
+            Games.update({ Games.id eq chosen.gameId }) {
+                if (chosen.playerIsHome) {
+                    it[Games.homePlayer1EloDelta] = u.eloDelta
+                    it[Games.homePlayer1EloOrder] = u.eloOrder
+                } else {
+                    it[Games.awayPlayer1EloDelta] = u.eloDelta
+                    it[Games.awayPlayer1EloOrder] = u.eloOrder
+                }
+                // League games already carry a consistent "$groupName | $home : $away" label from the
+                // match scraper (same for both singles and doubles rows of the same match). The
+                // Elo-Protokoll's own free-text label is a *different* abbreviation of the same
+                // competition (e.g. "1. L-Herren" vs "HE 1. Liga") and only ever covers singles, so
+                // applying it here used to leave a league match's doubles row (never touched by this
+                // path) permanently disagreeing with its own singles rows. Only tournament/cup games —
+                // which have no better source for this label — take it from the Protokoll.
+                if (u.competition != null && !chosen.isLeagueGame) it[Games.competitionName] = u.competition
+            }
+        return updated > 0
+    }
 
     private data class CandidateGame(
         val gameId: UUID,
         val playerIsHome: Boolean,
         val opponentId: UUID?,
         val won: Boolean,
+        val isLeagueGame: Boolean,
     )
 
     suspend fun getPlayerIdsFromMatches(matchIds: Set<UUID>): Set<UUID> =
@@ -137,7 +171,7 @@ object GameService {
      * already exists. The dedicated TOURNAMENT/Cup season pages are the source of truth for these
      * games (they carry result + sets + opponent person-id); the synced player is always stored as
      * the home side. ELO deltas are intentionally left null — they are filled afterwards from the
-     * Elo-Protokoll via [updateGameEloDelta], the only page that has them.
+     * Elo-Protokoll via [applyEloDeltas], the only page that has them.
      *
      * Equivalence is checked against existing tournament rows (matchId IS NULL) on the same Swiss
      * day. When the opponent is known we match the player pair in either orientation, which

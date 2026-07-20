@@ -15,7 +15,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	let notify = false;
 
 	let isHomePlayer = false;
-	let isPro = false;
 
 	if (session) {
 		const ktor = authedKtor(session.access_token);
@@ -32,19 +31,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		if (profileRes.status === 'fulfilled' && profileRes.value.ok) {
 			const profile = await profileRes.value.json();
 			isHomePlayer = profile.homePlayerId === params.id;
-			isPro = profile.isPro ?? false;
 		}
 	}
 
-	// Career is a Pro feature — fetch it authenticated (server-side) only for Pro users,
-	// since the Ktor endpoint is Pro-gated and the public api client sends no token.
-	const career =
-		session && isPro
-			? authedKtor(session.access_token)
-					.get(`/players/${params.id}/career`)
-					.then((r) => (r.ok ? r.json() : null))
-					.catch(() => null)
-			: Promise.resolve(null);
+	const career = api.players.career(params.id).catch(() => null);
 
 	return {
 		player,

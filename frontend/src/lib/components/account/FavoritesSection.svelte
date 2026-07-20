@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import type { ActionResult } from '@sveltejs/kit';
 	import {
 		BellIcon,
 		BellRingingIcon,
@@ -9,7 +11,9 @@
 		UserIcon,
 		UsersThreeIcon
 	} from 'phosphor-svelte';
+	import { toast } from 'svelte-sonner';
 	import { _ } from 'svelte-i18n';
+	import { get } from 'svelte/store';
 	import type { FollowResponse } from '$lib/api';
 	import { formatName } from '$lib/utils';
 	import IconButton from '$lib/components/IconButton.svelte';
@@ -20,6 +24,21 @@
 	}
 
 	let { follows }: Props = $props();
+
+	// Mirrors NotifyButton's toggleEnhance: the backend caps free-tier notify toggles and reports
+	// it as a form-action failure with reason "notify_pro" — surfaced as an upsell toast here too,
+	// since this section hand-rolls its own form instead of reusing NotifyButton.
+	function notifyEnhance() {
+		return async ({ result, update }: { result: ActionResult; update(): Promise<void> }) => {
+			if (result.type === 'failure' && result.data?.reason === 'notify_pro') {
+				toast.error(get(_)('pro.notify_title'), {
+					description: get(_)('pro.notify_desc'),
+					action: { label: get(_)('pro.unlock'), onClick: () => goto('/pro') }
+				});
+			}
+			await update();
+		};
+	}
 
 	const followGroups = $derived(
 		[
@@ -71,7 +90,7 @@
 							>
 						</a>
 						<div class="flex shrink-0 items-center gap-1 pl-2">
-							<form method="POST" action="?/setNotify" use:enhance>
+							<form method="POST" action="?/setNotify" use:enhance={notifyEnhance}>
 								<input type="hidden" name="followId" value={item.id} />
 								<input type="hidden" name="notify" value={String(!item.notify)} />
 								<IconButton

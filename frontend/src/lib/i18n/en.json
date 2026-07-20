@@ -88,9 +88,7 @@
 		"biggest_jump": "Biggest jump",
 		"no_jumps": "No jumps yet",
 		"clubs_leagues": "Clubs & leagues",
-		"rivalries": "Rivalries",
-		"paywall_title": "Career arc is a Pro feature",
-		"paywall_desc": "Trace a full career back to 1989 — classification arc, lifetime totals, milestones, clubs, and rivalries."
+		"rivalries": "Rivalries"
 	},
 	"stats": {
 		"no_data": "No games this season yet.",
@@ -131,7 +129,7 @@
 		"relegated": "Relegated",
 		"vs": "vs.",
 		"upcoming": "Upcoming",
-		"title": "Feed",
+		"title": "Your Feed",
 		"empty_title": "Nothing in your feed yet",
 		"empty_desc": "Star players, teams, or divisions to see their activity here.",
 		"manage_favorites": "Manage favorites"
@@ -198,7 +196,7 @@
 		"pro_renews": "Renews on {date}",
 		"manage_billing": "Manage billing",
 		"pro_upgrade": "Upgrade to Pro",
-		"pro_upgrade_desc": "Head-to-head, career stats & unlimited follows"
+		"pro_upgrade_desc": "Head-to-head, match previews & unlimited follows"
 	},
 	"auth": {
 		"welcome_back": "Welcome back",
@@ -243,13 +241,13 @@
 		"dismiss": "Dismiss"
 	},
 	"pro": {
-		"unlock": "Unlock with Pro",
+		"unlock": "Pro",
 		"h2h_title": "Head-to-head is a Pro feature",
 		"h2h_desc": "See full head-to-head records, set counts, and shared ELO history against any opponent.",
 		"follow_limit_title": "Follow limit reached",
-		"follow_limit_desc": "Free accounts can follow up to 3 entities beyond your own player. Go Pro for unlimited follows.",
-		"notify_title": "Notifications are a Pro feature",
-		"notify_desc": "Free accounts get notifications for your own player only. Go Pro to be notified about any follow.",
+		"follow_limit_desc": "Free accounts can follow up to 3. Go Pro for unlimited.",
+		"notify_title": "Notifications are Pro",
+		"notify_desc": "Free accounts are notified for their own player only.",
 		"page_title": "TTScore Pro",
 		"page_subtitle": "Deeper stats, unlimited follows — and you keep TTScore running.",
 		"plan_monthly": "Monthly",
@@ -267,8 +265,6 @@
 		"feature_h2h_desc": "Full records, set counts and shared ELO history against any opponent.",
 		"feature_preview_title": "Match previews",
 		"feature_preview_desc": "Tale of the tape, rosters, form and key duels ahead of any scheduled match.",
-		"feature_career_title": "Career arc",
-		"feature_career_desc": "Season-by-season classifications, clubs, milestones and rivalries.",
 		"feature_follow_notify_title": "Unlimited follows & notifications",
 		"feature_follow_notify_desc": "Follow every player, team and league you care about — and know the moment new results land."
 	},

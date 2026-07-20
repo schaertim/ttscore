@@ -110,6 +110,7 @@ data class CareerResponse(
 data class TeamSummaryResponse(
     val id: String,
     val name: String,
+    val groupId: String,
     val groupName: String,
     val position: Int,
     val record: String,
@@ -204,8 +205,6 @@ data class GameResponse(
     val homeSets: Int?,
     val awaySets: Int?,
     val result: GameResult,
-    val homePlayer1EloDelta: Double? = null,
-    val awayPlayer1EloDelta: Double? = null,
     val sets: List<SetResponse>,
 )
 
@@ -234,6 +233,8 @@ data class PlayerResponse(
     val fullName: String,
     val licenceNr: String?,
     val currentClubName: String? = null,
+    /** STT age/eligibility category ("Aktive", "O50", "U17", …) — from the club members page. */
+    val category: String? = null,
     val classification: String? = null,
     /** Class derived from the up-to-date ELO (may differ from the official [classification]). */
     val liveClassification: String? = null,
@@ -242,6 +243,17 @@ data class PlayerResponse(
     /** Up-to-date ELO including provisional deltas of matches not yet officially rated. */
     val liveElo: Int? = null,
     val isSyncing: Boolean = false,
+    /**
+     * Whether this player is linked to a click-tt identity. False for knob-only players (typically
+     * ones who stopped playing before click-tt existed): they can never sync and have no ELO, so the
+     * client hides ELO-specific UI (e.g. the ELO history graph) for them.
+     */
+    val clickttLinked: Boolean = false,
+    /**
+     * How the click-tt link was established (see PlayerService.MatchMethod), or null for knob-only
+     * players. Lets the client treat low-confidence matches (…_NEAR) differently.
+     */
+    val matchMethod: String? = null,
 )
 
 @Serializable

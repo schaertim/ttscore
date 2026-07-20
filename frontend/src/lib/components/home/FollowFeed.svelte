@@ -4,7 +4,7 @@
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import FeedItemCard from '$lib/components/home/FeedItemCard.svelte';
 	import FeedItemSkeleton from '$lib/components/home/FeedItemSkeleton.svelte';
-	import { StarIcon } from 'phosphor-svelte';
+	import { ListStarIcon, StarIcon } from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { _ } from 'svelte-i18n';
 
@@ -22,7 +22,7 @@
 {#await follows then items}
 	{#if items.length > 0}
 		<section class="space-y-3">
-			<SectionLabel label={$_('home.favorite_feed')} icon={StarIcon} />
+			<SectionLabel label={$_('home.favorite_feed')} icon={ListStarIcon} />
 			{#await feedPromise}
 				<div class="space-y-3">
 					{#each [1, 2, 3] as i (i)}

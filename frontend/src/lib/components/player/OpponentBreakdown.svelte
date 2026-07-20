@@ -23,6 +23,7 @@
 	{#each buckets as bucket (bucket.label)}
 		{@const p = pct(bucket)}
 		{@const isAggregate = bucket.label === 'HIGHER' || bucket.label === 'LOWER'}
+		{@const isEmpty = bucket.games === 0}
 		<div class="flex items-center gap-1">
 			<span class="flex shrink-0 items-center gap-0.5">
 				<span class="w-3.5 text-center text-xs font-semibold text-muted-foreground">
@@ -33,9 +34,13 @@
 				</span>
 			</span>
 			<div class="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-				<div class={cn('h-full rounded-full', barTone(p))} style="width: {p}%"></div>
+				{#if !isEmpty}
+					<div class={cn('h-full rounded-full', barTone(p))} style="width: {p}%"></div>
+				{/if}
 			</div>
-			<span class="w-9 shrink-0 text-right font-mono text-sm font-semibold tabular-nums">{p}%</span>
+			<span class="w-9 shrink-0 text-right font-mono text-sm font-semibold tabular-nums">
+				{isEmpty ? '-' : `${p}%`}
+			</span>
 		</div>
 	{/each}
 </Card.Root>

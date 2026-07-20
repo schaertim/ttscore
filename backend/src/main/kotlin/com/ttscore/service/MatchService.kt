@@ -103,8 +103,6 @@ object MatchService {
                         homePlayer2[Players.fullName],
                         awayPlayer[Players.fullName],
                         awayPlayer2[Players.fullName],
-                        Games.homePlayer1EloDelta,
-                        Games.awayPlayer1EloDelta,
                     )
                     .where { Games.matchId eq uuid }
                     .orderBy(Games.orderInMatch to SortOrder.ASC)
@@ -178,8 +176,6 @@ object MatchService {
                         homeSets = gameRow[Games.homeSets]?.toInt(),
                         awaySets = gameRow[Games.awaySets]?.toInt(),
                         result = gameRow[Games.result],
-                        homePlayer1EloDelta = gameRow[Games.homePlayer1EloDelta],
-                        awayPlayer1EloDelta = gameRow[Games.awayPlayer1EloDelta],
                         sets = sets,
                     )
                 }

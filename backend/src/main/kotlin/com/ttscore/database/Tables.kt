@@ -83,11 +83,14 @@ object Players : Table("player") {
     /** "MALE" or "FEMALE" — populated from the click-tt club members page */
     val sex = varchar("sex", 6).nullable()
 
-    /** STT age-category ("Aktive", "O40", "U19", …) — from click-tt club page */
-    val serie = varchar("serie", 20).nullable()
+    /** STT age/eligibility category ("Aktive", "O40", "U19", …) — from click-tt club page */
+    val category = varchar("category", 20).nullable()
 
     /** ISO 3-letter country code ("SUI", "GER", …) — from click-tt club page */
     val nationality = varchar("nationality", 3).nullable()
+
+    /** How the click-tt link was established (see PlayerService.MatchMethod); null = knob-only. */
+    val matchMethod = varchar("match_method", 20).nullable()
     override val primaryKey = PrimaryKey(id)
 }
 
@@ -158,6 +161,11 @@ object Games : Table("game") {
     val awayPlayer2Id = uuid("away_player2_id").references(Players.id).nullable() // doubles only
     val homePlayer1EloDelta = double("home_player1_elo_delta").nullable()
     val awayPlayer1EloDelta = double("away_player1_elo_delta").nullable()
+
+    // Position in the player's click-tt Elo-Protokoll (0 = topmost row), stored per side like the
+    // deltas above. A deterministic tiebreaker for same-day games, which share a played_at.
+    val homePlayer1EloOrder = integer("home_player1_elo_order").nullable()
+    val awayPlayer1EloOrder = integer("away_player1_elo_order").nullable()
     val homeSets = short("home_sets").nullable()
     val awaySets = short("away_sets").nullable()
     val result = enumerationByName("result", 20, GameResult::class)

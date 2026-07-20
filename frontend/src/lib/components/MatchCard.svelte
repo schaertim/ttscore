@@ -3,6 +3,7 @@
 	import { cn } from '$lib/utils';
 	import { dateNumeric } from '$lib/date';
 	import { HouseLineIcon, TrainIcon } from 'phosphor-svelte';
+	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { _, locale } from 'svelte-i18n';
 
 	interface Props {
@@ -50,10 +51,17 @@
 	       border-border bg-card px-4 py-3 transition-colors hover:bg-accent"
 >
 	<div class="flex min-w-0 flex-col gap-1">
-		<span class="text-2xs font-semibold tracking-widest text-muted-foreground uppercase">
-			{#if match.round}Rd {match.round} ·
+		<span
+			class="flex items-center gap-1.5 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
+		>
+			{#if match.round}
+				<span>Rd {match.round}</span>
+				<Separator
+					orientation="vertical"
+					class="bg-muted-foreground/40 data-[orientation=vertical]:h-2.5"
+				/>
 			{/if}
-			{dateNumeric(match.playedAt, $locale) ?? $_('common.tbd')}
+			<span>{dateNumeric(match.playedAt, $locale) ?? $_('common.tbd')}</span>
 		</span>
 
 		{#if perspectiveTeam}

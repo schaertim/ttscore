@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
-	import { CaretLeftIcon } from 'phosphor-svelte';
+	import { ArrowLeftIcon, CaretLeftIcon } from 'phosphor-svelte';
 	import { _ } from 'svelte-i18n';
 
 	interface Props {
@@ -18,6 +18,6 @@
 		className
 	)}
 >
-	<CaretLeftIcon size={16} />
+	<ArrowLeftIcon size={16} />
 	<span class="text-xs font-semibold tracking-widest uppercase">{$_('common.back')}</span>
 </button>
