@@ -11,7 +11,9 @@ import com.ttscore.plugins.configureCors
 import com.ttscore.plugins.configureRouting
 import com.ttscore.plugins.configureSerialization
 import com.ttscore.scraper.clicktt.ClickTTSeasonScraper
+import com.ttscore.scraper.clicktt.ClickTTSyncService
 import com.ttscore.scraper.knob.BackfillScraper
+import com.ttscore.service.SeasonService
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import kotlinx.coroutines.delay
@@ -74,6 +76,15 @@ private fun Application.runBackfill(currentSeason: String) {
                 logger.info("Backfill — player-driven click-tt player/club id linking")
                 ClickTtIdBackfillJob.create().run()
             }
+
+            // knob.ch's history stops at 2024/2025 (KNOB_LAST_SEASON_YEAR); click-tt only gets
+            // backfilled from scraper.currentSeason onward. 2025/2026 falls in the gap between
+            // the two sources, so it needs its own one-off seed.
+            BackfillLedger.runOnce("clicktt-season-backfill:2025/2026") {
+                logger.info("Backfill — click-tt season 2025/2026 (knob/click-tt handoff gap)")
+                ClickTTSeasonScraper.create().run("2025/2026")
+            }
+
             BackfillLedger.runOnce("clicktt-season-backfill:$currentSeason") {
                 logger.info("Backfill — click-tt season $currentSeason")
                 ClickTTSeasonScraper.create().run(currentSeason)
@@ -85,6 +96,16 @@ private fun Application.runBackfill(currentSeason: String) {
             BackfillLedger.runOnce("clicktt-season-seed:$currentSeason") {
                 logger.info("Backfill — seeding current season $currentSeason")
                 SeasonSyncJob.create().run(currentSeason)
+            }
+
+            BackfillLedger.runOnce("clicktt-portrait-backfill") {
+                logger.info("Backfill — player portraits (ELO + game history) for all players with a click-tt id")
+                val seasonId = SeasonService.getCurrentSeasonId()
+                if (seasonId != null) {
+                    ClickTTSyncService.runPortraitBackfill(seasonId)
+                } else {
+                    logger.warn("Skipping player portrait sync — no season row found for $currentSeason")
+                }
             }
 
             logger.info("Backfill complete")
