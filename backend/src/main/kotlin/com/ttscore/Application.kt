@@ -61,6 +61,15 @@ private fun Application.runBackfill(currentSeason: String) {
                 logger.info("Backfill — knob history (1989→present)")
                 BackfillScraper.create().run()
             }
+
+            // Collapse knob's name-drift club duplicates before any click-tt id linking runs, so
+            // linkResolvedClub sees one row per real club instead of racing to claim a click-tt id
+            // on whichever name-variant row a given player happens to match first.
+            BackfillLedger.runOnce("club-dedupe") {
+                logger.info("Backfill — club de-duplication (name + player overlap)")
+                ClubDedupeJob.create().run()
+            }
+
             BackfillLedger.runOnce("clicktt-id-backfill") {
                 logger.info("Backfill — player-driven click-tt player/club id linking")
                 ClickTtIdBackfillJob.create().run()
@@ -76,12 +85,6 @@ private fun Application.runBackfill(currentSeason: String) {
             BackfillLedger.runOnce("clicktt-season-seed:$currentSeason") {
                 logger.info("Backfill — seeding current season $currentSeason")
                 SeasonSyncJob.create().run(currentSeason)
-            }
-
-            // Last: collapse knob's name-drift club duplicates, now that every team/player exists.
-            BackfillLedger.runOnce("club-dedupe") {
-                logger.info("Backfill — club de-duplication (name + player overlap)")
-                ClubDedupeJob.create().run()
             }
 
             logger.info("Backfill complete")
