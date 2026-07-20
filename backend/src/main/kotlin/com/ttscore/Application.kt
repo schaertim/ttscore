@@ -39,7 +39,6 @@ fun Application.module() {
     val currentSeason = environment.config.property("scraper.currentSeason").getString()
 
     if (environment.config.property("jobs.enabled").getString().toBoolean()) {
-        runBackfill(currentSeason)
         scheduleJobs(currentSeason)
     }
 }
