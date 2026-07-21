@@ -87,11 +87,7 @@
 
 <div class="w-full max-w-sm">
 	<div class="flex flex-col items-center gap-2 text-center">
-		<div
-			class="mb-1 flex size-11 items-center justify-center rounded-xl bg-foreground text-base leading-none font-black text-background"
-		>
-			tt
-		</div>
+		<img src="/favicon.svg" alt="" class="mb-1 size-11" />
 		<h1 class="text-xl font-black tracking-tight">
 			{$_(mode === 'signin' ? 'auth.welcome_back' : 'auth.create_account')}
 		</h1>
