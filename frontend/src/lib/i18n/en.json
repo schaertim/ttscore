@@ -6,6 +6,9 @@
 		"account": "Account",
 		"sign_in": "Sign in"
 	},
+	"manifest": {
+		"description": "TTScore is the home of Swiss table tennis players. Live scores, ELO ratings and career stats for every player, team and league."
+	},
 	"onboarding": {
 		"slide1_headline": "Every league in one place",
 		"slide1_body": "Browse divisions, standings and results from every federation, always up to date.",
