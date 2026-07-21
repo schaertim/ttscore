@@ -35,25 +35,30 @@ async function fetchPlayerEvents(fav: FollowResponse): Promise<ResolvedEvent[]> 
 
 	const events: ResolvedEvent[] = [];
 
-	// Class change (placed at top of feed, no specific date)
-	if (history.length >= 2 && history[0].classification !== history[1].classification) {
+	// Class changes — one event per consecutive pair in the history where the
+	// classification actually changed, each sorted by its own effective date, not just
+	// the single most recent transition.
+	for (let i = 0; i < history.length - 1; i++) {
+		const current = history[i];
+		const previous = history[i + 1];
+		if (current.classification === previous.classification) continue;
 		const direction =
-			classificationRank(history[0].classification) > classificationRank(history[1].classification)
+			classificationRank(current.classification) > classificationRank(previous.classification)
 				? 'UP'
 				: 'DOWN';
 		events.push({
-			key: `${fav.id}-class`,
+			key: `${fav.id}-class-${current.effectiveDate}`,
 			entityType: 'player',
 			entityName: formatName(fav.targetName),
 			entityHref: `/players/${fav.targetId}`,
 			item: {
 				kind: 'class_change',
 				direction,
-				from: history[1].classification,
-				to: history[0].classification,
-				effectiveDate: history[0].effectiveDate
+				from: previous.classification,
+				to: current.classification,
+				effectiveDate: current.effectiveDate
 			},
-			sortKey: history[0].effectiveDate
+			sortKey: current.effectiveDate
 		});
 	}
 
