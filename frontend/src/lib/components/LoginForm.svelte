@@ -6,6 +6,7 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import GoogleIcon from '$lib/components/icons/GoogleIcon.svelte';
+	import { theme } from '$lib/theme.svelte';
 	import { _ } from 'svelte-i18n';
 
 	type Mode = 'signin' | 'signup';
@@ -87,7 +88,7 @@
 
 <div class="w-full max-w-sm">
 	<div class="flex flex-col items-center gap-2 text-center">
-		<img src="/favicon.svg" alt="" class="mb-1 size-11" />
+		<img src={theme.dark ? '/logo-dark.svg' : '/logo-light.svg'} alt="" class="mb-1 size-11" />
 		<h1 class="text-xl font-black tracking-tight">
 			{$_(mode === 'signin' ? 'auth.welcome_back' : 'auth.create_account')}
 		</h1>
