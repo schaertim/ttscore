@@ -6,6 +6,9 @@
 		"account": "Konto",
 		"sign_in": "Anmelden"
 	},
+	"manifest": {
+		"description": "Die Heimat der Schweizer Tischtennis-Spieler. Live-Ergebnisse, ELO-Wertungen und Karrierestatistiken für jeden Spieler, jedes Team und jede Liga."
+	},
 	"onboarding": {
 		"slide1_headline": "Alle Ligen an einem Ort",
 		"slide1_body": "Stöbere durch Ligen, Tabellen und Ergebnisse aller Verbände. Immer aktuell, alles in einer App.",

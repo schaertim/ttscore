@@ -6,6 +6,9 @@
 		"account": "Compte",
 		"sign_in": "Connexion"
 	},
+	"manifest": {
+		"description": "Le rendez-vous des joueurs suisses de tennis de table. Résultats en direct, classements ELO et statistiques de carrière pour chaque joueur, équipe et ligue."
+	},
 	"onboarding": {
 		"slide1_headline": "Toutes vos ligues au même endroit",
 		"slide1_body": "Parcourez les divisions, classements et résultats de toutes les fédérations. Toujours à jour, dans une seule app.",

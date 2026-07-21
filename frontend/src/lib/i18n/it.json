@@ -6,6 +6,9 @@
 		"account": "Account",
 		"sign_in": "Accedi"
 	},
+	"manifest": {
+		"description": "La casa dei giocatori svizzeri di tennistavolo. Risultati in diretta, classifiche ELO e statistiche di carriera per ogni giocatore, squadra e lega."
+	},
 	"onboarding": {
 		"slide1_headline": "Tutte le tue leghe in un unico posto",
 		"slide1_body": "Sfoglia divisioni, classifiche e risultati di tutte le federazioni. Sempre aggiornato, tutto in un'app.",
