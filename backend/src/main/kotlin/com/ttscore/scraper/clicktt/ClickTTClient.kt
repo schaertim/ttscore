@@ -31,12 +31,18 @@ class ClickTTClient {
     ): String {
         val url =
             buildString {
-                append("$baseUrl/playerPortrait?federation=STT&person=$personId")
+                append("$baseUrl/playerPortrait?federation=STT&person=$personId&preferredLanguage=German")
                 if (season != null) append("&season=${season.replace("/", "%2F")}")
             }
         return fetchWithRetry(url)
     }
 
+    /**
+     * Fetches an already-built click-tt URL (e.g. the Elo-Protokoll tab link, or a tournament/cup
+     * season link) discovered on a previously-fetched page. Pins the German locale the same as every
+     * other request here — all parsing throughout this scraper assumes German page text — appending
+     * it rather than trusting the link to already carry it.
+     */
     suspend fun fetchUrl(relativeOrAbsoluteUrl: String): String {
         val fullUrl =
             if (relativeOrAbsoluteUrl.startsWith(
@@ -47,7 +53,9 @@ class ClickTTClient {
             } else {
                 "https://www.click-tt.ch$relativeOrAbsoluteUrl"
             }
-        return fetchWithRetry(fullUrl)
+        val withLanguage =
+            if ("preferredLanguage=" in fullUrl) fullUrl else "$fullUrl&preferredLanguage=German"
+        return fetchWithRetry(withLanguage)
     }
 
     /**
@@ -55,7 +63,7 @@ class ClickTTClient {
      * monthly ranking — the date every search must be pinned to.
      */
     suspend fun fetchEloFilterForm(): String =
-        fetchWithRetry("$baseUrl/eloFilter?federation=STT")
+        fetchWithRetry("$baseUrl/eloFilter?federation=STT&preferredLanguage=German")
 
     /**
      * Runs an Elo-Filter search by licence number. Unlike the club roster pages this covers the
@@ -68,7 +76,7 @@ class ClickTTClient {
     ): String =
         fetchWithRetry(
             "$baseUrl/eloFilter?federation=STT&licenceNr=$licenceNr" +
-                "&rankingDate=$rankingDate&sex=WONoSelectionString&eloFilter=Suchen",
+                "&rankingDate=$rankingDate&sex=WONoSelectionString&eloFilter=Suchen&preferredLanguage=German",
         )
 
     /**
@@ -83,7 +91,7 @@ class ClickTTClient {
         fetchWithRetry(
             "$baseUrl/eloFilter?federation=STT" +
                 "&lastname=${lastname.encodeURLParameter()}&firstname=${firstname.encodeURLParameter()}" +
-                "&rankingDate=$rankingDate&sex=WONoSelectionString&eloFilter=Suchen",
+                "&rankingDate=$rankingDate&sex=WONoSelectionString&eloFilter=Suchen&preferredLanguage=German",
         )
 
     /**
@@ -109,6 +117,7 @@ class ClickTTClient {
             buildString {
                 append("$baseUrl/groupPage?championship=$encoded&group=$groupId&displayTyp=gesamt")
                 if (displayDetail != null) append("&displayDetail=$displayDetail")
+                append("&preferredLanguage=German")
             }
         return fetchWithRetry(url)
     }
@@ -123,7 +132,7 @@ class ClickTTClient {
     ): String {
         val encoded = championship.replace("/", "%2F").replace(" ", "+")
         return fetchWithRetry(
-            "$baseUrl/groupMeetingReport?meeting=$meetingId&championship=$encoded&group=$groupId",
+            "$baseUrl/groupMeetingReport?meeting=$meetingId&championship=$encoded&group=$groupId&preferredLanguage=German",
         )
     }
 

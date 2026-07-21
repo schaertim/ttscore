@@ -52,10 +52,15 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
      * [toYear] is clamped to [KNOB_LAST_SEASON_YEAR] regardless of what's passed in — knob and
      * click-tt own a strict, non-overlapping split of seasons (see [KNOB_LAST_SEASON_YEAR]), and
      * this scraper must never reach into click-tt's range.
+     *
+     * [federations] optionally restricts the group scrape to a subset (e.g. `listOf("STT", "MTTV")`),
+     * same as [runForSeason]; the match/class/licence passes are DB-driven so they naturally only
+     * process whatever groups were inserted.
      */
     suspend fun runFromYear(
         fromYear: Int,
         toYear: Int = KNOB_LAST_SEASON_YEAR,
+        federations: Collection<String>? = null,
     ) {
         val clampedToYear = toYear.coerceAtMost(KNOB_LAST_SEASON_YEAR)
         if (toYear > KNOB_LAST_SEASON_YEAR) {
@@ -65,7 +70,7 @@ class BackfillScraper(client: KnobClient, parser: KnobParser) {
                     "$clampedToYear. Seasons after that belong to click-tt.",
             )
         }
-        groupScraper.run(generateSeasons(fromYear, clampedToYear))
+        groupScraper.run(generateSeasons(fromYear, clampedToYear), federations)
         matchScraper.run()
         classScraper.run()
         licenceScraper.run()
