@@ -15,7 +15,8 @@
 		HandshakeIcon,
 		MedalIcon,
 		PingPongIcon,
-		ClockIcon
+		ClockIcon,
+		ArrowRightIcon
 	} from 'phosphor-svelte';
 
 	interface Props {
@@ -72,9 +73,7 @@
 				return `${prefix} ${i.matchScore} ${$_('feed.vs')} ${i.opponentTeam}`;
 			}
 			case 'class_change':
-				return i.direction === 'UP'
-					? `${$_('feed.promoted')} ${i.from} → ${i.to}`
-					: `${$_('feed.relegated')} ${i.from} → ${i.to}`;
+				return i.direction === 'UP' ? $_('feed.promoted') : $_('feed.relegated');
 			case 'team_match': {
 				const prefix =
 					i.result === 'WIN'
@@ -132,7 +131,14 @@
 					class="bg-muted-foreground/40 data-[orientation=vertical]:h-2.5"
 				/>
 			{/if}
-			<span class="truncate">{description}</span>
+			{#if item.kind === 'class_change'}
+				<span class="shrink-0">{description}</span>
+				<span class="shrink-0">{item.from}</span>
+				<ArrowRightIcon size={12} weight="bold" class="shrink-0" />
+				<span class="truncate">{item.to}</span>
+			{:else}
+				<span class="truncate">{description}</span>
+			{/if}
 		</p>
 	</div>
 

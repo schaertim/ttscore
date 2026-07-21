@@ -20,10 +20,21 @@
 	import { classColorVar } from '$lib/utils';
 	import { api } from '$lib/api';
 	import type { Player, EloEntry, PlayerGame, PlayerSeasonStats } from '$lib/api';
+	import { subscribe } from '$lib/push';
 
 	let { data }: { data: PageData } = $props();
 
 	let settingHomePlayer = $state(false);
+
+	// Best-effort push subscribe, fired in the same tick as the "set player" submit
+	// so the permission prompt has the best chance of counting as a user gesture on
+	// strict browsers (Safari). Denial or an unsupported browser is silently ignored.
+	async function requestPushForHomePlayer() {
+		const {
+			data: { session }
+		} = await data.supabase.auth.getSession();
+		await subscribe(session?.access_token ?? '').catch(() => false);
+	}
 
 	// Synced in an effect (not just initialised) so client-side navigation between
 	// players — which reuses this component — picks up the new player's follow state.
@@ -166,6 +177,7 @@
 			action="?/setHomePlayer"
 			use:enhance={() => {
 				settingHomePlayer = true;
+				requestPushForHomePlayer();
 				return async ({ update }) => {
 					settingHomePlayer = false;
 					// Re-run load functions so `hasHomePlayer` flips to true and this item unmounts.
