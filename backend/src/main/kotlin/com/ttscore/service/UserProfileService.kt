@@ -1,8 +1,10 @@
 ﻿package com.ttscore.service
 
+import com.ttscore.database.Follows
 import com.ttscore.database.Players
 import com.ttscore.database.UserProfiles
 import com.ttscore.database.dbQuery
+import com.ttscore.model.FollowTargetType
 import com.ttscore.model.UserProfileResponse
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -44,20 +46,57 @@ object UserProfileService {
     private fun isProAt(proUntil: OffsetDateTime?): Boolean =
         proUntil != null && proUntil.isAfter(OffsetDateTime.now())
 
-    /** Sets (or replaces) the home player for a user. Creates the profile row if needed. */
+    /**
+     * Sets (or replaces) the home player for a user, and follows that player with
+     * notifications on — the free-tier follow cap and Pro gate on notify both already
+     * carve out an exception for the home player, so this is never blocked. Gives new
+     * users something in their feed and a working taste of push notifications without
+     * an extra manual step.
+     */
     suspend fun setHomePlayer(
         userId: String,
         playerId: UUID,
+    ) {
+        dbQuery {
+            val exists = UserProfiles.selectAll().where { UserProfiles.userId eq userId }.any()
+            if (exists) {
+                UserProfiles.update({ UserProfiles.userId eq userId }) {
+                    it[homePlayerId] = playerId
+                }
+            } else {
+                UserProfiles.insert {
+                    it[UserProfiles.userId] = userId
+                    it[homePlayerId] = playerId
+                    it[createdAt] = OffsetDateTime.now()
+                }
+            }
+        }
+        followHomePlayerWithNotify(userId, playerId)
+    }
+
+    private suspend fun followHomePlayerWithNotify(
+        userId: String,
+        playerId: UUID,
     ) = dbQuery {
-        val exists = UserProfiles.selectAll().where { UserProfiles.userId eq userId }.any()
-        if (exists) {
-            UserProfiles.update({ UserProfiles.userId eq userId }) {
-                it[homePlayerId] = playerId
+        val existing =
+            Follows.selectAll()
+                .where {
+                    (Follows.userId eq userId) and
+                        (Follows.targetType eq FollowTargetType.PLAYER) and
+                        (Follows.targetId eq playerId)
+                }
+                .firstOrNull()
+
+        if (existing != null) {
+            Follows.update({ Follows.id eq existing[Follows.id] }) {
+                it[notify] = true
             }
         } else {
-            UserProfiles.insert {
-                it[UserProfiles.userId] = userId
-                it[homePlayerId] = playerId
+            Follows.insert {
+                it[Follows.userId] = userId
+                it[targetType] = FollowTargetType.PLAYER
+                it[targetId] = playerId
+                it[notify] = true
                 it[createdAt] = OffsetDateTime.now()
             }
         }
