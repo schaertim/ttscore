@@ -87,11 +87,8 @@
 
 <div class="w-full max-w-sm">
 	<div class="flex flex-col items-center gap-2 text-center">
-		<div
-			class="mb-1 flex size-11 items-center justify-center rounded-xl bg-foreground text-base leading-none font-black text-background"
-		>
-			tt
-		</div>
+		<img src="/logo-dark.svg" alt="" class="mb-1 block size-11 dark:hidden" />
+		<img src="/logo-light.svg" alt="" class="mb-1 hidden size-11 dark:block" />
 		<h1 class="text-xl font-black tracking-tight">
 			{$_(mode === 'signin' ? 'auth.welcome_back' : 'auth.create_account')}
 		</h1>
