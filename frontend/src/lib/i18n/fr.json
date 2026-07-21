@@ -7,7 +7,7 @@
 		"sign_in": "Connexion"
 	},
 	"manifest": {
-		"description": "TTScore, le rendez-vous des joueurs suisses de tennis de table. Résultats en direct, classements ELO et statistiques de carrière pour chaque joueur, équipe et ligue."
+		"description": "Le rendez-vous des joueurs suisses de tennis de table. Résultats en direct, classements ELO et statistiques de carrière pour chaque joueur, équipe et ligue."
 	},
 	"onboarding": {
 		"slide1_headline": "Toutes vos ligues au même endroit",
