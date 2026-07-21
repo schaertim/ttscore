@@ -124,7 +124,11 @@
 	<Drawer.Content class="max-h-[88vh]">
 		{#if !isPro}
 			<div class="p-5">
-				<PaywallTeaser title={$_('pro.h2h_title')} description={$_('pro.h2h_desc')} />
+				<PaywallTeaser
+					title={$_('pro.h2h_title')}
+					description={$_('pro.h2h_desc')}
+					onUnlockClick={() => (open = false)}
+				/>
 			</div>
 		{:else if h2h.loading}
 			<div class="space-y-4 p-5">

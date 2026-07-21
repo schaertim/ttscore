@@ -6,9 +6,12 @@
 	interface Props {
 		title: string;
 		description: string;
+		/** Called when the unlock button is clicked, before navigating to /pro — e.g. to close
+		 *  an enclosing drawer/modal so the pro page isn't hidden behind it. */
+		onUnlockClick?: () => void;
 	}
 
-	let { title, description }: Props = $props();
+	let { title, description, onUnlockClick }: Props = $props();
 </script>
 
 <div
@@ -21,7 +24,7 @@
 		<p class="text-base font-semibold">{title}</p>
 		<p class="mx-auto max-w-xs text-sm text-muted-foreground">{description}</p>
 	</div>
-	<Button href="/pro" class="mt-1 rounded-full font-semibold">
+	<Button href="/pro" onclick={onUnlockClick} class="mt-1 rounded-full font-semibold">
 		<SparkleIcon size={16} weight="fill" />
 		{$_('pro.unlock')}
 	</Button>
