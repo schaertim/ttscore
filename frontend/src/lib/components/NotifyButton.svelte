@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import type { ActionResult } from '@sveltejs/kit';
 	import { BellIcon, BellRingingIcon } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
@@ -20,7 +19,7 @@
 	let { following, followId, notify = $bindable(), authenticated = true }: Props = $props();
 
 	function redirectToSignIn() {
-		goto(`/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`);
+		goto('/signin');
 	}
 
 	let loading = $state(false);

@@ -6,11 +6,11 @@ import type { RequestHandler } from './$types';
  *
  * After Google (or any OAuth provider) redirects back through Supabase, Supabase
  * redirects here with a `code` query param. We exchange that code for a session,
- * which sets the auth cookies, then redirect the user to their intended destination.
+ * which sets the auth cookies, then always land on the home route — same as
+ * email/password sign-in (see LoginForm.svelte).
  */
 export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 	const code = url.searchParams.get('code');
-	const next = url.searchParams.get('next') ?? '/';
 
 	if (code) {
 		const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -20,5 +20,5 @@ export const GET: RequestHandler = async ({ url, locals: { supabase } }) => {
 		}
 	}
 
-	redirect(303, next);
+	redirect(303, '/');
 };

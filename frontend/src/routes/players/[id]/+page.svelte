@@ -21,15 +21,21 @@
 	import { api } from '$lib/api';
 	import type { Player, EloEntry, PlayerGame, PlayerSeasonStats } from '$lib/api';
 	import { subscribe } from '$lib/push';
+	import { requestNotificationPrimer } from '$lib/notificationPrimer.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	let settingHomePlayer = $state(false);
 
-	// Best-effort push subscribe, fired in the same tick as the "set player" submit
-	// so the permission prompt has the best chance of counting as a user gesture on
-	// strict browsers (Safari). Denial or an unsupported browser is silently ignored.
+	// Shows the notification primer dialog first; only on acceptance do we request push
+	// permission, fired right after that click so it has the best chance of counting as a
+	// user gesture on strict browsers (Safari). Declining, an unsupported browser, or
+	// already-decided permission is silently ignored — this must never block setting the
+	// home player itself. Installing the app (a hard requirement for push on iOS) is asked
+	// earlier, before account creation — see OnboardingModal.svelte's signUp().
 	async function requestPushForHomePlayer() {
+		const accepted = await requestNotificationPrimer();
+		if (!accepted) return;
 		const {
 			data: { session }
 		} = await data.supabase.auth.getSession();
@@ -166,7 +172,7 @@
 
 	{#if !data.user}
 		<InfoItem
-			href="/signin?redirectTo={encodeURIComponent(page.url.pathname)}"
+			href="/signin"
 			icon={UserCirclePlusIcon}
 			title={$_('set_player.is_this_you')}
 			description={$_('set_player.sign_in_prompt')}

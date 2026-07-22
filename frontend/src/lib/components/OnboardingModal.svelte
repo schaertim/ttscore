@@ -58,7 +58,7 @@
 	function signUp() {
 		persistOnboarded();
 		open = false;
-		goto('/signin');
+		goto('/signin?mode=signup');
 	}
 </script>
 

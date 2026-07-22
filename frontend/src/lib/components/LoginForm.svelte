@@ -9,15 +9,13 @@
 	import { _ } from 'svelte-i18n';
 
 	type Mode = 'signin' | 'signup';
-	let mode: Mode = $state('signin');
+	let mode: Mode = $state(page.url.searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
 	let email = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');
 	let error = $state('');
 	let checkEmail = $state(false);
 	let loading = $state(false);
-
-	const redirectTo = $derived(page.url.searchParams.get('redirectTo') ?? '/');
 
 	function switchMode(next: Mode) {
 		mode = next;
@@ -31,7 +29,7 @@
 		const { error: oauthError } = await page.data.supabase.auth.signInWithOAuth({
 			provider,
 			options: {
-				redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`
+				redirectTo: `${window.location.origin}/auth/callback`
 			}
 		});
 		if (oauthError) error = oauthError.message;
@@ -56,7 +54,7 @@
 				// from the session cookie) BEFORE navigating, so the target page renders
 				// with the correct signed-in state instead of the pre-login state.
 				await invalidate('supabase:auth');
-				goto(redirectTo);
+				goto('/');
 			} else {
 				if (password !== confirmPassword) {
 					error = $_('auth.password_mismatch');
@@ -73,7 +71,7 @@
 				if (data.session) {
 					// Email confirmation is disabled — the user is signed in immediately.
 					await invalidate('supabase:auth');
-					goto(redirectTo);
+					goto('/');
 				} else {
 					// Supabase sent a confirmation email; stay here and say so.
 					checkEmail = true;

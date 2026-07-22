@@ -9,7 +9,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 	depends('supabase:auth');
 
 	const { session } = await locals.safeGetSession();
-	if (!session) redirect(303, '/signin?redirectTo=/account');
+	if (!session) redirect(303, '/signin');
 
 	const ktor = authedKtor(session.access_token);
 
@@ -31,7 +31,7 @@ export const load: PageServerLoad = async ({ locals, depends }) => {
 export const actions: Actions = {
 	removeHomePlayer: async ({ locals }) => {
 		const { session } = await locals.safeGetSession();
-		if (!session) redirect(303, '/signin?redirectTo=/account');
+		if (!session) redirect(303, '/signin');
 
 		await authedKtor(session.access_token).delete('/users/me/home-player');
 		return { success: true };
@@ -39,7 +39,7 @@ export const actions: Actions = {
 
 	billingPortal: async ({ locals }) => {
 		const { session } = await locals.safeGetSession();
-		if (!session) redirect(303, '/signin?redirectTo=/account');
+		if (!session) redirect(303, '/signin');
 
 		const res = await authedKtor(session.access_token).post('/billing/portal', {});
 		if (!res.ok) return fail(res.status, { error: 'portal_failed' });

@@ -20,6 +20,23 @@
 		"create_account": "Crea account gratuito",
 		"skip": "Più tardi"
 	},
+	"push_primer": {
+		"headline": "Notifiche per le tue partite",
+		"body": "Ti avviseremo appena arriva il tuo risultato, nient'altro. Puoi disattivarlo in qualsiasi momento dal tuo account.",
+		"enable": "Attiva le notifiche",
+		"not_now": "Più tardi"
+	},
+	"install_primer": {
+		"ios_headline": "Installa l'app per ricevere le notifiche",
+		"ios_body": "Su iPhone le notifiche funzionano solo per le app aggiunte alla schermata Home. Ci vuole solo un attimo.",
+		"ios_step1": "Tocca l'icona Condividi in Safari",
+		"ios_step2": "Scegli Aggiungi a Home",
+		"got_it": "Capito",
+		"android_headline": "Installa l'app",
+		"android_body": "Aggiungi TTScore alla schermata Home per un accesso più rapido e un'icona vera e propria.",
+		"install": "Installa l'app",
+		"not_now": "Più tardi"
+	},
 	"set_player": {
 		"banner_title": "La tua home, il tuo giocatore",
 		"banner_desc": "Imposta il tuo giocatore per vedere qui il tuo ELO, il prossimo incontro e i risultati recenti.",

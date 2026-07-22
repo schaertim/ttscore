@@ -20,6 +20,23 @@
 		"create_account": "Create free account",
 		"skip": "Skip for now"
 	},
+	"push_primer": {
+		"headline": "Get notified about your matches",
+		"body": "We'll send you a notification the moment your result lands, nothing else. You can turn this off anytime in your account.",
+		"enable": "Enable notifications",
+		"not_now": "Not now"
+	},
+	"install_primer": {
+		"ios_headline": "Install the app to get notified",
+		"ios_body": "On iPhone, notifications only work for apps added to your home screen. It only takes a moment.",
+		"ios_step1": "Tap the Share icon in Safari",
+		"ios_step2": "Choose Add to Home Screen",
+		"got_it": "Got it",
+		"android_headline": "Install the app",
+		"android_body": "Add TTScore to your home screen for quicker access and a proper app icon.",
+		"install": "Install app",
+		"not_now": "Not now"
+	},
 	"set_player": {
 		"banner_title": "Make it yours",
 		"banner_desc": "Set your player to see your ELO, your next match and your latest results right here.",

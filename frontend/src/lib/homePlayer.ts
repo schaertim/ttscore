@@ -1,6 +1,7 @@
 import { PUBLIC_API_URL } from '$env/static/public';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { subscribe } from '$lib/push';
+import { requestNotificationPrimer } from '$lib/notificationPrimer.svelte';
 
 /**
  * Sets the signed-in user's home player from the browser.
@@ -10,11 +11,15 @@ import { subscribe } from '$lib/push';
  * forward the Supabase access token to Ktor directly — the same pattern used by
  * the push subscription helpers.
  *
- * Also requests push permission and subscribes, right alongside the PUT so the
- * browser prompt fires as close to the triggering click as possible (needed on
- * strict browsers like Safari, which only honor Notification.requestPermission()
- * shortly after a user gesture). Best-effort: denial or an unsupported browser must
- * never block setting the home player itself.
+ * Also shows the notification primer dialog and, if accepted, subscribes to push right
+ * alongside the PUT — so the native permission prompt (should the user opt in) fires as
+ * close to that click as possible (needed on strict browsers like Safari, which only honor
+ * Notification.requestPermission() shortly after a user gesture). Best-effort: declining,
+ * an unsupported browser, or already-decided permission must never block setting the home
+ * player itself.
+ *
+ * Installing the app (a hard requirement for push on iOS) is asked earlier, before account
+ * creation — see OnboardingModal.svelte's signUp() — not here.
  */
 export async function setHomePlayer(supabase: SupabaseClient, playerId: string): Promise<void> {
 	const {
@@ -28,7 +33,9 @@ export async function setHomePlayer(supabase: SupabaseClient, playerId: string):
 			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
 			body: JSON.stringify({ playerId })
 		}),
-		subscribe(token).catch(() => false)
+		requestNotificationPrimer()
+			.then((accepted) => (accepted ? subscribe(token) : false))
+			.catch(() => false)
 	]);
 
 	if (!res.ok) {

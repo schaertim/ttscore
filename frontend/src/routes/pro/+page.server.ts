@@ -12,7 +12,7 @@ export const actions: Actions = {
 	// external redirect the browser must follow itself.
 	checkout: async ({ locals, request }) => {
 		const { session } = await locals.safeGetSession();
-		if (!session) redirect(303, '/signin?redirectTo=/pro');
+		if (!session) redirect(303, '/signin');
 
 		const plan = (await request.formData()).get('plan');
 		const res = await authedKtor(session.access_token).post('/billing/checkout', { plan });
