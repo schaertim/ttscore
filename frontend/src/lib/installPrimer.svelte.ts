@@ -1,21 +1,13 @@
 import { STORAGE_KEYS } from '$lib/storageKeys';
 
 /**
- * Platform-detection helpers used by the onboarding flow (OnboardingModal.svelte) to show an
- * install step before account creation:
+ * Platform-detection helpers used by InstallModal.svelte:
  *
- * - iOS Safari has no install API at all. Push notifications only work once the site is added
- *   to the home screen, so this is a hard requirement there, not a nicety — only instructions
- *   (Share → Add to Home Screen) can be shown, never triggered programmatically.
- * - Android/Chrome fires `beforeinstallprompt`, which we can trigger for real via
- *   `acceptInstall()`. Push already works there without installing, so it's a soft, skippable
- *   convenience step, not a gate.
- *
- * The `beforeinstallprompt` event itself is captured in app.html — a plain synchronous <script>
- * in <head>, before any framework code loads. Chrome can dispatch it as soon as it parses the
- * manifest link, often before this module (or any component's onMount) ever runs; a listener
- * attached that late can miss the one-time event entirely. app.html stashes it on
- * `window.__installPromptEvent`, which the functions below just read.
+ * - iOS Safari has no install API — push only works once the site is added to the home screen,
+ *   so only instructions (Share → Add to Home Screen) can be shown, never triggered directly.
+ * - Android/Chrome fires `beforeinstallprompt`, captured in app.html (before any framework code
+ *   loads, since Chrome can dispatch it before this module ever runs) and stashed on
+ *   `window.__installPromptEvent`. `acceptInstall()` triggers the real prompt from that.
  */
 
 interface BeforeInstallPromptEvent extends Event {
