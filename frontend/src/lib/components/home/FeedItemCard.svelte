@@ -63,15 +63,11 @@
 
 	function getDescription(i: FeedItem): string {
 		switch (i.kind) {
-			case 'player_match': {
-				const prefix =
-					i.result === 'WIN'
-						? $_('feed.won')
-						: i.result === 'LOSS'
-							? $_('feed.lost')
-							: $_('feed.drew');
-				return `${prefix} ${i.matchScore} ${$_('feed.vs')} ${i.opponentTeam}`;
-			}
+			case 'player_match':
+				// A player's own singles record within the match (e.g. "2–1") — no win/loss verb,
+				// since this is a personal tally across several games, not one verdict. The badge
+				// icon already color-codes the outcome.
+				return `${i.matchScore} ${$_('feed.vs')} ${i.opponentTeam}`;
 			case 'class_change':
 				return i.direction === 'UP' ? $_('feed.promoted') : $_('feed.relegated');
 			case 'team_match': {
