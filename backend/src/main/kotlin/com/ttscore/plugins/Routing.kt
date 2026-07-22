@@ -15,6 +15,9 @@ fun Application.configureRouting() {
         subject = vapidConfig.property("subject").getString(),
     )
 
+    val devToolsEnabled =
+        environment.config.propertyOrNull("dev.toolsEnabled")?.getString()?.toBoolean() ?: false
+
     val stripeConfig = environment.config.config("stripe")
     StripeService.init(
         secretKey = stripeConfig.property("secretKey").getString(),
@@ -42,6 +45,7 @@ fun Application.configureRouting() {
             followRoutes()
             pushRoutes()
             stripeRoutes()
+            if (devToolsEnabled) devRoutes()
         }
     }
 }
