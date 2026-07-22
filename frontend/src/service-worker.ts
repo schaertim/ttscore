@@ -60,7 +60,11 @@ self.addEventListener('push', (event) => {
 	event.waitUntil(
 		self.registration.showNotification(title, {
 			body,
-			icon: '/favicon.svg',
+			// A plain PNG, not favicon.svg — that file switches between light/dark variants via a
+			// CSS media query, which Android's notification icon decoder doesn't evaluate. It was
+			// rendering both variants stacked in the same image (the "shows twice" bug), with the
+			// white-background variant painting on top.
+			icon: '/icon-192.png',
 			data: { url: url ?? '/' }
 		})
 	);
