@@ -15,5 +15,7 @@ export const STORAGE_KEYS = {
 	/** Recently viewed players (JSON array). */
 	recentPlayers: 'ttscore:recent-players',
 	/** Set once the home-page set-player banner has been dismissed. */
-	setPlayerBannerDismissed: 'ttscore_set_player_banner_dismissed'
+	setPlayerBannerDismissed: 'ttscore_set_player_banner_dismissed',
+	/** Set once the install primer (iOS instructions / Android install prompt) has been shown. */
+	installPrimerDismissed: 'ttscore_install_primer_dismissed'
 } as const;

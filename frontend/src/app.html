@@ -15,6 +15,18 @@
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 		<script>
+			// Chrome can fire `beforeinstallprompt` as soon as it parses the manifest link above —
+			// often before the Svelte/Vite bundle finishes hydrating. A listener attached later (e.g.
+			// in a component's onMount) can miss it entirely, since it's a one-time event with no
+			// listeners registered yet. Capturing it here, synchronously, before any framework code
+			// runs, guarantees we never miss it — see installPrimer.svelte.ts for the consumer.
+			window.__installPromptEvent = null;
+			window.addEventListener('beforeinstallprompt', function (e) {
+				e.preventDefault();
+				window.__installPromptEvent = e;
+			});
+		</script>
+		<script>
 			(function () {
 				const stored = localStorage.getItem('theme');
 				const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

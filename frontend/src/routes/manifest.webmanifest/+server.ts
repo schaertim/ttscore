@@ -32,13 +32,16 @@ export const GET: RequestHandler = ({ cookies, request }) => {
 		display: 'standalone',
 		background_color: '#09090b',
 		theme_color: '#09090b',
+		// Chrome's installability check requires a real square PNG — an SVG-only
+		// declaration isn't sufficient (DevTools: "Most operating systems require
+		// square icons"). The SVG is intentionally NOT listed: Chrome fails to
+		// rasterize it as an install icon ("Icon … failed to load"), and the PNGs
+		// already cover every case. Not marked maskable: the source design bleeds to
+		// the edge with no safe-zone padding, so an OS adaptive-icon mask
+		// (circle/squircle) would clip into the logo.
 		icons: [
-			{
-				src: '/logo-dark.svg',
-				type: 'image/svg+xml',
-				sizes: 'any',
-				purpose: 'any maskable'
-			}
+			{ src: '/icon-192.png', type: 'image/png', sizes: '192x192', purpose: 'any' },
+			{ src: '/icon-512.png', type: 'image/png', sizes: '512x512', purpose: 'any' }
 		]
 	};
 

@@ -6,6 +6,8 @@
 	import { theme } from '$lib/theme.svelte';
 	import { h2h, closeH2H } from '$lib/h2h.svelte';
 	import H2HDrawer from '$lib/components/player/H2HDrawer.svelte';
+	import NotificationPrimerDialog from '$lib/components/NotificationPrimerDialog.svelte';
+	import InstallModal from '$lib/components/InstallModal.svelte';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import {
 		HouseIcon,
@@ -40,7 +42,7 @@
 		data.user
 			? { href: '/account', label: $_('nav.account'), icon: UserCircleIcon }
 			: {
-					href: `/signin?redirectTo=${encodeURIComponent(page.url.pathname)}`,
+					href: '/signin',
 					label: $_('nav.sign_in'),
 					icon: SignInIcon
 				}
@@ -110,5 +112,8 @@
 		{/each}
 	</div>
 </nav>
+
+<NotificationPrimerDialog />
+<InstallModal loggedIn={!!data.user} />
 
 <Toaster position="top-center" />
