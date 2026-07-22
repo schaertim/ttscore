@@ -61,7 +61,6 @@ self.addEventListener('push', (event) => {
 		self.registration.showNotification(title, {
 			body,
 			icon: '/favicon.svg',
-			badge: '/favicon.svg',
 			data: { url: url ?? '/' }
 		})
 	);
