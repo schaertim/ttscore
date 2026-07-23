@@ -2,7 +2,9 @@
 
 import com.ttscore.database.*
 import com.ttscore.model.MatchStatus
+import com.ttscore.scraper.clicktt.model.ParsedClickTTGroup
 import com.ttscore.scraper.clicktt.model.ParsedClickTTMatch
+import com.ttscore.scraper.clicktt.model.ParsedClickTTParticipant
 import com.ttscore.scraper.clicktt.model.ParsedClickTTStanding
 import com.ttscore.scraper.knob.FEDERATION_RVIDS
 import com.ttscore.scraper.knob.SCRAPE_CONCURRENCY
@@ -76,22 +78,35 @@ class ClickTTGroupScraper(
                         client.fetchGroupPage(group.championship, group.groupId, displayDetail = "meetings")
                     val matches = parser.parseMatchSchedule(scheduleHtml)
 
-                    Triple(group, standings, matches)
+                    // Cup/final/playoff groups have no standings table but do list their entrants in a
+                    // "Teilnehmende Mannschaften" table (with teamtable ids) — parsed only when needed.
+                    val participants =
+                        if (standings.isEmpty()) {
+                            parser.parseParticipatingTeams(standingsHtml)
+                                .ifEmpty { parser.parseParticipatingTeams(scheduleHtml) }
+                        } else {
+                            emptyList()
+                        }
+
+                    GroupPageData(group, standings, participants, matches)
                 } catch (e: Exception) {
                     logger.error("    group=${group.groupId} (${group.divisionName}) failed: ${e.message}")
                     null
                 }
             }.filterNotNull()
 
-        for ((group, standings, matches) in fetched) {
+        for ((group, standings, participants, matches) in fetched) {
             try {
                 if (standings.isEmpty()) {
-                    // Aufstieg/playoff group: standings table has plain-text team names with no
-                    // teamPortrait links, so parseGroupStandings returns empty. Teams already exist
-                    // in the DB from their regular-season groups — look them up by name + season
-                    // rather than inserting duplicate rows.
-                    if (matches.isEmpty()) {
-                        logger.debug("    group=${group.groupId} (${group.divisionName}) — no standings or matches, skipping")
+                    // No standings table → cup/final/playoff group. Its teams come from the
+                    // "Teilnehmende Mannschaften" table, keyed by their globally-unique teamtable id
+                    // (created/resolved exactly like standings teams) — never by name, which would
+                    // conflate same-named teams across unrelated competitions/federations.
+                    if (matches.isEmpty() || participants.isEmpty()) {
+                        logger.debug(
+                            "    group=${group.groupId} (${group.divisionName}) — no standings, " +
+                                "${participants.size} participants, ${matches.size} matches — skipping",
+                        )
                         continue
                     }
 
@@ -100,24 +115,15 @@ class ClickTTGroupScraper(
                         val federationId = upsertFederation(federationName)
                         val groupId = upsertGroup(federationId, seasonId, group.divisionName, group.groupId)
 
-                        val teamNames =
-                            (matches.map { it.homeTeamName } + matches.map { it.awayTeamName }).toSet()
-                        val teamIdByName = lookupTeamsByNameAndSeason(teamNames, season)
-
-                        val missing = teamNames.size - teamIdByName.size
-                        if (missing > 0) {
-                            logger.warn(
-                                "    group=${group.groupId} (${group.divisionName}) — " +
-                                    "$missing/${teamNames.size} team(s) not found in DB by name+season, matches referencing them will be skipped",
-                            )
-                        }
+                        val teamIdByName =
+                            participants.associate { it.teamName to upsertTeamByTableId(it.teamName, it.teamTableId, groupId) }
 
                         upsertMatchesReturningCompleted(matches, groupId, teamIdByName)
                     }
 
                     logger.info(
                         "    group=${group.groupId} → ${group.divisionName} — " +
-                            "playoff group, ${matches.size} matches (no standings)",
+                            "cup/playoff group, ${participants.size} teams, ${matches.size} matches (no standings)",
                     )
                     continue
                 }
@@ -149,25 +155,6 @@ class ClickTTGroupScraper(
             }
         }
     }
-
-    /**
-     * Looks up existing DB team rows by name within the given season.
-     * Used for Aufstieg/playoff groups whose teams are already registered under their
-     * regular-season groups — we must not create duplicate team rows.
-     */
-    private fun lookupTeamsByNameAndSeason(
-        teamNames: Set<String>,
-        season: String,
-    ): Map<String, UUID> =
-        teamNames.mapNotNull { name ->
-            val teamId =
-                (Teams innerJoin Groups innerJoin Seasons)
-                    .select(Teams.id)
-                    .where { (Teams.name eq name) and (Seasons.name eq season) }
-                    .firstOrNull()
-                    ?.get(Teams.id)
-            teamId?.let { name to it }
-        }.toMap()
 
     // -------------------------------------------------------------------------
     // DB upserts
@@ -217,37 +204,42 @@ class ClickTTGroupScraper(
     private fun upsertTeams(
         standings: List<ParsedClickTTStanding>,
         groupId: UUID,
-    ): Map<Int, UUID> {
-        return standings.associate { standing ->
-            // Derive club name using the same trailing-suffix stripping as GroupScraper
-            val cleanClubName = standing.teamName.replace(Regex("""\s+(\d+|[IVX]+|[a-zA-Z])$"""), "").trim()
+    ): Map<Int, UUID> = standings.associate { it.teamTableId to upsertTeamByTableId(it.teamName, it.teamTableId, groupId) }
 
-            Clubs.insertIgnore { it[Clubs.name] = cleanClubName }
-            val clubId =
-                Clubs.select(Clubs.id)
-                    .where { Clubs.name eq cleanClubName }
-                    .first()[Clubs.id]
+    /**
+     * Inserts or retrieves a single team by its globally-unique click-tt teamtable id.
+     * Shared by the standings path and the participating-teams path (cup/final groups).
+     */
+    private fun upsertTeamByTableId(
+        teamName: String,
+        teamTableId: Int,
+        groupId: UUID,
+    ): UUID {
+        // Derive club name using the same trailing-suffix stripping as GroupScraper
+        val cleanClubName = teamName.replace(Regex("""\s+(\d+|[IVX]+|[a-zA-Z])$"""), "").trim()
 
-            // Teams with a clickttId are globally unique — no groupId scoping needed
-            val existingId =
-                Teams.select(Teams.id)
-                    .where { Teams.clickttId eq standing.teamTableId }
-                    .firstOrNull()?.get(Teams.id)
+        Clubs.insertIgnore { it[Clubs.name] = cleanClubName }
+        val clubId =
+            Clubs.select(Clubs.id)
+                .where { Clubs.name eq cleanClubName }
+                .first()[Clubs.id]
 
-            val teamId =
-                existingId ?: run {
-                    Teams.insert {
-                        it[Teams.name] = standing.teamName
-                        it[Teams.clubId] = clubId
-                        it[Teams.groupId] = groupId
-                        it[Teams.clickttId] = standing.teamTableId
-                    }
-                    Teams.select(Teams.id)
-                        .where { Teams.clickttId eq standing.teamTableId }
-                        .first()[Teams.id]
-                }
+        // Teams with a clickttId are globally unique — no groupId scoping needed
+        val existingId =
+            Teams.select(Teams.id)
+                .where { Teams.clickttId eq teamTableId }
+                .firstOrNull()?.get(Teams.id)
 
-            standing.teamTableId to teamId
+        return existingId ?: run {
+            Teams.insert {
+                it[Teams.name] = teamName
+                it[Teams.clubId] = clubId
+                it[Teams.groupId] = groupId
+                it[Teams.clickttId] = teamTableId
+            }
+            Teams.select(Teams.id)
+                .where { Teams.clickttId eq teamTableId }
+                .first()[Teams.id]
         }
     }
 
@@ -399,6 +391,14 @@ class ClickTTGroupScraper(
 
     /** Identifies a group for incremental refresh operations. */
     data class GroupRef(val dbId: UUID, val clickttId: Int, val championship: String)
+
+    /** The parsed pages for one group, carried from the concurrent fetch into the DB-write loop. */
+    private data class GroupPageData(
+        val group: ParsedClickTTGroup,
+        val standings: List<ParsedClickTTStanding>,
+        val participants: List<ParsedClickTTParticipant>,
+        val matches: List<ParsedClickTTMatch>,
+    )
 
     private fun parseMatchDateTime(
         date: String,

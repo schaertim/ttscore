@@ -451,6 +451,38 @@ class ClickTTParser {
     }
 
     /**
+     * Parses the "Teilnehmende Mannschaften" (participating teams) table present on cup / final /
+     * playoff group pages, which carry no standings table. Each row links to a teamPortrait, giving
+     * the same globally-unique teamtable id the standings table would — so these groups' teams can
+     * be created and resolved by id, with no fragile name matching. Returns empty if the table isn't
+     * present (e.g. a genuine standings page, or a group with nothing published yet).
+     */
+    fun parseParticipatingTeams(html: String): List<ParsedClickTTParticipant> {
+        val doc = Jsoup.parse(html)
+        val heading =
+            doc.select("h2").firstOrNull {
+                it.text().trim().equals("Teilnehmende Mannschaften", ignoreCase = true)
+            } ?: return emptyList()
+
+        // The table follows the heading as a sibling; walk past any intervening whitespace/nodes.
+        var sibling = heading.nextElementSibling()
+        while (sibling != null && !(sibling.tagName() == "table" && sibling.hasClass("result-set"))) {
+            sibling = sibling.nextElementSibling()
+        }
+        val table = sibling ?: return emptyList()
+
+        return table.select("tbody tr")
+            .mapNotNull { row ->
+                val link = row.selectFirst("a[href*='teamPortrait']") ?: return@mapNotNull null
+                val teamTableId =
+                    extractParam(link.attr("href"), "teamtable")?.toIntOrNull() ?: return@mapNotNull null
+                val teamName = link.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                ParsedClickTTParticipant(teamName = teamName, teamTableId = teamTableId)
+            }
+            .distinctBy { it.teamTableId }
+    }
+
+    /**
      * Parses the full match schedule (Spielplan) from a click-tt group page
      * requested with displayDetail=meetings.
      *

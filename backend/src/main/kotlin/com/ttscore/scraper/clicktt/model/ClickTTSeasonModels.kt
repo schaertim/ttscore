@@ -38,6 +38,19 @@ data class ParsedClickTTStanding(
 )
 
 /**
+ * One row from the click-tt "Teilnehmende Mannschaften" (participating teams) table.
+ *
+ * Cup/final/playoff group pages carry no standings table; instead they list their entrants in this
+ * table, each with a teamPortrait link. It gives us the same globally-unique [teamTableId] the
+ * standings table would, so these groups' teams can be created/resolved by id — no name matching.
+ */
+data class ParsedClickTTParticipant(
+    val teamName: String,
+    // from teamPortrait?teamtable= href — globally unique in click-tt
+    val teamTableId: Int,
+)
+
+/**
  * One match row parsed from the click-tt Spielplan (meeting schedule).
  * meetingId is null for matches that haven't been played yet.
  */
