@@ -44,9 +44,6 @@
 		notify = data.notify;
 	});
 
-	// Standings position per team, for annotating scheduled fixtures.
-	const posByTeam = $derived(new Map(data.standings.map((s) => [s.teamId, s.position])));
-
 	const completedMatches = $derived(
 		data.matches
 			.filter((m: Match) => m.status === 'COMPLETED')
@@ -104,8 +101,7 @@
 						orientation="vertical"
 						class="bg-muted-foreground/40 data-[orientation=vertical]:h-3.5"
 					/>
-					<span class="font-semibold"
-						>{$_('leagues.round', {
+					<span>{$_('leagues.round', {
 							values: { played: data.group.roundsPlayed, total: data.group.totalRounds }
 						})}</span
 					>
@@ -147,7 +143,7 @@
 				<p class="py-12 text-center text-sm text-muted-foreground">{$_('group.no_schedule')}</p>
 			{:else}
 				{#each scheduledMatches as match (match.id)}
-					<ScheduledMatchCard {match} {posByTeam} />
+					<ScheduledMatchCard {match} />
 				{/each}
 			{/if}
 		</Tabs.Content>

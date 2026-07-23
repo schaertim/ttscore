@@ -7,11 +7,9 @@
 
 	interface Props {
 		match: Match;
-		/** Standings position per team id, for annotating the fixture. */
-		posByTeam: ReadonlyMap<string, number>;
 	}
 
-	let { match, posByTeam }: Props = $props();
+	let { match }: Props = $props();
 </script>
 
 <a
@@ -30,21 +28,9 @@
 			<span>{dateNumeric(match.playedAt, $locale) ?? $_('common.tbd')}</span>
 		</span>
 		<div class="flex min-w-0 items-center gap-2 text-sm">
-			<span class="min-w-0 truncate font-semibold">
-				{#if posByTeam.get(match.homeTeamId)}<span
-						class="font-mono text-2xs text-muted-foreground tabular-nums"
-						>#{posByTeam.get(match.homeTeamId)}</span
-					>
-				{/if}{match.homeTeam}
-			</span>
+			<span class="min-w-0 truncate font-semibold">{match.homeTeam}</span>
 			<span class="shrink-0 text-muted-foreground">vs</span>
-			<span class="min-w-0 truncate font-semibold">
-				{#if posByTeam.get(match.awayTeamId)}<span
-						class="font-mono text-2xs text-muted-foreground tabular-nums"
-						>#{posByTeam.get(match.awayTeamId)}</span
-					>
-				{/if}{match.awayTeam}
-			</span>
+			<span class="min-w-0 truncate font-semibold">{match.awayTeam}</span>
 		</div>
 	</div>
 	<CaretRightIcon size={16} class="shrink-0 text-muted-foreground" />
