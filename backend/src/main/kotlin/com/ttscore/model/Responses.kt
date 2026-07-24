@@ -308,6 +308,46 @@ data class FollowRequest(
     val targetId: String,
 )
 
+/**
+ * One event in the home-dashboard "recent activity" feed. Flat/kind-tagged rather than a
+ * polymorphic hierarchy — [kind] selects which of the optional fields are populated, mirroring
+ * the frontend's `FeedItem` union (see `feed-types.ts`).
+ */
+@Serializable
+data class FeedEventResponse(
+    val key: String,
+    // "player" | "team" | "division_group"
+    val entityType: String,
+    val entityName: String,
+    val entityHref: String,
+    // "player_match" | "class_change" | "team_match" | "group_match" | "upcoming_match"
+    val kind: String,
+    val sortKey: String,
+    // player_match / team_match: "WIN" | "LOSS" | "DRAW"
+    val result: String? = null,
+    // player_match
+    val opponentTeam: String? = null,
+    // team_match
+    val opponent: String? = null,
+    // player_match
+    val matchScore: String? = null,
+    // team_match / group_match
+    val score: String? = null,
+    val playedAt: String? = null,
+    // class_change: "UP" | "DOWN"
+    val direction: String? = null,
+    // class_change
+    val fromClass: String? = null,
+    // class_change
+    val toClass: String? = null,
+    // class_change
+    val effectiveDate: String? = null,
+    // group_match / upcoming_match
+    val homeTeam: String? = null,
+    // group_match / upcoming_match
+    val awayTeam: String? = null,
+)
+
 /** Body for PATCH /follows/{id} — toggles the notify (bell) flag. */
 @Serializable
 data class FollowNotifyRequest(

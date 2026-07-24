@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { FollowResponse } from '$lib/api';
-	import { resolveFeed } from '$lib/feed';
+	import { toResolvedEvent, type FeedEvent } from '$lib/feed';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import FeedItemCard from '$lib/components/home/FeedItemCard.svelte';
 	import FeedItemSkeleton from '$lib/components/home/FeedItemSkeleton.svelte';
@@ -10,20 +10,23 @@
 
 	interface Props {
 		follows: Promise<FollowResponse[]>;
+		// Pre-computed server-side (top-N across all followed entities, newest first) rather than
+		// resolved client-side from each entity's full history — see $lib/feed.ts.
+		feedEvents: Promise<FeedEvent[]>;
 	}
 
-	let { follows }: Props = $props();
+	let { follows, feedEvents }: Props = $props();
 
 	const PREVIEW_COUNT = 5;
 
-	const feedPromise = $derived(follows.then(resolveFeed));
+	const resolvedPromise = $derived(feedEvents.then((events) => events.map(toResolvedEvent)));
 </script>
 
 {#await follows then items}
 	{#if items.length > 0}
 		<section class="space-y-3">
 			<SectionLabel label={$_('home.favorite_feed')} icon={ListStarIcon} />
-			{#await feedPromise}
+			{#await resolvedPromise}
 				<div class="space-y-3">
 					{#each [1, 2, 3] as i (i)}
 						<FeedItemSkeleton />

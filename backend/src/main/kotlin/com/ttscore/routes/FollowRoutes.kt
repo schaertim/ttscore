@@ -4,6 +4,7 @@ import com.ttscore.model.FollowNotifyRequest
 import com.ttscore.model.FollowRequest
 import com.ttscore.model.FollowTargetType
 import com.ttscore.model.ReasonResponse
+import com.ttscore.service.FeedService
 import com.ttscore.service.FollowResult
 import com.ttscore.service.FollowService
 import com.ttscore.service.UserProfileService
@@ -89,6 +90,17 @@ fun Route.followRoutes() {
                     FollowService.SetNotifyResult.PRO_REQUIRED ->
                         call.respond(HttpStatusCode.Forbidden, ReasonResponse("notify_pro"))
                 }
+            }
+
+            /**
+             * Returns the most recent events (match results, class changes, upcoming fixtures)
+             * across everything the user follows, newest first — used for the home dashboard's
+             * preview feed. GET /follows/feed?limit=5
+             */
+            get("/feed") {
+                val limit =
+                    call.request.queryParameters["limit"]?.toIntOrNull()?.coerceIn(1, 20) ?: 5
+                call.respond(FeedService.getFeedPreview(call.userId(), limit))
             }
 
             /**

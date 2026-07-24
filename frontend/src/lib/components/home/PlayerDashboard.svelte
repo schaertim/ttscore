@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Player, PlayerGame, EloEntry, LeagueContext, FollowResponse } from '$lib/api';
+	import type { FeedEvent } from '$lib/feed';
 	import HomeHero from '$lib/components/home/HomeHero.svelte';
 	import HomeQuicklinks from '$lib/components/home/HomeQuicklinks.svelte';
 	import FollowFeed from '$lib/components/home/FollowFeed.svelte';
@@ -11,6 +12,7 @@
 			eloHistory: Promise<EloEntry[]>;
 			leagueContext: Promise<LeagueContext | null>;
 			follows: Promise<FollowResponse[]>;
+			feedEvents: Promise<FeedEvent[]>;
 		};
 	}
 
@@ -24,5 +26,5 @@
 	<HomeQuicklinks {player} leagueContext={streamed.leagueContext} />
 
 	<!-- Follow feed -->
-	<FollowFeed follows={streamed.follows} />
+	<FollowFeed follows={streamed.follows} feedEvents={streamed.feedEvents} />
 </div>

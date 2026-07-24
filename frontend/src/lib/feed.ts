@@ -203,6 +203,83 @@ async function fetchGroupEvents(fav: FollowResponse): Promise<ResolvedEvent[]> {
 	return events;
 }
 
+// ── Backend-aggregated preview feed (home dashboard only) ──────────────────────
+//
+// The full per-entity resolution above (resolveFeed + fetchers) stays in use for the standalone
+// /feed page, which is low-traffic and genuinely needs the complete picture. The home dashboard
+// only ever shows a handful of items, so it calls a dedicated backend endpoint that computes the
+// true most-recent events across all followed entities server-side (see FeedService.kt) instead
+// of fetching every followed entity's entire match + classification history client-side just to
+// throw most of it away.
+
+/** Flat wire shape from `GET /follows/feed` — mirrors the backend's `FeedEventResponse`. */
+export type FeedEvent = {
+	key: string;
+	entityType: 'player' | 'team' | 'division_group';
+	entityName: string;
+	entityHref: string;
+	kind: FeedItem['kind'];
+	sortKey: string;
+	result?: 'WIN' | 'LOSS' | 'DRAW';
+	opponentTeam?: string;
+	opponent?: string;
+	matchScore?: string;
+	score?: string;
+	playedAt?: string | null;
+	direction?: 'UP' | 'DOWN';
+	fromClass?: string;
+	toClass?: string;
+	effectiveDate?: string;
+	homeTeam?: string;
+	awayTeam?: string;
+};
+
+/** Adapts a flat backend feed event into the `ResolvedEvent` shape `FeedItemCard` renders. */
+export function toResolvedEvent(e: FeedEvent): ResolvedEvent {
+	const entityName = e.entityType === 'player' ? formatName(e.entityName) : e.entityName;
+	const playedAt = e.playedAt ?? null;
+
+	let item: FeedItem;
+	switch (e.kind) {
+		case 'player_match':
+			item = {
+				kind: 'player_match',
+				result: e.result!,
+				opponentTeam: e.opponentTeam!,
+				matchScore: e.matchScore!,
+				playedAt
+			};
+			break;
+		case 'class_change':
+			item = {
+				kind: 'class_change',
+				direction: e.direction!,
+				from: e.fromClass!,
+				to: e.toClass!,
+				effectiveDate: e.effectiveDate!
+			};
+			break;
+		case 'team_match':
+			item = { kind: 'team_match', result: e.result!, opponent: e.opponent!, score: e.score!, playedAt };
+			break;
+		case 'group_match':
+			item = { kind: 'group_match', homeTeam: e.homeTeam!, awayTeam: e.awayTeam!, score: e.score!, playedAt };
+			break;
+		case 'upcoming_match':
+			item = { kind: 'upcoming_match', homeTeam: e.homeTeam!, awayTeam: e.awayTeam!, playedAt };
+			break;
+	}
+
+	return {
+		key: e.key,
+		entityType: e.entityType,
+		entityName,
+		entityHref: e.entityHref,
+		item,
+		sortKey: e.sortKey
+	};
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export async function resolveFeed(follows: FollowResponse[]): Promise<ResolvedEvent[]> {
