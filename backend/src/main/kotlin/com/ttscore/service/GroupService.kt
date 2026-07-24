@@ -3,6 +3,7 @@
 import com.ttscore.database.*
 import com.ttscore.model.GroupResponse
 import com.ttscore.model.MatchStatus
+import com.ttscore.model.TeamBasicResponse
 import com.ttscore.util.toUuidOrNull
 import org.jetbrains.exposed.sql.*
 
@@ -102,6 +103,25 @@ object GroupService {
                 roundsPlayed = roundsPlayed,
                 totalRounds = totalRounds,
             )
+        }
+    }
+
+    /**
+     * Teams registered in a group, independent of standings — used as a fallback team list for
+     * groups scraped from a "participating teams" table rather than a standings table (e.g.
+     * cup/final/playoff groups), which have `Teams` rows but no `Standings` rows.
+     */
+    suspend fun getTeams(groupId: String): List<TeamBasicResponse>? {
+        val uuid = groupId.toUuidOrNull() ?: return null
+        return dbQuery {
+            val exists = Groups.select(Groups.id).where { Groups.id eq uuid }.firstOrNull() != null
+            if (!exists) return@dbQuery null
+
+            Teams
+                .select(Teams.id, Teams.name)
+                .where { Teams.groupId eq uuid }
+                .orderBy(Teams.name to SortOrder.ASC)
+                .map { TeamBasicResponse(id = it[Teams.id].toString(), name = it[Teams.name]) }
         }
     }
 

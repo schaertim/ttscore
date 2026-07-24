@@ -4,21 +4,16 @@
 	import { api } from '$lib/api';
 	import SeasonSelect from '$lib/components/SeasonSelect.svelte';
 	import * as Accordion from '$lib/components/ui/accordion/index.js';
-	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 	import PageTitle from '$lib/components/PageTitle.svelte';
-	import {
-		CaretDownIcon,
-		CaretRightIcon,
-		GlobeIcon,
-		MapTrifoldIcon,
-		TrendUpIcon,
-		ClockIcon,
-		TrophyIcon
-	} from 'phosphor-svelte';
+	import FederationAccordionItem from '$lib/components/home/FederationAccordionItem.svelte';
+	import { TrendUpIcon, ClockIcon, TrophyIcon } from 'phosphor-svelte';
 	import StatTile from '$lib/components/StatTile.svelte';
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { _ } from 'svelte-i18n';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
+	import { categorizeGroupName, naturalCompare } from '$lib/groupCategory';
 
 	interface Props {
 		seasons: Season[];
@@ -29,9 +24,30 @@
 
 	let { seasons, federations, banner }: Props = $props();
 
-	// Deliberate initial-value capture: default to the newest season once, then the user owns it.
+	// Persist the selected season in the URL (?season=…) so it survives back navigation
+	// (e.g. selecting a past season, opening a group, then navigating back here).
+	// We use `goto(..., { replaceState: true })` rather than the standalone `replaceState()`
+	// from `$app/navigation`: that helper writes a stale URL into the history entry's state
+	// (it captures `page.url` *before* updating it), which then misdirects SvelteKit's
+	// popstate handler on back-navigation — it prefers that stale stored URL over the
+	// browser's actual (correct) address bar URL. A real (if shallow) `goto` navigation
+	// doesn't have this problem. The actual selection still lives in `$state` (seeded once
+	// from `page.url` on initial mount / on remount after back-navigation), since `goto`'s
+	// reactive `page.url` update happens too late in the render cycle to drive the fetch
+	// effect below directly.
+	const paramSeasonId = page.url.searchParams.get('season');
 	// svelte-ignore state_referenced_locally
-	let selectedSeasonId = $state(seasons[0]?.id ?? '');
+	let selectedSeasonId = $state(
+		seasons.some((s) => s.id === paramSeasonId) ? paramSeasonId! : (seasons[0]?.id ?? '')
+	);
+
+	function setSelectedSeasonId(value: string) {
+		selectedSeasonId = value;
+		const url = new URL(page.url);
+		if (value === seasons[0]?.id) url.searchParams.delete('season');
+		else url.searchParams.set('season', value);
+		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+	}
 
 	const selectedSeason = $derived(seasons.find((s: Season) => s.id === selectedSeasonId));
 
@@ -61,12 +77,41 @@
 		}
 	}
 
+	// A region with few groups doesn't need a second accordion level at all. Beyond that floor,
+	// whether to actually nest isn't about the *count* — it's about whether categorising helps:
+	// if every group lands in its own one-item category (nothing merged, e.g. names the categoriser
+	// can't parse), nesting only adds a redundant click per group for no benefit, so we only nest
+	// when it genuinely collapses the list (see groupCategory.ts for the categorisation itself).
+	const MIN_GROUPS_TO_CONSIDER_CATEGORIES = 6;
+
+	type GroupCategory = { name: string; groups: Group[] };
+
 	const groupsByFederation = $derived(
 		federations
-			.map((fed) => ({
-				...fed,
-				groups: groups.filter((g) => g.federation === fed.name)
-			}))
+			.map((fed) => {
+				const fedGroups = groups
+					.filter((g) => g.federation === fed.name)
+					.sort((a, b) => naturalCompare(a.name, b.name));
+
+				let categories: GroupCategory[] | null = null;
+				if (fedGroups.length >= MIN_GROUPS_TO_CONSIDER_CATEGORIES) {
+					const byCategory = new Map<string, Group[]>();
+					for (const group of fedGroups) {
+						const category = categorizeGroupName(group.name);
+						const bucket = byCategory.get(category);
+						if (bucket) bucket.push(group);
+						else byCategory.set(category, [group]);
+					}
+					if (byCategory.size < fedGroups.length) {
+						categories = Array.from(byCategory, ([name, catGroups]) => ({
+							name,
+							groups: catGroups
+						})).sort((a, b) => naturalCompare(a.name, b.name));
+					}
+				}
+
+				return { ...fed, groups: fedGroups, categories };
+			})
 			.filter((fed) => fed.groups.length > 0)
 	);
 
@@ -85,7 +130,8 @@
 			<PageTitle>{$_('leagues.title')}</PageTitle>
 		</div>
 		<SeasonSelect
-			bind:value={selectedSeasonId}
+			value={selectedSeasonId}
+			onChange={setSelectedSeasonId}
 			seasons={seasons.map((s) => ({ value: s.id, label: s.name }))}
 		/>
 	</header>
@@ -106,74 +152,7 @@
 		{:else}
 			<Accordion.Root type="multiple" bind:value={expandedFederations} class="space-y-3">
 				{#each groupsByFederation as fed (fed.id)}
-					{@const isExpanded = expandedFederations.includes(fed.id)}
-					{@const isNational = fed.name === 'STT'}
-					<Accordion.Item
-						value={fed.id}
-						class="overflow-hidden rounded-xl border border-border bg-card"
-					>
-						<Accordion.Trigger
-							class="w-full items-center rounded-none px-4 py-4 transition-colors hover:bg-accent hover:no-underline [&_[data-slot=accordion-trigger-icon]]:hidden"
-						>
-							<div class="flex items-center gap-3">
-								{#if isNational}
-									<GlobeIcon size={20} class="text-muted-foreground" />
-								{:else}
-									<MapTrifoldIcon size={20} class="text-muted-foreground" />
-								{/if}
-								<span class="font-semibold">{fed.name}</span>
-							</div>
-							<CaretDownIcon
-								size={20}
-								class="text-muted-foreground transition-transform duration-200
-								{isExpanded ? 'rotate-180' : ''}"
-							/>
-						</Accordion.Trigger>
-						<Accordion.Content class="p-0">
-							<div class="divide-y divide-border/40 bg-background/50">
-								{#each fed.groups as group (group.id)}
-									<a
-										href="/groups/{group.id}"
-										class="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent"
-									>
-										<div class="min-w-0 flex-1">
-											<p class="truncate text-sm font-semibold">{group.name}</p>
-											{#if group.teamCount > 0 || group.totalRounds > 0}
-												<div
-													class="mt-1 flex items-center gap-1.5 text-2xs font-semibold tracking-widest text-muted-foreground uppercase"
-												>
-													{#if group.teamCount > 0}
-														<span
-															>{$_('leagues.teams', {
-																values: { count: group.teamCount }
-															})}</span
-														>
-													{/if}
-													{#if group.teamCount > 0 && group.totalRounds > 0}
-														<Separator
-															orientation="vertical"
-															class="bg-muted-foreground/40 data-[orientation=vertical]:h-2.5"
-														/>
-													{/if}
-													{#if group.totalRounds > 0}
-														<span
-															>{$_('leagues.round', {
-																values: { played: group.roundsPlayed, total: group.totalRounds }
-															})}</span
-														>
-													{/if}
-												</div>
-											{/if}
-										</div>
-										<CaretRightIcon
-											size={16}
-											class="shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
-										/>
-									</a>
-								{/each}
-							</div>
-						</Accordion.Content>
-					</Accordion.Item>
+					<FederationAccordionItem {fed} isExpanded={expandedFederations.includes(fed.id)} />
 				{/each}
 			</Accordion.Root>
 		{/if}

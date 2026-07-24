@@ -47,16 +47,16 @@
 		{:then ctx}
 			{#if ctx}
 				<QuicklinkRow
-					href="/groups/{ctx.groupId}"
-					icon={TrophyIcon}
-					label={$_('home.my_league')}
-					sublabel={ctx.groupName}
-				/>
-				<QuicklinkRow
 					href="/teams/{ctx.teamId}"
 					icon={UsersThreeIcon}
 					label={$_('home.my_team')}
 					sublabel={ctx.teamName}
+				/>
+				<QuicklinkRow
+					href="/groups/{ctx.groupId}"
+					icon={TrophyIcon}
+					label={$_('home.my_league')}
+					sublabel={ctx.groupName}
 				/>
 			{/if}
 		{/await}

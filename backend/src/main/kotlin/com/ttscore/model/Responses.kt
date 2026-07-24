@@ -129,6 +129,12 @@ data class TeamPlayerResponse(
 )
 
 @Serializable
+data class TeamBasicResponse(
+    val id: String,
+    val name: String,
+)
+
+@Serializable
 data class GroupResponse(
     val id: String,
     val name: String,
@@ -318,19 +324,6 @@ data class PushSubscriptionRequest(
 @Serializable
 data class PushUnsubscribeRequest(
     val endpoint: String,
-)
-
-@Serializable
-data class NextMatchResponse(
-    val matchId: String,
-    val homeTeam: String,
-    val awayTeam: String,
-    val playerTeamId: String,
-    val playerTeamName: String,
-    val playedAt: String?,
-    val round: String?,
-    val groupId: String,
-    val groupName: String,
 )
 
 @Serializable

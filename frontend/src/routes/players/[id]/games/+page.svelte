@@ -11,24 +11,33 @@
 	import { groupByMonth, UNDATED } from '$lib/components/player/monthGroups';
 	import { _ } from 'svelte-i18n';
 	import { page } from '$app/state';
-	import { replaceState } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { formatName, seasonNameOf } from '$lib/utils';
 
 	let { data }: { data: PageData } = $props();
 
 	// Persist the active tab in the URL (?tab=…) so it survives reloads and back navigation.
+	// We use `goto(..., { replaceState: true })` rather than the standalone `replaceState()`
+	// from `$app/navigation`: that helper writes a stale URL into the history entry's state
+	// (it captures `page.url` *before* updating it), which then misdirects SvelteKit's
+	// popstate handler on back-navigation — it prefers that stale stored URL over the
+	// browser's actual (correct) address bar URL. A real (if shallow) `goto` navigation
+	// doesn't have this problem. The actual selection still lives in `$state` (seeded from
+	// the URL on mount and resynced below), since `goto`'s reactive `page.url` update happens
+	// too late in the render cycle to drive the tab UI directly.
 	const TABS = ['history', 'upcoming'];
-	const activeTab = $derived(
-		TABS.includes(page.url.searchParams.get('tab') ?? '')
-			? page.url.searchParams.get('tab')!
-			: 'history'
-	);
+	function tabFromUrl() {
+		const t = page.url.searchParams.get('tab');
+		return TABS.includes(t ?? '') ? t! : 'history';
+	}
+	let activeTab = $state(tabFromUrl());
 
 	function setTab(value: string) {
+		activeTab = value;
 		const url = new URL(page.url);
 		if (value === 'history') url.searchParams.delete('tab');
 		else url.searchParams.set('tab', value);
-		replaceState(url, page.state);
+		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
 	}
 
 	let matches = $state<PlayerGame[] | null>(null);
@@ -40,6 +49,7 @@
 		const pending = data.streamed.matches;
 		matches = null;
 		selectedSeason = '';
+		activeTab = tabFromUrl();
 		pending.then((m) => {
 			matches = m;
 		});

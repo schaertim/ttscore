@@ -91,16 +91,68 @@ class KnobParser {
         )
     }
 
+    /** Column indices for a standings table body row, varying by layout (see [parseStandings]). */
+    private data class StandingsColumns(
+        val minCells: Int,
+        val teamCol: Int,
+        val playedCol: Int,
+        val wonCol: Int,
+        val drawnCol: Int,
+        val lostCol: Int,
+        val siegVerhCol: Int,
+        val pointsCol: Int,
+    )
+
+    private val PRIMARY_STANDINGS_COLUMNS =
+        StandingsColumns(
+            minCells = 9, teamCol = 1, playedCol = 3, wonCol = 4,
+            drawnCol = 5, lostCol = 6, siegVerhCol = 7, pointsCol = 9,
+        )
+
+    // Same columns, shifted one left — this layout has no spacer column between Team and Spiele,
+    // and collapses the trailing per-season stats into a single padding td.
+    private val ALT_STANDINGS_COLUMNS =
+        StandingsColumns(
+            minCells = 9, teamCol = 1, playedCol = 2, wonCol = 3,
+            drawnCol = 4, lostCol = 5, siegVerhCol = 6, pointsCol = 8,
+        )
+
     private fun parseStandings(html: String): ParsedStandingsPage {
         val doc = Jsoup.parse(html)
 
-        // The standings table is the first pTitle table — it has the team ranking header
-        val table =
+        // The standings table is normally the first pTitle table — it has the team ranking header.
+        val primaryTable =
             doc.select("table.pTitle").firstOrNull {
                 it.selectFirst("tr td:contains(Rang)") != null ||
                     it.select("tr.psauf, tr.psab, tr.psodd, tr.playerStats").isNotEmpty()
-            } ?: return ParsedStandingsPage(emptyList(), 0, 0)
+            }
+        if (primaryTable != null) {
+            val parsed = parseStandingsTable(primaryTable, PRIMARY_STANDINGS_COLUMNS)
+            if (parsed.standings.isNotEmpty()) return parsed
+        }
 
+        // Fallback: some knob pages render the team ranking table with a mistyped class
+        // ("test.pTitle" instead of "pTitle") and a slightly different column layout, so the
+        // primary lookup above misses it entirely. Locate it via the "Team-Rangliste" header bar
+        // that always precedes it, rather than the table's own (unreliable) class.
+        val altTable =
+            doc.select("table.a02Bar")
+                .firstOrNull { it.text().contains("Team-Rangliste") }
+                ?.nextElementSibling()
+        if (altTable != null && altTable.selectFirst("tr td:contains(Rang)") != null) {
+            val parsed = parseStandingsTable(altTable, ALT_STANDINGS_COLUMNS)
+            if (parsed.standings.isNotEmpty()) return parsed
+        }
+
+        // Some groups genuinely have no standings table at all (cups/playoffs) — the caller
+        // falls back to the participating-teams list in that case.
+        return ParsedStandingsPage(emptyList(), 0, 0)
+    }
+
+    private fun parseStandingsTable(
+        table: Element,
+        cols: StandingsColumns,
+    ): ParsedStandingsPage {
         val rows = table.select("tr")
         val standings = mutableListOf<ParsedStandingRow>()
         var promotionSpots = 0
@@ -108,13 +160,13 @@ class KnobParser {
         var position = 1
 
         for (row in rows) {
-            // Promotion zone separator — rows above this are promotion spots
-            if (row.hasClass("auf")) {
+            // Promotion/relegation zone separators — normally a class on the <tr> itself, but one
+            // known layout puts it on the row's single (colspan) <td> instead.
+            if (hasZoneClass(row, "auf")) {
                 promotionSpots = position - 1
                 continue
             }
-            // Relegation zone separator — rows from here down are relegation spots
-            if (row.hasClass("ab")) {
+            if (hasZoneClass(row, "ab")) {
                 relegationStart = position
                 continue
             }
@@ -125,23 +177,23 @@ class KnobParser {
             if (!isStandingRow) continue
 
             val cells = row.select("td")
-            if (cells.size < 9) continue
+            if (cells.size < cols.minCells) continue
 
-            val teamLink = cells[1].selectFirst("a") ?: continue
+            val teamLink = cells[cols.teamCol].selectFirst("a") ?: continue
             val knobTeamId = extractParam(teamLink.attr("href"), "teamid")?.toIntOrNull() ?: continue
 
-            val played = cells[3].text().trim().toIntOrNull() ?: continue
-            val won = cells[4].text().trim().toIntOrNull() ?: continue
-            val drawn = cells[5].text().trim().toIntOrNull() ?: continue
-            val lost = cells[6].text().trim().toIntOrNull() ?: continue
+            val played = cells[cols.playedCol].text().trim().toIntOrNull() ?: continue
+            val won = cells[cols.wonCol].text().trim().toIntOrNull() ?: continue
+            val drawn = cells[cols.drawnCol].text().trim().toIntOrNull() ?: continue
+            val lost = cells[cols.lostCol].text().trim().toIntOrNull() ?: continue
 
             // SiegVerh column format: "105:35"
-            val siegVerh = cells[7].text().trim()
+            val siegVerh = cells[cols.siegVerhCol].text().trim()
             val gamesFor = siegVerh.substringBefore(":").trim().toIntOrNull() ?: 0
             val gamesAgainst = siegVerh.substringAfter(":").trim().toIntOrNull() ?: 0
 
-            // Points are in a bold td — cells[9]
-            val points = cells[9].text().trim().toIntOrNull() ?: continue
+            // Points are in a bold td
+            val points = cells[cols.pointsCol].text().trim().toIntOrNull() ?: continue
 
             standings.add(
                 ParsedStandingRow(
@@ -168,6 +220,11 @@ class KnobParser {
 
         return ParsedStandingsPage(standings, promotionSpots, relegationSpots)
     }
+
+    private fun hasZoneClass(
+        row: Element,
+        cls: String,
+    ): Boolean = row.hasClass(cls) || row.select("td").firstOrNull()?.hasClass(cls) == true
 
     private fun resolveLeague(
         doc: Document,

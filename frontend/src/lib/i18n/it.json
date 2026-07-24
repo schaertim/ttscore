@@ -156,6 +156,7 @@
 	},
 	"group": {
 		"standings": "Classifica",
+		"teams_tab": "Squadre",
 		"results": "Risultati",
 		"schedule": "Calendario",
 		"pos": "Pos",
@@ -167,6 +168,7 @@
 		"draw_rate": "Percentuale pareggi",
 		"no_results": "Ancora nessun risultato",
 		"no_schedule": "Nessun incontro in programma",
+		"no_standings": "Nessuna classifica disponibile per questo gruppo",
 		"round_label": "G {round}"
 	},
 	"preview": {

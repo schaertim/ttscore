@@ -101,19 +101,6 @@ fun Route.playerRoutes() {
             call.respond(HttpStatusCode.OK, matches)
         }
 
-        get("/{id}/next-match") {
-            val id =
-                call.parameters["id"]
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
-
-            val nextMatch = PlayerService.getPlayerNextMatch(id)
-            if (nextMatch == null) {
-                call.respond(HttpStatusCode.NoContent)
-            } else {
-                call.respond(HttpStatusCode.OK, nextMatch)
-            }
-        }
-
         get("/{id}/upcoming") {
             val id =
                 call.parameters["id"]

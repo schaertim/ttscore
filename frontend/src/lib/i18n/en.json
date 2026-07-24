@@ -156,6 +156,7 @@
 	},
 	"group": {
 		"standings": "Standings",
+		"teams_tab": "Teams",
 		"results": "Results",
 		"schedule": "Schedule",
 		"pos": "Pos",
@@ -167,6 +168,7 @@
 		"draw_rate": "Draw Rate",
 		"no_results": "No results yet",
 		"no_schedule": "No upcoming matches",
+		"no_standings": "No standings available for this group",
 		"round_label": "Rd {round}"
 	},
 	"preview": {

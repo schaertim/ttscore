@@ -15,6 +15,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	if (!group || !standings) error(404, 'Group not found');
 
+	// Fallback team list for groups scraped from a "participating teams" table rather than a
+	// standings table (e.g. cup/final/playoff groups) — only needed when there's no standings.
+	const teams = standings.length === 0 ? await api.groups.teams(id).catch(() => []) : [];
+
 	const { session } = await locals.safeGetSession();
 
 	let following = false;
@@ -34,7 +38,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	}
 
-	return { group, standings, matches: matches ?? [], following, followId, notify };
+	return { group, standings, teams, matches: matches ?? [], following, followId, notify };
 };
 
 export const actions: Actions = {

@@ -36,6 +36,16 @@ fun Route.groupRoutes() {
             call.respond(standings)
         }
 
+        get("/{id}/teams") {
+            val id =
+                call.parameters["id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing group id")
+            val teams =
+                GroupService.getTeams(id)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Group not found")
+            call.respond(teams)
+        }
+
         get("/{id}/matches") {
             val id =
                 call.parameters["id"]

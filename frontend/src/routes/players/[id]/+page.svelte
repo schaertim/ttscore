@@ -15,7 +15,7 @@
 	import { ChartLineIcon, ClockCounterClockwiseIcon, UserCirclePlusIcon } from 'phosphor-svelte';
 	import ShowAllLink from '$lib/components/ShowAllLink.svelte';
 	import { page } from '$app/state';
-	import { replaceState } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
 	import { classColorVar } from '$lib/utils';
 	import { api } from '$lib/api';
@@ -42,8 +42,33 @@
 		await subscribe(session?.access_token ?? '').catch(() => false);
 	}
 
+	// Persist the active tab in the URL (?tab=…) so it survives reloads and back navigation.
+	// We use `goto(..., { replaceState: true })` rather than the standalone `replaceState()`
+	// from `$app/navigation`: that helper writes a stale URL into the history entry's state
+	// (it captures `page.url` *before* updating it), which then misdirects SvelteKit's
+	// popstate handler on back-navigation — it prefers that stale stored URL over the
+	// browser's actual (correct) address bar URL. A real (if shallow) `goto` navigation
+	// doesn't have this problem. The actual selection still lives in `$state` (seeded from
+	// the URL on mount and resynced below), since `goto`'s reactive `page.url` update happens
+	// too late in the render cycle to drive the tab UI directly.
+	const TABS = ['overview', 'stats', 'career'];
+	function tabFromUrl() {
+		const t = page.url.searchParams.get('tab');
+		return TABS.includes(t ?? '') ? t! : 'overview';
+	}
+	let activeTab = $state(tabFromUrl());
+
+	function setTab(value: string) {
+		activeTab = value;
+		const url = new URL(page.url);
+		if (value === 'overview') url.searchParams.delete('tab');
+		else url.searchParams.set('tab', value);
+		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+	}
+
 	// Synced in an effect (not just initialised) so client-side navigation between
-	// players — which reuses this component — picks up the new player's follow state.
+	// players — which reuses this component — picks up the new player's follow state
+	// (and the new URL's tab, if any).
 	let following = $state(false);
 	let followId = $state<string | null>(null);
 	let notify = $state(false);
@@ -52,6 +77,7 @@
 		following = data.following;
 		followId = data.followId;
 		notify = data.notify;
+		activeTab = tabFromUrl();
 	});
 
 	// Data refetched after the on-demand sync, tagged with the player id it belongs to so an override
@@ -104,21 +130,6 @@
 			}
 		})();
 	});
-
-	// Persist the active tab in the URL (?tab=…) so it survives reloads and back navigation.
-	const TABS = ['overview', 'stats', 'career'];
-	const activeTab = $derived(
-		TABS.includes(page.url.searchParams.get('tab') ?? '')
-			? page.url.searchParams.get('tab')!
-			: 'overview'
-	);
-
-	function setTab(value: string) {
-		const url = new URL(page.url);
-		if (value === 'overview') url.searchParams.delete('tab');
-		else url.searchParams.set('tab', value);
-		replaceState(url, page.state);
-	}
 </script>
 
 {#snippet eloCard(history: EloEntry[])}

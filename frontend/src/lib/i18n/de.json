@@ -156,6 +156,7 @@
 	},
 	"group": {
 		"standings": "Tabelle",
+		"teams_tab": "Teams",
 		"results": "Ergebnisse",
 		"schedule": "Spielplan",
 		"pos": "Pl.",
@@ -167,6 +168,7 @@
 		"draw_rate": "Remisquote",
 		"no_results": "Noch keine Ergebnisse",
 		"no_schedule": "Keine anstehenden Matches",
+		"no_standings": "Keine Tabelle für diese Gruppe verfügbar",
 		"round_label": "Rd. {round}"
 	},
 	"preview": {

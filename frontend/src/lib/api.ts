@@ -61,6 +61,11 @@ export type TeamPlayer = {
 	losses: number;
 };
 
+export type TeamBasic = {
+	id: string;
+	name: string;
+};
+
 export type Standing = {
 	teamId: string;
 	team: string;
@@ -430,18 +435,6 @@ export type FollowResponse = {
 	notify: boolean;
 };
 
-export type NextMatch = {
-	matchId: string;
-	homeTeam: string;
-	awayTeam: string;
-	playerTeamId: string;
-	playerTeamName: string;
-	playedAt: string | null;
-	round: string | null;
-	groupId: string;
-	groupName: string;
-};
-
 export type ClassHistoryEntry = {
 	classification: string;
 	seasonName: string;
@@ -481,6 +474,7 @@ export const api = {
 		},
 		get: (groupId: string) => get<Group>(`/groups/${groupId}`),
 		standings: (groupId: string) => get<Standing[]>(`/groups/${groupId}/standings`),
+		teams: (groupId: string) => get<TeamBasic[]>(`/groups/${groupId}/teams`),
 		matches: (groupId: string) => get<Match[]>(`/groups/${groupId}/matches`)
 	},
 
@@ -513,7 +507,6 @@ export const api = {
 		},
 		elo: (playerId: string) => get<EloEntry[]>(`/players/${playerId}/elo`),
 		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
-		nextMatch: (playerId: string) => get<NextMatch>(`/players/${playerId}/next-match`),
 		upcoming: (playerId: string) => get<PlayerUpcoming>(`/players/${playerId}/upcoming`),
 		/** Pro-gated player-centric preview of one of the player's team fixtures. */
 		matchPreview: (playerId: string, matchId: string, accessToken: string) =>

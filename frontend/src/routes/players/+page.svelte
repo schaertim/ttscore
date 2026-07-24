@@ -26,7 +26,12 @@
 	import SectionLabel from '$lib/components/SectionLabel.svelte';
 	import { _ } from 'svelte-i18n';
 	import { formatName } from '$lib/utils';
-	import { getRecentPlayers, addRecentPlayer, type RecentPlayer } from '$lib/recentPlayers';
+	import {
+		getRecentPlayers,
+		addRecentPlayer,
+		updateRecentPlayer,
+		type RecentPlayer
+	} from '$lib/recentPlayers';
 
 	let { data }: { data: PageData } = $props();
 
@@ -41,7 +46,33 @@
 
 	onMount(() => {
 		recentPlayers = getRecentPlayers();
+		refreshRecentClassifications();
 	});
+
+	// The recents list is a point-in-time snapshot captured when each player was clicked, so a
+	// classification change since then (season rollover, live in-season bump/drop) would otherwise
+	// show a stale avatar color indefinitely. Re-fetch each one's current data in the background —
+	// updating in place (not via addRecentPlayer, which would reorder the list) — same as the
+	// favourites list already does by always reading fresh server data.
+	async function refreshRecentClassifications() {
+		await Promise.all(
+			recentPlayers.map(async (recent) => {
+				try {
+					const fresh = await api.players.get(recent.id);
+					const classification = fresh.liveClassification ?? fresh.classification ?? null;
+					const patch = {
+						fullName: fresh.fullName,
+						classification,
+						currentClubName: fresh.currentClubName ?? null
+					};
+					updateRecentPlayer(recent.id, patch);
+					recentPlayers = recentPlayers.map((p) => (p.id === recent.id ? { ...p, ...patch } : p));
+				} catch {
+					// player fetch failed (deleted/offline) — leave the stale entry as-is
+				}
+			})
+		);
+	}
 
 	const PAGE_SIZE = 20;
 

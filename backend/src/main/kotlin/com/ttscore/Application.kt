@@ -84,17 +84,14 @@ private fun Application.runBackfill(currentSeason: String) {
                 ClickTTSeasonScraper.create().run("2025/2026")
             }
 
+            // Seeds the current season from scratch (groups, teams, standings, schedule, match
+            // details) — the same tool used for the 2025/2026 handoff-gap season above. The nightly
+            // SeasonSyncJob (see scheduleJobs) then takes over ongoing sync from its next 3am run;
+            // it would be pure redundant re-scraping to also trigger it here immediately after —
+            // this call already leaves every group fully seeded, not partially.
             BackfillLedger.runOnce("clicktt-season-backfill:$currentSeason") {
                 logger.info("Backfill — click-tt season $currentSeason")
                 ClickTTSeasonScraper.create().run(currentSeason)
-            }
-
-            // Seed the current season once, immediately, so data is available without waiting
-            // for the 03:00 run. Keyed by season, so bumping scraper.currentSeason next year
-            // triggers exactly one immediate seed on the first boot after the change.
-            BackfillLedger.runOnce("clicktt-season-seed:$currentSeason") {
-                logger.info("Backfill — seeding current season $currentSeason")
-                SeasonSyncJob.create().run(currentSeason)
             }
 
             BackfillLedger.runOnce("clicktt-portrait-backfill") {

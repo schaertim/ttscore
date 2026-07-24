@@ -30,6 +30,22 @@ export function addRecentPlayer(player: RecentPlayer): void {
 	}
 }
 
+/**
+ * Updates a stored entry's fields in place (e.g. a refreshed classification) without moving its
+ * position in the list — unlike `addRecentPlayer`, which reorders to the front on every view.
+ */
+export function updateRecentPlayer(id: string, patch: Partial<Omit<RecentPlayer, 'id'>>): void {
+	try {
+		const current = getRecentPlayers();
+		const index = current.findIndex((p) => p.id === id);
+		if (index === -1) return;
+		current[index] = { ...current[index], ...patch };
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+	} catch {
+		// private browsing or storage full — silently ignore
+	}
+}
+
 export function removeRecentPlayer(id: string): void {
 	try {
 		const updated = getRecentPlayers().filter((p) => p.id !== id);

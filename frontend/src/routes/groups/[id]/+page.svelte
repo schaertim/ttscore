@@ -9,31 +9,42 @@
 	import FollowButton from '$lib/components/FollowButton.svelte';
 	import NotifyButton from '$lib/components/NotifyButton.svelte';
 	import StandingsTable from '$lib/components/group/StandingsTable.svelte';
+	import TeamsOnlyTable from '$lib/components/group/TeamsOnlyTable.svelte';
 	import ScheduledMatchCard from '$lib/components/group/ScheduledMatchCard.svelte';
 	import { Separator } from '$lib/components/ui/separator/index.js';
 	import { page } from '$app/state';
-	import { replaceState } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { _ } from 'svelte-i18n';
 
 	let { data }: { data: PageData } = $props();
 
 	// Persist the active tab in the URL (?tab=…) so it survives reloads and back navigation.
+	// We use `goto(..., { replaceState: true })` rather than the standalone `replaceState()`
+	// from `$app/navigation`: that helper writes a stale URL into the history entry's state
+	// (it captures `page.url` *before* updating it), which then misdirects SvelteKit's
+	// popstate handler on back-navigation — it prefers that stale stored URL over the
+	// browser's actual (correct) address bar URL. A real (if shallow) `goto` navigation
+	// doesn't have this problem. The actual selection still lives in `$state` (seeded from
+	// the URL on mount and resynced below), since `goto`'s reactive `page.url` update happens
+	// too late in the render cycle to drive the tab UI directly.
 	const TABS = ['standings', 'results', 'schedule'];
-	const activeTab = $derived(
-		TABS.includes(page.url.searchParams.get('tab') ?? '')
-			? page.url.searchParams.get('tab')!
-			: 'standings'
-	);
+	function tabFromUrl() {
+		const t = page.url.searchParams.get('tab');
+		return TABS.includes(t ?? '') ? t! : 'standings';
+	}
+	let activeTab = $state(tabFromUrl());
 
 	function setTab(value: string) {
+		activeTab = value;
 		const url = new URL(page.url);
 		if (value === 'standings') url.searchParams.delete('tab');
 		else url.searchParams.set('tab', value);
-		replaceState(url, page.state);
+		goto(url, { replaceState: true, noScroll: true, keepFocus: true });
 	}
 
 	// Synced in an effect (not just initialised) so client-side navigation between
-	// groups — which reuses this component — picks up the new group's follow state.
+	// groups — which reuses this component — picks up the new group's follow state
+	// (and the new URL's tab, if any).
 	let following = $state(false);
 	let followId = $state<string | null>(null);
 	let notify = $state(false);
@@ -42,6 +53,7 @@
 		following = data.following;
 		followId = data.followId;
 		notify = data.notify;
+		activeTab = tabFromUrl();
 	});
 
 	const completedMatches = $derived(
@@ -112,13 +124,21 @@
 
 	<Tabs.Root value={activeTab} onValueChange={setTab}>
 		<Tabs.List class="w-full">
-			<Tabs.Trigger value="standings" class="flex-1">{$_('group.standings')}</Tabs.Trigger>
+			<Tabs.Trigger value="standings" class="flex-1">
+				{data.standings.length > 0 ? $_('group.standings') : $_('group.teams_tab')}
+			</Tabs.Trigger>
 			<Tabs.Trigger value="results" class="flex-1">{$_('group.results')}</Tabs.Trigger>
 			<Tabs.Trigger value="schedule" class="flex-1">{$_('group.schedule')}</Tabs.Trigger>
 		</Tabs.List>
 
 		<Tabs.Content value="standings" class="mt-4 space-y-3">
-			<StandingsTable standings={data.standings} group={data.group} />
+			{#if data.standings.length > 0}
+				<StandingsTable standings={data.standings} group={data.group} />
+			{:else if data.teams.length > 0}
+				<TeamsOnlyTable teams={data.teams} />
+			{:else}
+				<p class="py-12 text-center text-sm text-muted-foreground">{$_('group.no_standings')}</p>
+			{/if}
 
 			{#if completedMatches.length > 0}
 				<div class="grid grid-cols-2 gap-3 pt-1">
