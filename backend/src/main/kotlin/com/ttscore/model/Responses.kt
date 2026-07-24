@@ -547,16 +547,28 @@ data class PlayerSeasonStatsResponse(
 )
 
 /**
- * Everything needed to render a head-to-head comparison between two players. Both players' season
- * stats are current-season (mirrors [PlayerSeasonStatsResponse]); the direct [record] and [games]
- * are all-time, since that is what a "rivalry" means to users.
+ * Just the slice of [PlayerSeasonStatsResponse] the H2H radar chart actually renders — [recentForm]
+ * plus [radar]. Computing the *whole* season-stats response (monthly chart, competitions,
+ * set distribution, streaks, best win, …) for both players just to throw most of it away was real,
+ * duplicated cost on every H2H page view; this is the lean equivalent used only there.
+ */
+@Serializable
+data class RadarStatsResponse(
+    /** Last 10 decided games (rolling 1-year window, same scope as [radar]), oldest → newest. */
+    val recentForm: List<Boolean>,
+    val radar: RadarSourceResponse,
+)
+
+/**
+ * Everything needed to render a head-to-head comparison between two players. The direct [record]
+ * and [games] are all-time, since that is what a "rivalry" means to users.
  */
 @Serializable
 data class HeadToHeadResponse(
     val playerA: PlayerResponse,
     val playerB: PlayerResponse,
-    val statsA: PlayerSeasonStatsResponse,
-    val statsB: PlayerSeasonStatsResponse,
+    val statsA: RadarStatsResponse,
+    val statsB: RadarStatsResponse,
     val record: H2HRecordResponse,
     /** Direct encounters, newest first. */
     val games: List<H2HGameResponse>,

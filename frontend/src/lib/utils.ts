@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { PlayerSeasonStats } from '$lib/api';
+import type { PlayerSeasonStats, RadarStats } from '$lib/api';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -40,7 +40,7 @@ export type RadarMetrics = {
 	consistency: number;
 };
 
-export function radarMetrics(stats: PlayerSeasonStats): RadarMetrics {
+export function radarMetrics(stats: PlayerSeasonStats | RadarStats): RadarMetrics {
 	const pct = (w: number, g: number) => (g > 0 ? Math.round((w / g) * 100) : 0);
 	const { radar } = stats;
 

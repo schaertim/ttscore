@@ -18,15 +18,19 @@ object TeamService {
         val uuid = teamId.toUuidOrNull() ?: return null
         return dbQuery {
             val teamRow =
-                Teams.selectAll().where { Teams.id eq uuid }.singleOrNull()
+                Teams.select(Teams.id, Teams.name, Teams.groupId).where { Teams.id eq uuid }.singleOrNull()
                     ?: return@dbQuery null
 
             val groupName =
-                Groups.selectAll()
+                Groups.select(Groups.name)
                     .where { Groups.id eq teamRow[Teams.groupId] }
                     .singleOrNull()?.get(Groups.name) ?: ""
 
-            val standing = Standings.selectAll().where { Standings.teamId eq uuid }.singleOrNull()
+            val standing =
+                Standings
+                    .select(Standings.won, Standings.drawn, Standings.lost, Standings.points, Standings.position)
+                    .where { Standings.teamId eq uuid }
+                    .singleOrNull()
             val record =
                 "${standing?.get(Standings.won) ?: 0}-${standing?.get(Standings.drawn) ?: 0}" +
                     "-${standing?.get(Standings.lost) ?: 0}"
@@ -34,7 +38,7 @@ object TeamService {
             val position = standing?.get(Standings.position)?.toInt() ?: 0
 
             val lastResults =
-                Matches.selectAll()
+                Matches.select(Matches.homeTeamId, Matches.homeScore, Matches.awayScore)
                     .where { (Matches.homeTeamId eq uuid) or (Matches.awayTeamId eq uuid) }
                     .orderBy(Matches.playedAt to SortOrder.DESC)
                     .limit(5)
@@ -56,11 +60,11 @@ object TeamService {
     suspend fun getTeamRoster(teamId: String): List<TeamPlayerResponse>? {
         val uuid = teamId.toUuidOrNull() ?: return null
         return dbQuery {
-            if (Teams.selectAll().where { Teams.id eq uuid }.empty()) return@dbQuery null
+            if (Teams.select(Teams.id).where { Teams.id eq uuid }.empty()) return@dbQuery null
 
             val playerRows =
                 (Players innerJoin PlayerSeasons)
-                    .selectAll()
+                    .select(Players.id, Players.fullName, Players.licenceNr)
                     .where { PlayerSeasons.teamId eq uuid }
                     .toList()
 
@@ -126,12 +130,23 @@ object TeamService {
     suspend fun getTeamMatches(teamId: String): List<MatchResponse>? {
         val uuid = teamId.toUuidOrNull() ?: return null
         return dbQuery {
-            if (Teams.selectAll().where { Teams.id eq uuid }.empty()) return@dbQuery null
+            if (Teams.select(Teams.id).where { Teams.id eq uuid }.empty()) return@dbQuery null
 
             Matches
                 .join(homeTeam, JoinType.INNER, Matches.homeTeamId, homeTeam[Teams.id])
                 .join(awayTeam, JoinType.INNER, Matches.awayTeamId, awayTeam[Teams.id])
-                .selectAll()
+                .select(
+                    Matches.id,
+                    Matches.homeTeamId,
+                    Matches.awayTeamId,
+                    Matches.homeScore,
+                    Matches.awayScore,
+                    Matches.round,
+                    Matches.playedAt,
+                    Matches.status,
+                    homeTeam[Teams.name],
+                    awayTeam[Teams.name],
+                )
                 .where { (Matches.homeTeamId eq uuid) or (Matches.awayTeamId eq uuid) }
                 .orderBy(Matches.playedAt to SortOrder.DESC)
                 .map { it.toMatchResponse() }

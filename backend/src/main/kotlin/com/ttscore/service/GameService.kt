@@ -192,50 +192,108 @@ object GameService {
         sets: List<ParsedClickTTSet>,
     ): Boolean =
         dbQuery {
-            val dayStart = playedAt
-            val dayEnd = playedAt.plusDays(1)
-            val onDay =
-                (Games.matchId.isNull()) and
-                    (Games.playedAt greaterEq dayStart) and
-                    (Games.playedAt less dayEnd)
-            val duplicateCondition =
-                if (opponentId != null) {
-                    onDay and
-                        (
-                            ((Games.homePlayer1Id eq playerId) and (Games.awayPlayer1Id eq opponentId)) or
-                                ((Games.homePlayer1Id eq opponentId) and (Games.awayPlayer1Id eq playerId))
-                        )
-                } else {
-                    onDay and
-                        (Games.homePlayer1Id eq playerId) and
-                        (Games.awayPlayer1Id.isNull()) and
-                        (Games.homeSets eq homeSets.toShort()) and
-                        (Games.awaySets eq awaySets.toShort())
-                }
-
-            if (Games.select(Games.id).where(duplicateCondition).count() > 0) return@dbQuery false
-
-            val gameId =
-                Games.insert {
-                    it[Games.matchId] = null
-                    it[Games.gameType] = GameType.SINGLES
-                    it[Games.homePlayer1Id] = playerId
-                    it[Games.awayPlayer1Id] = opponentId
-                    it[Games.playedAt] = playedAt
-                    it[Games.competitionName] = competition
-                    it[Games.homeSets] = homeSets.toShort()
-                    it[Games.awaySets] = awaySets.toShort()
-                    it[Games.result] = result
-                }[Games.id]
-
-            for (set in sets) {
-                GameSets.insertIgnore {
-                    it[GameSets.gameId] = gameId
-                    it[GameSets.setNumber] = set.setNumber.toShort()
-                    it[GameSets.homePoints] = set.homePoints.toShort()
-                    it[GameSets.awayPoints] = set.awayPoints.toShort()
-                }
-            }
-            true
+            insertTournamentGameIfAbsentInTx(
+                playerId,
+                opponentId,
+                playedAt,
+                competition,
+                result,
+                homeSets,
+                awaySets,
+                sets,
+            )
         }
+
+    /** One tournament/cup game parsed off a player's page, ready to insert. */
+    data class TournamentGameInsert(
+        val playerId: UUID,
+        val opponentId: UUID?,
+        val playedAt: OffsetDateTime,
+        val competition: String?,
+        val result: GameResult,
+        val homeSets: Int,
+        val awaySets: Int,
+        val sets: List<ParsedClickTTSet>,
+    )
+
+    /**
+     * Inserts a whole page's worth of tournament/cup games in a single transaction rather than one
+     * per game: a portrait backfill can touch dozens of tournament games per player, and paying a
+     * separate connection round-trip (duplicate-check select + insert) for each one dominated sync
+     * time. Semantics are unchanged — each game's duplicate check still runs before its own insert.
+     *
+     * Returns the number of newly inserted games.
+     */
+    suspend fun insertTournamentGamesIfAbsent(games: List<TournamentGameInsert>): Int =
+        dbQuery {
+            games.count {
+                insertTournamentGameIfAbsentInTx(
+                    it.playerId,
+                    it.opponentId,
+                    it.playedAt,
+                    it.competition,
+                    it.result,
+                    it.homeSets,
+                    it.awaySets,
+                    it.sets,
+                )
+            }
+        }
+
+    private fun Transaction.insertTournamentGameIfAbsentInTx(
+        playerId: UUID,
+        opponentId: UUID?,
+        playedAt: OffsetDateTime,
+        competition: String?,
+        result: GameResult,
+        homeSets: Int,
+        awaySets: Int,
+        sets: List<ParsedClickTTSet>,
+    ): Boolean {
+        val dayStart = playedAt
+        val dayEnd = playedAt.plusDays(1)
+        val onDay =
+            (Games.matchId.isNull()) and
+                (Games.playedAt greaterEq dayStart) and
+                (Games.playedAt less dayEnd)
+        val duplicateCondition =
+            if (opponentId != null) {
+                onDay and
+                    (
+                        ((Games.homePlayer1Id eq playerId) and (Games.awayPlayer1Id eq opponentId)) or
+                            ((Games.homePlayer1Id eq opponentId) and (Games.awayPlayer1Id eq playerId))
+                    )
+            } else {
+                onDay and
+                    (Games.homePlayer1Id eq playerId) and
+                    (Games.awayPlayer1Id.isNull()) and
+                    (Games.homeSets eq homeSets.toShort()) and
+                    (Games.awaySets eq awaySets.toShort())
+            }
+
+        if (Games.select(Games.id).where(duplicateCondition).count() > 0) return false
+
+        val gameId =
+            Games.insert {
+                it[Games.matchId] = null
+                it[Games.gameType] = GameType.SINGLES
+                it[Games.homePlayer1Id] = playerId
+                it[Games.awayPlayer1Id] = opponentId
+                it[Games.playedAt] = playedAt
+                it[Games.competitionName] = competition
+                it[Games.homeSets] = homeSets.toShort()
+                it[Games.awaySets] = awaySets.toShort()
+                it[Games.result] = result
+            }[Games.id]
+
+        for (set in sets) {
+            GameSets.insertIgnore {
+                it[GameSets.gameId] = gameId
+                it[GameSets.setNumber] = set.setNumber.toShort()
+                it[GameSets.homePoints] = set.homePoints.toShort()
+                it[GameSets.awayPoints] = set.awayPoints.toShort()
+            }
+        }
+        return true
+    }
 }

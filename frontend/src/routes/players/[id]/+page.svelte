@@ -121,7 +121,7 @@
 				const [p, elo, matches, stats] = await Promise.all([
 					api.players.get(id).catch(() => null),
 					api.players.elo(id).catch(() => null),
-					api.players.matches(id).catch(() => null),
+					api.players.matches(id, 4).catch(() => null),
 					api.players.seasonStats(id).catch(() => null)
 				]);
 				fresh = { id, player: p, elo, matches, stats };

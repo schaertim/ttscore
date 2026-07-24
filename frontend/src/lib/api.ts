@@ -248,6 +248,13 @@ export type PlayerSeasonStats = {
 	radar: RadarSource;
 };
 
+/** Just the H2H radar's two inputs — see the backend's `RadarStatsResponse`. */
+export type RadarStats = {
+	/** Last 10 decided games (rolling 1-year window, same scope as `radar`), oldest → newest. */
+	recentForm: boolean[];
+	radar: RadarSource;
+};
+
 export type H2HRecord = {
 	aWins: number;
 	bWins: number;
@@ -270,8 +277,8 @@ export type H2HGame = {
 export type HeadToHead = {
 	playerA: Player;
 	playerB: Player;
-	statsA: PlayerSeasonStats;
-	statsB: PlayerSeasonStats;
+	statsA: RadarStats;
+	statsB: RadarStats;
 	record: H2HRecord;
 	games: H2HGame[];
 };
@@ -506,7 +513,9 @@ export const api = {
 			await fetch(`${BASE}/players/${playerId}/sync`).catch(() => {});
 		},
 		elo: (playerId: string) => get<EloEntry[]>(`/players/${playerId}/elo`),
-		matches: (playerId: string) => get<PlayerGame[]>(`/players/${playerId}/matches`),
+		/** `limit` omitted → full match history; otherwise just the `limit` most recent games. */
+		matches: (playerId: string, limit?: number) =>
+			get<PlayerGame[]>(`/players/${playerId}/matches${limit ? `?limit=${limit}` : ''}`),
 		upcoming: (playerId: string) => get<PlayerUpcoming>(`/players/${playerId}/upcoming`),
 		/** Pro-gated player-centric preview of one of the player's team fixtures. */
 		matchPreview: (playerId: string, matchId: string, accessToken: string) =>

@@ -20,9 +20,12 @@
 		federations: Federation[];
 		/** Optional callout (e.g. sign-in / set-player banner) rendered under the header. */
 		banner?: Snippet;
+		/** SSR-streamed groups/stats for whichever season +page.server.ts resolved as the default. */
+		initialGroups: Promise<Group[]>;
+		initialStats: Promise<SeasonStats | null>;
 	}
 
-	let { seasons, federations, banner }: Props = $props();
+	let { seasons, federations, banner, initialGroups, initialStats }: Props = $props();
 
 	// Persist the selected season in the URL (?season=…) so it survives back navigation
 	// (e.g. selecting a past season, opening a group, then navigating back here).
@@ -115,7 +118,28 @@
 			.filter((fed) => fed.groups.length > 0)
 	);
 
+	// The initial season's groups/stats are already in flight from SSR (streamed, not awaited in
+	// +page.server.ts, so this doesn't block the page shell) — consume them instead of re-firing
+	// the same fetch client-side.
 	$effect(() => {
+		initialGroups.then((g) => {
+			groups = g;
+			loadingGroups = false;
+		});
+		initialStats.then((s) => {
+			stats = s;
+			loadingStats = false;
+		});
+	});
+
+	// Only actual season *changes* (after the initial one above) trigger a client-side fetch.
+	let hasSkippedInitialLoad = false;
+	$effect(() => {
+		selectedSeasonId;
+		if (!hasSkippedInitialLoad) {
+			hasSkippedInitialLoad = true;
+			return;
+		}
 		loadGroups();
 		loadStats();
 	});

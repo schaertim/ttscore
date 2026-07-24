@@ -20,6 +20,20 @@ import kotlin.math.abs
 object PlayerService {
     private val swissZone = ZoneId.of("Europe/Zurich")
 
+    /** Hard ceiling on [search]'s in-memory candidate set — see the comment at its call site. */
+    private const val SEARCH_SAFETY_LIMIT = 500
+
+    /**
+     * Start (inclusive) / end (exclusive) of a Swiss "YYYY/YYYY+1" season window (Jul 1 → Jun 30),
+     * or null if [name] isn't in that format.
+     */
+    private fun seasonDateRange(name: String): Pair<OffsetDateTime, OffsetDateTime>? {
+        val startYear = name.substringBefore("/").trim().toIntOrNull() ?: return null
+        val start = LocalDate.of(startYear, 7, 1).atStartOfDay(swissZone).toOffsetDateTime()
+        val end = LocalDate.of(startYear + 1, 7, 1).atStartOfDay(swissZone).toOffsetDateTime()
+        return start to end
+    }
+
     suspend fun getById(playerId: String): PlayerResponse? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
@@ -79,7 +93,22 @@ object PlayerService {
         }
     }
 
-    suspend fun getMatchHistory(playerId: String): List<PlayerGameResponse>? {
+    /**
+     * Over-fetch factor for [getMatchHistory]'s `limit` mode: enough same-day games (e.g. a
+     * tournament day) to survive the precise tiebreak sort below without ever missing the true
+     * top-[N] once same-day ties are broken correctly.
+     */
+    private const val RECENT_GAMES_OVERFETCH = 5
+
+    /**
+     * Full match history, or — with [limit] — just the most recent [limit] games. [limit] pushes
+     * the cutoff into SQL (`ORDER BY played_at DESC LIMIT`, like `FeedService`'s per-category
+     * queries) so the profile overview's "recent games" preview doesn't scan a long career just to
+     * show 3 rows. The dedicated match-history page still requests the unbounded list — a career
+     * tops out around ~1200 games, cheap enough in one shot that splitting it by season isn't worth
+     * the added round trips.
+     */
+    suspend fun getMatchHistory(playerId: String, limit: Int? = null): List<PlayerGameResponse>? {
         val uuid = playerId.toUuidOrNull() ?: return null
         return dbQuery {
             val homeTeam = Teams.alias("home_team")
@@ -87,40 +116,52 @@ object PlayerService {
             val homePlayer = Players.alias("home_player")
             val awayPlayer = Players.alias("away_player")
 
-            Games
-                .join(Matches, JoinType.LEFT, Games.matchId, Matches.id)
-                .join(homeTeam, JoinType.LEFT, Matches.homeTeamId, homeTeam[Teams.id])
-                .join(awayTeam, JoinType.LEFT, Matches.awayTeamId, awayTeam[Teams.id])
-                .join(homePlayer, JoinType.LEFT, Games.homePlayer1Id, homePlayer[Players.id])
-                .join(awayPlayer, JoinType.LEFT, Games.awayPlayer1Id, awayPlayer[Players.id])
-                .select(
-                    Games.id,
-                    Games.homePlayer1Id,
-                    Games.awayPlayer1Id,
-                    Games.homeSets,
-                    Games.awaySets,
-                    Games.result,
-                    Games.homePlayer1EloDelta,
-                    Games.awayPlayer1EloDelta,
-                    Games.homePlayer1EloOrder,
-                    Games.awayPlayer1EloOrder,
-                    Games.playedAt,
-                    Games.competitionName,
-                    Matches.id,
-                    Matches.homeScore,
-                    Matches.awayScore,
-                    Matches.round,
-                    Matches.status,
-                    homeTeam[Teams.name],
-                    awayTeam[Teams.name],
-                    homePlayer[Players.fullName],
-                    awayPlayer[Players.fullName],
-                )
-                .where {
-                    ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
-                        (Games.gameType eq GameType.SINGLES)
+            val query =
+                Games
+                    .join(Matches, JoinType.LEFT, Games.matchId, Matches.id)
+                    .join(homeTeam, JoinType.LEFT, Matches.homeTeamId, homeTeam[Teams.id])
+                    .join(awayTeam, JoinType.LEFT, Matches.awayTeamId, awayTeam[Teams.id])
+                    .join(homePlayer, JoinType.LEFT, Games.homePlayer1Id, homePlayer[Players.id])
+                    .join(awayPlayer, JoinType.LEFT, Games.awayPlayer1Id, awayPlayer[Players.id])
+                    .select(
+                        Games.id,
+                        Games.homePlayer1Id,
+                        Games.awayPlayer1Id,
+                        Games.homeSets,
+                        Games.awaySets,
+                        Games.result,
+                        Games.homePlayer1EloDelta,
+                        Games.awayPlayer1EloDelta,
+                        Games.homePlayer1EloOrder,
+                        Games.awayPlayer1EloOrder,
+                        Games.playedAt,
+                        Games.competitionName,
+                        Matches.id,
+                        Matches.homeScore,
+                        Matches.awayScore,
+                        Matches.round,
+                        Matches.status,
+                        homeTeam[Teams.name],
+                        awayTeam[Teams.name],
+                        homePlayer[Players.fullName],
+                        awayPlayer[Players.fullName],
+                    )
+                    .where {
+                        ((Games.homePlayer1Id eq uuid) or (Games.awayPlayer1Id eq uuid)) and
+                            (Games.gameType eq GameType.SINGLES)
+                    }
+
+            val rows =
+                if (limit != null) {
+                    query
+                        .orderBy(Games.playedAt to SortOrder.DESC_NULLS_LAST)
+                        .limit(limit * RECENT_GAMES_OVERFETCH)
+                        .toList()
+                } else {
+                    query.toList()
                 }
-                .toList()
+
+            rows
                 // Newest day first, then the player's Elo-Protokoll order within a day (index 0 =
                 // topmost protocol row), then the stable game id — a total, reload-invariant order
                 // so same-day games (which share a played_at) never reshuffle. Sorted here rather
@@ -138,6 +179,7 @@ object PlayerService {
                         }
                         .thenBy { row: ResultRow -> row[Games.id] },
                 )
+                .let { sorted -> if (limit != null) sorted.take(limit) else sorted }
                 .let { rows ->
                     val gameIds = rows.map { it[Games.id] }
                     val setsByGame =
@@ -319,13 +361,9 @@ object PlayerService {
             // Games for [seasonId]/[name]. A Swiss season "YYYY/YYYY+1" runs Jul 1 → Jun 30; non-league
             // games carry no season link, so we bound them by that date window instead of including them all.
             fun seasonRows(seasonId: UUID, name: String): List<ResultRow> {
-                val startYear = name.substringBefore("/").trim().toIntOrNull()
-                val start = startYear?.let {
-                    LocalDate.of(it, 7, 1).atStartOfDay(swissZone).toOffsetDateTime()
-                }
-                val end = startYear?.let {
-                    LocalDate.of(it + 1, 7, 1).atStartOfDay(swissZone).toOffsetDateTime()
-                }
+                val range = seasonDateRange(name)
+                val start = range?.first
+                val end = range?.second
                 return Games
                     .join(Matches, JoinType.LEFT, Games.matchId, Matches.id)
                     .join(Groups, JoinType.LEFT, Matches.groupId, Groups.id)
@@ -393,16 +431,7 @@ object PlayerService {
                 }.toSet()
             val badges = ClassificationService.classBadges(opponentIds + uuid, seasonNames)
 
-            val playerCurrentElo = PlayerElos
-                .select(PlayerElos.eloValue)
-                .where { (PlayerElos.playerId eq uuid) and (PlayerElos.isProvisional eq false) }
-                .orderBy(PlayerElos.recordedAt to SortOrder.DESC)
-                .firstOrNull()?.get(PlayerElos.eloValue)
-            val playerLiveElo = LiveEloService.liveEloFor(uuid, playerCurrentElo)
-            val playerCurrentClass = (playerLiveElo ?: playerCurrentElo)
-                ?.let { ClassificationService.fromElo(it) }
-                ?: ClassificationService.currentClasses(listOf(uuid))[uuid]
-            val playerCurrentRank = classRank(playerCurrentClass)
+            val playerCurrentRank = currentClassRank(uuid)
 
             val overall = WinAcc()
             val afterLoss1 = WinAcc()
@@ -595,6 +624,20 @@ object PlayerService {
         }
     }
 
+    /** The player's current class, as a ladder rank — used to center the opponent-strength buckets. */
+    private fun currentClassRank(uuid: UUID): Int? {
+        val playerCurrentElo = PlayerElos
+            .select(PlayerElos.eloValue)
+            .where { (PlayerElos.playerId eq uuid) and (PlayerElos.isProvisional eq false) }
+            .orderBy(PlayerElos.recordedAt to SortOrder.DESC)
+            .firstOrNull()?.get(PlayerElos.eloValue)
+        val playerLiveElo = LiveEloService.liveEloFor(uuid, playerCurrentElo)
+        val playerCurrentClass = (playerLiveElo ?: playerCurrentElo)
+            ?.let { ClassificationService.fromElo(it) }
+            ?: ClassificationService.currentClasses(listOf(uuid))[uuid]
+        return classRank(playerCurrentClass)
+    }
+
     /**
      * Radar-chart source (everything but Form): a rolling 1-year window rather than the
      * current-season scope, so it stays stable across the season rollover and isn't skewed by a
@@ -602,7 +645,17 @@ object PlayerService {
      * own buckets — 2+ ranks (not 3+) fold into HIGHER/LOWER, leaving same-class-or-adjacent as
      * the "Consistency" pool. Must run inside the same transaction as its caller.
      */
-    private fun computeRadarSource(uuid: UUID, playerCurrentRank: Int?): RadarSourceResponse {
+    private fun computeRadarSource(uuid: UUID, playerCurrentRank: Int?): RadarSourceResponse =
+        computeRadarAndForm(uuid, playerCurrentRank).first
+
+    /**
+     * Same rolling-1-year window as [computeRadarSource], but also returns the last 10 decided
+     * results from that same row set — so [getRadarStats] (the H2H page) can get both Form and the
+     * radar off a single query pass, instead of additionally running [getSeasonStats]'s whole
+     * season-scoped aggregation (monthly chart, competitions, streaks, …) just to read two fields
+     * out of it.
+     */
+    private fun computeRadarAndForm(uuid: UUID, playerCurrentRank: Int?): Pair<RadarSourceResponse, List<Boolean>> {
         val cutoff = OffsetDateTime.now(swissZone).minusYears(1)
         val rows =
             Games
@@ -621,9 +674,10 @@ object PlayerService {
                         (Games.result neq GameResult.NOT_PLAYED) and
                         (Games.playedAt greaterEq cutoff)
                 }
+                .orderBy(Games.playedAt to SortOrder.ASC_NULLS_LAST)
                 .toList()
 
-        if (rows.isEmpty()) return emptyRadar()
+        if (rows.isEmpty()) return emptyRadar() to emptyList()
 
         val gameIds = rows.map { it[Games.id] }
         val setsByGame =
@@ -653,12 +707,14 @@ object PlayerService {
         var comeFromBehindWins = 0
         var comeFromBehindGames = 0
         val tiers = linkedMapOf<String, WinAcc>()
+        val decidedResults = mutableListOf<Boolean>()
 
         for (row in rows) {
             val isHome = row[Games.homePlayer1Id] == uuid
             val won =
                 (row[Games.result] == GameResult.HOME && isHome) ||
                     (row[Games.result] == GameResult.AWAY && !isHome)
+            decidedResults.add(won)
 
             val playedAt = row[Games.playedAt]
             if (playedAt != null) {
@@ -714,20 +770,36 @@ object PlayerService {
                 }
             }
 
-        return RadarSourceResponse(
-            opponentBuckets = opponentBuckets,
-            deuceSetsWon = deuceWon,
-            deuceSetsTotal = deuceTotal,
-            tightGameWins = tightWins,
-            tightGames = tightGames,
-            comeFromBehindWins = comeFromBehindWins,
-            comeFromBehindGames = comeFromBehindGames,
-        )
+        val radar =
+            RadarSourceResponse(
+                opponentBuckets = opponentBuckets,
+                deuceSetsWon = deuceWon,
+                deuceSetsTotal = deuceTotal,
+                tightGameWins = tightWins,
+                tightGames = tightGames,
+                comeFromBehindWins = comeFromBehindWins,
+                comeFromBehindGames = comeFromBehindGames,
+            )
+        return radar to decidedResults.takeLast(10)
     }
 
     /**
-     * Head-to-head comparison between two players. Refs (live class/ELO) and season stats are
-     * computed per player via [getById] / [getSeasonStats]; the direct record is all-time over
+     * Just the H2H radar's two inputs (Form + the radar counts) — see [RadarStatsResponse]. Used
+     * only by [getHeadToHead], which needs this for two players and previously paid for the whole
+     * of [getSeasonStats] (and its own extra queries) per player just to read these.
+     */
+    suspend fun getRadarStats(playerId: String): RadarStatsResponse? {
+        val uuid = playerId.toUuidOrNull() ?: return null
+        return dbQuery {
+            Players.select(Players.id).where { Players.id eq uuid }.firstOrNull() ?: return@dbQuery null
+            val (radar, recentForm) = computeRadarAndForm(uuid, currentClassRank(uuid))
+            RadarStatsResponse(recentForm = recentForm, radar = radar)
+        }
+    }
+
+    /**
+     * Head-to-head comparison between two players. Refs (live class/ELO) and radar stats are
+     * computed per player via [getById] / [getRadarStats]; the direct record is all-time over
      * decided singles encounters. Returns null if either player id is invalid or missing.
      */
     suspend fun getHeadToHead(playerId: String, opponentId: String): HeadToHeadResponse? {
@@ -737,8 +809,8 @@ object PlayerService {
 
         val playerA = getById(playerId) ?: return null
         val playerB = getById(opponentId) ?: return null
-        val statsA = getSeasonStats(playerId) ?: return null
-        val statsB = getSeasonStats(opponentId) ?: return null
+        val statsA = getRadarStats(playerId) ?: return null
+        val statsB = getRadarStats(opponentId) ?: return null
 
         return dbQuery {
             val rows =
@@ -1243,11 +1315,16 @@ object PlayerService {
                     }
                     .reduce { acc, op -> acc and op }
 
-            // Fetch *all* matches (name-search result sets are small) so we can rank by class before
-            // paging — class isn't a plain column, so it can't be an ORDER BY on the SQL side.
+            // Fetch matches (name-search result sets are normally small) so we can rank by class
+            // before paging — class isn't a plain column, so it can't be an ORDER BY on the SQL
+            // side. SEARCH_SAFETY_LIMIT is a backstop, not the expected result size: a single common
+            // token (e.g. a frequent surname) could otherwise pull hundreds of rows into memory
+            // unbounded. Above the cap, `total` under-reports and the tail of matches becomes
+            // unreachable by paging — an acceptable trade-off for a hard ceiling on worst-case cost.
             val matches =
                 Players.select(Players.id, Players.fullName, Players.licenceNr)
                     .where { nameCondition }
+                    .limit(SEARCH_SAFETY_LIMIT)
                     .toList()
 
             val total = matches.size.toLong()

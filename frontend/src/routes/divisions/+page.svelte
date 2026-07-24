@@ -8,7 +8,12 @@
 	let { data }: { data: PageData } = $props();
 </script>
 
-<LeagueBrowser seasons={data.seasons} federations={data.federations}>
+<LeagueBrowser
+	seasons={data.seasons}
+	federations={data.federations}
+	initialGroups={data.streamed.groups}
+	initialStats={data.streamed.stats}
+>
 	{#snippet banner()}
 		{#if !data.user}
 			<SignInBanner />

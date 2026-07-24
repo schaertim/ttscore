@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { _ } from 'svelte-i18n';
-	import type { PlayerSeasonStats } from '$lib/api';
+	import type { PlayerSeasonStats, RadarStats } from '$lib/api';
 	import * as Chart from '$lib/components/ui/chart/index.js';
 	import { LineChart } from 'layerchart';
 	import { curveLinearClosed } from 'd3-shape';
@@ -8,7 +8,7 @@
 	import { radarMetrics } from '$lib/utils';
 
 	type RadarPlayer = {
-		stats: PlayerSeasonStats;
+		stats: PlayerSeasonStats | RadarStats;
 		label: string;
 		color: string;
 	};

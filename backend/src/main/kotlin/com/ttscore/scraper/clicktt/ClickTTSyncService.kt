@@ -33,10 +33,11 @@ object ClickTTSyncService {
     private val syncCooldowns = ConcurrentHashMap<UUID, Instant>()
     private val COOLDOWN = Duration.ofMinutes(5)
 
-    // How many player portraits to sync in parallel during the full backfill. Each sync fans out to
-    // ~3 concurrent click-tt fetches, so 8 players ≈ up to ~24 in-flight requests — in line with the
-    // match scraper's SCRAPE_CONCURRENCY and comfortably within the 10-connection DB pool.
-    private const val PORTRAIT_BACKFILL_CONCURRENCY = 8
+    // How many players to sync in parallel (portrait backfill, and MatchPollJob's post-match ELO
+    // sync). Each sync fans out to ~3 concurrent click-tt fetches, so 8 players ≈ up to ~24
+    // in-flight requests — in line with the match scraper's SCRAPE_CONCURRENCY and comfortably
+    // within the 10-connection DB pool.
+    const val PORTRAIT_BACKFILL_CONCURRENCY = 8
 
     /** True when [playerId] was synced within the cooldown window — a fresh sync would be a no-op. */
     fun isWithinCooldown(playerId: UUID): Boolean {
@@ -301,25 +302,26 @@ object ClickTTSyncService {
         playerId: UUID,
         games: List<ParsedTournamentGame>,
     ): Int {
-        var inserts = 0
-        for (game in games) {
-            val opponentId =
-                game.opponentPersonId?.let { PlayerService.findPlayerIdByClickTtId(it) }
-                    ?: PlayerService.findPlayerIdByName(game.opponentName)
+        // Opponent lookups still happen one at a time (each is a distinct name/id match), but the
+        // inserts themselves are batched into a single transaction below rather than one per game.
+        val entries =
+            games.map { game ->
+                val opponentId =
+                    game.opponentPersonId?.let { PlayerService.findPlayerIdByClickTtId(it) }
+                        ?: PlayerService.findPlayerIdByName(game.opponentName)
 
-            val playedAt = game.date.atStartOfDay(swissZone).toOffsetDateTime()
-            // Derive the result from the set score (authoritative) rather than the win icon, which
-            // can be missing/misdetected and would then disagree with the stored sets — producing a
-            // wrong-signed ELO delta (a win scored as a loss).
-            val result =
-                when {
-                    game.homeSets > game.awaySets -> GameResult.HOME
-                    game.awaySets > game.homeSets -> GameResult.AWAY
-                    else -> GameResult.NOT_PLAYED
-                }
+                val playedAt = game.date.atStartOfDay(swissZone).toOffsetDateTime()
+                // Derive the result from the set score (authoritative) rather than the win icon,
+                // which can be missing/misdetected and would then disagree with the stored sets —
+                // producing a wrong-signed ELO delta (a win scored as a loss).
+                val result =
+                    when {
+                        game.homeSets > game.awaySets -> GameResult.HOME
+                        game.awaySets > game.homeSets -> GameResult.AWAY
+                        else -> GameResult.NOT_PLAYED
+                    }
 
-            val inserted =
-                GameService.insertTournamentGameIfAbsent(
+                GameService.TournamentGameInsert(
                     playerId = playerId,
                     opponentId = opponentId,
                     playedAt = playedAt,
@@ -329,9 +331,8 @@ object ClickTTSyncService {
                     awaySets = game.awaySets,
                     sets = game.sets,
                 )
-            if (inserted) inserts++
-        }
-        return inserts
+            }
+        return GameService.insertTournamentGamesIfAbsent(entries)
     }
 
     /**

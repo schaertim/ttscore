@@ -17,10 +17,10 @@ import com.ttscore.scraper.clicktt.ClickTTGroupScraper.GroupRef
 import com.ttscore.scraper.clicktt.ClickTTMatchScraper
 import com.ttscore.scraper.clicktt.ClickTTParser
 import com.ttscore.scraper.clicktt.ClickTTSyncService
+import com.ttscore.scraper.knob.mapConcurrent
 import com.ttscore.service.GameService
 import com.ttscore.service.PushService
 import com.ttscore.service.SeasonService
-import kotlinx.coroutines.delay
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
@@ -87,15 +87,17 @@ class MatchPollJob(
         // teams, the division group, and the players who played in them.
         sendMatchPushNotifications(newlyCompletedMatchIds, playerIds)
 
-        // Enqueue those players for ELO sync
+        // Enqueue those players for ELO sync — bounded-concurrency, same helper and limit as the
+        // portrait backfill, rather than strictly serial with a fixed delay between each. A busy
+        // match round can complete 40+ players' worth of games at once; syncing them one at a time
+        // with a 500ms pause between each turned that into 20+ seconds of pure waiting.
         logger.info("MatchPollJob: syncing ELO for ${playerIds.size} players from completed matches")
-        for (playerId in playerIds) {
+        playerIds.toList().mapConcurrent(ClickTTSyncService.PORTRAIT_BACKFILL_CONCURRENCY) { playerId ->
             try {
                 ClickTTSyncService.syncPlayer(playerId, seasonId)
             } catch (e: Exception) {
                 logger.warn("MatchPollJob: ELO sync failed for player $playerId: ${e.message}")
             }
-            delay(500L)
         }
 
         logger.info(

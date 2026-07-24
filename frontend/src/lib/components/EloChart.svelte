@@ -53,20 +53,27 @@
 
 	// One row per union date; each series carries its last known ELO forward (ELO is
 	// constant between games), and is null before that player's first record.
-	const rows = $derived.by(() =>
-		dates.map((date) => {
+	//
+	// Both `dates` and each series' `points` are sorted ascending, so a per-series cursor that only
+	// ever moves forward is enough — rescanning every series from the start for every date (as
+	// before) was O(dates × points) per series; this is O(dates + points).
+	const rows = $derived.by(() => {
+		const cursors = parsed.map(() => 0);
+		const lastValues: (number | null)[] = parsed.map(() => null);
+		return dates.map((date) => {
 			const row: Record<string, number | Date | null> = { date };
 			parsed.forEach((s, i) => {
-				let v: number | null = null;
-				for (const p of s.points) {
-					if (p.date.getTime() <= date.getTime()) v = p.value;
-					else break;
+				let cursor = cursors[i];
+				while (cursor < s.points.length && s.points[cursor].date.getTime() <= date.getTime()) {
+					lastValues[i] = s.points[cursor].value;
+					cursor++;
 				}
-				row[`p${i}`] = v;
+				cursors[i] = cursor;
+				row[`p${i}`] = lastValues[i];
 			});
 			return row;
-		})
-	);
+		});
+	});
 
 	const chartSeries = $derived(
 		parsed.map((s, i) => ({ key: `p${i}`, label: s.label, color: s.color }))

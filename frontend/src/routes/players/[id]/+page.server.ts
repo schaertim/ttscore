@@ -5,10 +5,15 @@ import { authedKtor } from '$lib/server/ktor';
 import { followAction, unfollowAction, setNotifyAction } from '$lib/server/followActions';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-	const player = await api.players.get(params.id).catch(() => null);
+	// Neither of these depends on the other, so run them concurrently rather than paying two
+	// sequential round-trips before the follow/profile checks below can even start.
+	const [player, sessionResult] = await Promise.all([
+		api.players.get(params.id).catch(() => null),
+		locals.safeGetSession()
+	]);
 	if (!player) error(404, 'Player not found');
 
-	const { session } = await locals.safeGetSession();
+	const { session } = sessionResult;
 
 	let following = false;
 	let followId: string | null = null;
@@ -44,7 +49,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		isHomePlayer,
 		streamed: {
 			elo: api.players.elo(params.id),
-			matches: api.players.matches(params.id),
+			// Only the 3-game preview is rendered here (see gameHistory snippet); +1 lets the "show
+			// full history" link's `matches.length > 3` check work without fetching the whole career.
+			matches: api.players.matches(params.id, 4),
 			seasonStats: api.players.seasonStats(params.id),
 			career
 		}

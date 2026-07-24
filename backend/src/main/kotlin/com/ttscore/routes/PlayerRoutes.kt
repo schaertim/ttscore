@@ -93,9 +93,10 @@ fun Route.playerRoutes() {
             val id =
                 call.parameters["id"]
                     ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing player id")
+            val limit = call.request.queryParameters["limit"]?.toIntOrNull()
 
             val matches =
-                PlayerService.getMatchHistory(id)
+                PlayerService.getMatchHistory(id, limit)
                     ?: return@get call.respond(HttpStatusCode.NotFound, "Player not found")
 
             call.respond(HttpStatusCode.OK, matches)
