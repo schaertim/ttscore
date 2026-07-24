@@ -28,26 +28,6 @@ fun accentFold(s: String): String =
         .lowercase()
 
 /**
- * Converts a knob.ch name ("Lastname Firstname") to "Firstname Lastname".
- * Splits on the first space only, so compound first names ("Hans Peter") are preserved.
- */
-fun normalizeKnobName(raw: String): String {
-    val trimmed = Normalizer.normalize(raw.trim(), Normalizer.Form.NFC)
-    val idx = trimmed.indexOf(' ')
-    return if (idx == -1) trimmed else "${trimmed.substring(idx + 1)} ${trimmed.substring(0, idx)}"
-}
-
-/**
- * Converts a click-tt name ("Lastname, Firstname") to "Firstname Lastname".
- * Only kept for legacy callers — prefer [clickTtNameToDb] for storage.
- */
-fun normalizeClickTtName(raw: String): String {
-    val normalized = Normalizer.normalize(raw, Normalizer.Form.NFC)
-    val parts = normalized.split(",", limit = 2)
-    return if (parts.size == 2) "${parts[1].trim()} ${parts[0].trim()}" else normalized.trim()
-}
-
-/**
  * Converts a click-tt name ("Lastname, Firstname") to "Lastname Firstname" for DB storage.
  * This matches the knob.ch storage format — lastname first, no comma, NFC-normalised.
  */

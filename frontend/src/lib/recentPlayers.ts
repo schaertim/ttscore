@@ -54,11 +54,3 @@ export function removeRecentPlayer(id: string): void {
 		// ignore
 	}
 }
-
-export function clearRecentPlayers(): void {
-	try {
-		localStorage.removeItem(STORAGE_KEY);
-	} catch {
-		// ignore
-	}
-}

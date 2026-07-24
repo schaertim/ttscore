@@ -1295,13 +1295,6 @@ object PlayerService {
         }
     }
 
-    suspend fun getAllLicensedPlayers(): List<Pair<UUID, String>> =
-        dbQuery {
-            Players.select(Players.id, Players.licenceNr)
-                .where { Players.licenceNr.isNotNull() }
-                .map { it[Players.id] to it[Players.licenceNr]!! }
-        }
-
     suspend fun getAllPlayersWithClickTtId(): List<Pair<UUID, Int>> =
         dbQuery {
             Players.select(Players.id, Players.clickttId)
@@ -1362,14 +1355,6 @@ object PlayerService {
             if (foldedMatches.size == 1) foldedMatches.single() else null
         }
     }
-
-    suspend fun getLicenceNrById(playerId: UUID): String? =
-        dbQuery {
-            Players.select(Players.licenceNr)
-                .where { Players.id eq playerId }
-                .map { it[Players.licenceNr] }
-                .firstOrNull()
-        }
 
     data class UnlinkedPlayer(
         val id: UUID,

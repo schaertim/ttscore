@@ -169,12 +169,6 @@ export function classLabelForRank(rank: number): string {
 	return CLASS_LADDER[Math.round(rank) - 1] ?? '';
 }
 
-export function ordinal(n: number): string {
-	const s = ['th', 'st', 'nd', 'rd'];
-	const v = n % 100;
-	return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
-}
-
 /** The slice of a layerchart render context needed to place vertical gradient stops. */
 export type GradientContext = {
 	height: number;
